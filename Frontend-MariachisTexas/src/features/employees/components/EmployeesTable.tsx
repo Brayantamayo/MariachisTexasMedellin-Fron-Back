@@ -1,0 +1,131 @@
+
+import React, { useState } from 'react';
+import { User } from '@/types';
+import { Briefcase, MapPin, Phone, Eye, Edit2, Trash2, Music } from 'lucide-react';
+import { TablePagination } from '@/shared/components/TablePagination';
+
+interface Props {
+  employees: User[];
+  loading: boolean;
+  onView: (employee: User) => void;
+  onEdit: (employee: User) => void;
+  onDelete: (id: string) => void;
+  onToggleStatus: (employee: User) => void;
+}
+
+export const EmployeesTable: React.FC<Props> = ({ employees, loading, onView, onEdit, onDelete, onToggleStatus }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string }> = ({ icon: Icon, onClick, tooltip }) => (
+    <button onClick={onClick} title={tooltip} className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all duration-200">
+        <Icon size={16} strokeWidth={2} />
+    </button>
+  );
+
+  if (loading) {
+      return <div className="text-center py-20 text-slate-400">Cargando empleados...</div>;
+  }
+
+  if (employees.length === 0) {
+      return <div className="text-center py-20 text-slate-400">No se encontraron empleados.</div>;
+  }
+
+  // Pagination Logic
+  const totalPages = Math.ceil(employees.length / itemsPerPage);
+  const currentEmployees = employees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  return (
+    <div className="flex flex-col">
+      <div className="p-8 pb-4">
+          <div className="hidden md:grid grid-cols-12 gap-6 px-4 pb-4 mb-2 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="col-span-4 pl-2">Músico</div>
+              <div className="col-span-2">Instrumento</div>
+              <div className="col-span-2">Contacto</div>
+              <div className="col-span-2 text-center">Estado</div>
+              <div className="col-span-2 text-center">Acciones</div>
+          </div>
+
+          <div className="space-y-4">
+              {currentEmployees.map((emp) => (
+                  <div key={emp.id} className="group grid grid-cols-1 md:grid-cols-12 gap-6 items-center p-2 md:py-4 transition-all hover:bg-slate-50/50 rounded-xl">
+                      
+                      {/* Profile */}
+                      <div className="col-span-4 flex items-center gap-5">
+                          <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
+                              {emp.avatar ? (
+                                  <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover" />
+                              ) : (
+                                  <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400">
+                                      <Briefcase size={20} />
+                                  </div>
+                              )}
+                          </div>
+                          <div>
+                              <h3 className="font-bold text-[#1e293b] text-sm mb-0.5">{emp.name} {emp.lastName}</h3>
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <span className="font-semibold bg-slate-100 px-1.5 rounded text-[10px]">{emp.documentType}</span>
+                                  {emp.documentNumber}
+                              </p>
+                          </div>
+                      </div>
+
+                      {/* Instrument */}
+                      <div className="col-span-2">
+                          <div className="flex items-center gap-2 text-sm font-bold text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg w-fit">
+                              <Music size={14} />
+                              {emp.mainInstrument || 'N/A'}
+                          </div>
+                          {emp.experienceYears && (
+                              <p className="text-[10px] text-slate-400 mt-1 pl-1">{emp.experienceYears} Años Exp.</p>
+                          )}
+                      </div>
+
+                      {/* Contact */}
+                      <div className="col-span-2 space-y-1">
+                          <p className="text-xs text-slate-600 flex items-center gap-2">
+                              <Phone size={12} className="text-slate-400" /> {emp.phone}
+                          </p>
+                          <p className="text-xs text-slate-600 flex items-center gap-2">
+                              <MapPin size={12} className="text-slate-400" /> {emp.city}
+                          </p>
+                      </div>
+
+                      {/* Status Toggle */}
+                      <div className="col-span-2 flex items-center justify-center gap-3">
+                          <button 
+                              onClick={() => onToggleStatus(emp)} 
+                              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${emp.isActive ? 'bg-[#dc2626]' : 'bg-slate-200'}`}
+                          >
+                              <span 
+                                  className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${emp.isActive ? 'translate-x-6' : 'translate-x-0'}`} 
+                              />
+                          </button>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider w-14 ${emp.isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
+                              {emp.isActive ? 'Activo' : 'Inactivo'}
+                          </span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="col-span-2 flex justify-center gap-3">
+                          <ActionButton icon={Eye} onClick={() => onView(emp)} tooltip="Ver detalle" />
+                          <ActionButton icon={Edit2} onClick={() => onEdit(emp)} tooltip="Editar empleado" />
+                          <ActionButton icon={Trash2} onClick={() => onDelete(emp.id)} tooltip="Eliminar empleado" />
+                      </div>
+                  </div>
+              ))}
+          </div>
+      </div>
+      <TablePagination 
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={employees.length}
+        itemsPerPage={itemsPerPage}
+      />
+    </div>
+  );
+};

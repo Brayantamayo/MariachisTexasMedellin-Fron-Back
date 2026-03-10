@@ -1,0 +1,34 @@
+# dependencias
+node_modules/
+
+# build del proyecto
+dist/
+build/
+
+# variables de entorno
+.env
+.env.local
+.env.development
+.env.production
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# cache
+.cache
+.vite
+
+# archivos del sistema
+.DS_Store
+Thumbs.db
+
+# configuración del editor
+.vscode/
+.idea/
+
+# coverage de tests
+coverage/

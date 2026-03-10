@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  password  String
+  estado    Boolean  @default(true)
+  rolId     Int                          // FK → Rol
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rol       Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@map("usuario")
+}
+
+model Rol {
+  id          Int          @id @default(autoincrement())
+  nombre      String       @unique
+  descripcion String?
+  estado      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  usuarios    Usuario[] ////
+  rolPermisos RolPermiso[] // FK → RolPermiso
+      // FK → Usuario
+ // ← agrega esto
+
+  @@map("rol")
+}
+
+model RolPermiso {
+  id        Int      @id @default(autoincrement())
+  rolId     Int
+  permisoId Int
+  createdAt DateTime @default(now())
+
+  rol       Rol      @relation(fields: [rolId],     references: [id], onDelete: Cascade)
+  permiso   Permiso  @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, permisoId])
+  @@map("rol_permiso")
+}
+
+model Permiso {
+  id          Int          @id @default(autoincrement())
+  nombre      String       @unique
+  estado      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  rolPermisos RolPermiso[] // FK → RolPermiso
+
+  @@map("permiso")
+}
+
+///////REGISTRAR////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+enum TipoDocumento {
+  CEDULA
+  PASAPORTE
+  CEDULA_EXTRANJERIA
+}
+
+enum ZonaServicio {
+  URBANA
+  RURAL
+}
+
+model Cliente {
+  id                  Int           @id @default(autoincrement())
+  foto                String?
+  nombre              String 
+  apellido            String
+  tipoDocumento       TipoDocumento @default(CEDULA)
+  numeroDocumento     String        @unique
+  fechaNacimiento     DateTime
+  email               String        @unique
+  telefonoPrincipal   String
+  telefonoAlternativo String?
+  ciudad              String        @default("Medellín")
+  barrio              String
+  direccion           String
+  zonaServicio        ZonaServicio  @default(URBANA)
+  password            String
+  activo              Boolean       @default(true)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@map("cliente")
+}

@@ -1,0 +1,118 @@
+
+import { useState, useEffect } from 'react';
+import { User } from '@/types';
+import { clientService } from '../services/clientService';
+
+export const useClientsManager = () => {
+  const [clients, setClients] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados de Modales
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
+  // Cliente seleccionado para acciones
+  const [selectedClient, setSelectedClient] = useState<User | null>(null);
+
+  // Confirmación
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, clientId: string | null}>({
+      isOpen: false,
+      clientId: null
+  });
+
+  // Notificaciones
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      const data = await clientService.getClients();
+      setClients(data);
+    } catch (error) {
+      console.error(error);
+      showNotification("Error cargando clientes.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  // Handlers
+  const handleCreateClient = async (clientData: any) => {
+    try {
+        const newClient = await clientService.createClient(clientData);
+        setClients(prev => [newClient, ...prev]);
+        showNotification('Nuevo cliente registrado exitosamente.');
+        setIsCreateOpen(false);
+    } catch (error) {
+        console.error(error);
+        showNotification("Error al crear el cliente.", "error");
+    }
+  };
+
+  const handleUpdateClient = async (clientData: any) => {
+    if (!selectedClient) return;
+    try {
+        const updated = await clientService.updateClient(selectedClient.id, clientData);
+        setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+        showNotification('Cliente actualizado exitosamente.');
+        setIsEditOpen(false);
+    } catch (error) {
+        console.error(error);
+        showNotification("Error al actualizar el cliente.", "error");
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.clientId) return;
+    try {
+        await clientService.deleteClient(deleteModal.clientId);
+        setClients(prev => prev.filter(c => c.id !== deleteModal.clientId));
+        showNotification('Cliente eliminado del sistema.');
+    } catch (error) {
+        console.error(error);
+        showNotification("No se pudo eliminar el cliente.", "error");
+    }
+  };
+
+  const handleToggleStatus = async (client: User) => {
+    const newStatus = !client.isActive;
+    try {
+        setClients(prev => prev.map(c => c.id === client.id ? { ...c, isActive: newStatus } : c));
+        await clientService.updateClient(client.id, { isActive: newStatus });
+        showNotification(`Cliente ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
+    } catch (error) {
+        console.error(error);
+        fetchClients(); 
+        showNotification("Error al cambiar el estado.", "error");
+    }
+  };
+
+  return {
+    clients, setClients,
+    loading, setLoading,
+    searchTerm, setSearchTerm,
+    isCreateOpen, setIsCreateOpen,
+    isEditOpen, setIsEditOpen,
+    isDetailOpen, setIsDetailOpen,
+    selectedClient, setSelectedClient,
+    deleteModal, setDeleteModal,
+    notification, setNotification,
+    showNotification,
+    fetchClients,
+    handleCreateClient,
+    handleUpdateClient,
+    confirmDelete,
+    handleToggleStatus
+  };
+};

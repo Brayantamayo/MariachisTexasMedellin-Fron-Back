@@ -1,0 +1,12 @@
+import { Router } from 'express'
+import { registro, loginController, recuperar, resetear } from './auth.controller'
+
+const router = Router()
+
+router.post('/registro', registro)
+router.post('/login',    loginController)
+
+router.post('/recuperar-password', recuperar)
+router.post('/reset-password',     resetear)
+
+export default router
