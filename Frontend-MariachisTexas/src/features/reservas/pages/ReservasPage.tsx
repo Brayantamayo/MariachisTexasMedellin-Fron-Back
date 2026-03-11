@@ -9,7 +9,7 @@ import { ReservasTable } from '../components/ReservasTable';
 import { ReservaCreateModal } from '../components/ReservaCreateModal';
 import { ReservaEditModal } from '../components/ReservaEditModal';
 import { ReservaDetailModal } from '../components/ReservaDetailModal';
-import { DateDetailsModal } from '../components/DateDetailsModal';
+import { DateDetailsModal } from '@/src/features/reservas/components/DateDetailsModal';
 import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';

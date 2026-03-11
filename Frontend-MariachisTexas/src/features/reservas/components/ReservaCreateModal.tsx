@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Bookmark } from 'lucide-react';
@@ -34,7 +33,11 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
     homenajeado: '',
     eventType: 'Cumpleaños',
     eventDate: '',
+    // ✅ FIX 2: Guardar la hora en startTime Y eventTime para que ReservaForm
+    // pueda leer startTime al calcular endTime
     eventTime: '',
+    startTime: '',
+    endTime: '',
     location: '',
     address: '',
     neighborhood: '',
@@ -47,29 +50,30 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
 
   const [formData, setFormData] = useState<any>(initialFormState);
   
-  // Data Auxiliar
   const [clients, setClients] = useState<UserType[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [availableHours, setAvailableHours] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Estado de Bloqueo
   const [blockStatus, setBlockStatus] = useState<any>({ isBlocked: false });
 
   useEffect(() => {
     if (isOpen) {
-        // Cargar datos
         repertoireService.getSongs().then(setSongs);
         servicesService.getServices().then(setServices);
         if (isAdmin) {
             clientService.getClients().then(setClients);
         }
 
-        // Inicializar formulario
         const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
         const timeToUse = selectedTime || '';
-        let baseState = { ...initialFormState, eventDate: dateToUse, eventTime: timeToUse };
+        let baseState = { 
+            ...initialFormState, 
+            eventDate: dateToUse, 
+            eventTime: timeToUse,
+            // ✅ FIX 2: Inicializar startTime junto con eventTime
+            startTime: timeToUse,
+        };
 
         if (user && !isAdmin) {
             baseState = {
@@ -82,17 +86,16 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
             };
         }
         setFormData(baseState);
-        
-        // Verificar bloqueos y cargar horas
         checkBlockAndHours(dateToUse);
         setSearchTerm('');
     }
   }, [isOpen, selectedDate, user, isAdmin]);
 
-  // Recalcular precios
+  // ✅ FIX 1: Usar service.precio en lugar de service.price
+  // ✅ FIX 3: Calcular endTime aquí en el modal donde tenemos acceso directo al estado
   useEffect(() => {
       if (!isOpen) return;
-      
+
       const songCount = formData.repertoireIds?.length || 0;
       let extraSongsPrice = 0;
       if (songCount > INCLUDED_SONGS) {
@@ -100,25 +103,45 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
       }
 
       const servicesCost = (formData.selectedServices || []).reduce((total: number, item: any) => {
-          const service = services.find(s => s.id === item.serviceId);
-          return total + (service ? service.price * item.quantity : 0);
+          const service = services.find((s: any) => s.id === item.serviceId);
+          return total + (service ? Number(service.precio) * item.quantity : 0);
       }, 0);
 
-      setFormData((prev: any) => ({ ...prev, totalAmount: extraSongsPrice + servicesCost }));
-  }, [formData.repertoireIds, formData.selectedServices, isOpen, services]);
+      // ✅ Normaliza: trim + lowercase + sin tildes
+      const normalizeStr = (str: string) =>
+          str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const extraHoursService = services.find((s: any) => normalizeStr(s.nombre) === 'hora extra');
+      const extraHoursQty = extraHoursService
+          ? (formData.selectedServices?.find((s: any) => s.serviceId === extraHoursService.id)?.quantity || 0)
+          : 0;
+
+      // Calcular endTime directamente aquí
+      const startTime = formData.startTime || formData.eventTime;
+      let newEndTime = '';
+      if (startTime) {
+          const [h, m] = startTime.split(':').map(Number);
+          const totalMinutes = h * 60 + m + (1 + extraHoursQty) * 60;
+          const newH = Math.floor(totalMinutes / 60) % 24;
+          const newM = totalMinutes % 60;
+          newEndTime = `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
+      }
+
+      setFormData((prev: any) => ({
+          ...prev,
+          totalAmount: extraSongsPrice + servicesCost,
+          ...(newEndTime ? { endTime: newEndTime } : {}),
+      }));
+  }, [formData.repertoireIds, formData.selectedServices, formData.startTime, formData.eventTime, isOpen, services]);
 
   const checkBlockAndHours = async (date: string) => {
-      // 1. Verificar bloqueo
       const status = await blockService.checkDateStatus(date);
       setBlockStatus(status);
 
-      // 2. Cargar horas base (del servicio de reservas)
       let hours = await reservaService.getAvailableHours(date);
       
-      // 3. Filtrar si hay bloqueos PARCIALES
       if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
           hours = hours.filter(hour => {
-              return !status.blockedRanges!.some(range => hour >= range.start && hour < range.end);
+              return !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end);
           });
       }
       setAvailableHours(hours);
@@ -126,16 +149,20 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => {
+        const updated = { ...prev, [name]: value };
+        // ✅ FIX 2: Mantener startTime y eventTime sincronizados
+        if (name === 'startTime') updated.eventTime = value;
+        if (name === 'eventTime') updated.startTime = value;
+        return updated;
+    });
   };
 
   const handleDateChange = (name: string, value: string) => {
-      // Actualizar estado de forma atómica para evitar inconsistencias
       setFormData((prev: any) => ({ 
           ...prev, 
           [name]: value,
-          // Si cambia la fecha, resetear la hora
-          ...(name === 'eventDate' ? { eventTime: '' } : {})
+          ...(name === 'eventDate' ? { eventTime: '', startTime: '', endTime: '' } : {})
       }));
 
       if (name === 'eventDate') {
@@ -193,13 +220,11 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Validación de Bloqueo Total (Estricta para TODOS)
     if (blockStatus.isBlocked) {
         alert(`No se puede crear reserva: La fecha está bloqueada por "${blockStatus.reason || 'motivos administrativos'}".`);
         return; 
     }
 
-    // 2. Validación de Bloqueo Parcial
     if (blockStatus.hasPartialBlocks && blockStatus.blockedRanges && formData.eventTime) {
         const isTimeBlocked = blockStatus.blockedRanges.some((range: any) => 
             formData.eventTime >= range.start && formData.eventTime < range.end

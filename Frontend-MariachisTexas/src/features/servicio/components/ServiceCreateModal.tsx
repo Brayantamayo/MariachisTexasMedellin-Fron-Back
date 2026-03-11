@@ -7,29 +7,28 @@ import { ServiceForm } from './ServiceForm';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (service: Omit<Service, 'id' | 'isActive'>) => Promise<void>;
+  onSave: (service: Omit<Service, 'id' | 'estado'>) => Promise<void>;
 }
 
 export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Omit<Service, 'id' | 'isActive'>>({
-    name: '',
-    description: '',
-    price: 0,
-    unit: 'Unidad'
+  const [formData, setFormData] = useState<Omit<Service, 'id' | 'estado'>>({
+    nombre:      '',
+    descripcion: '',
+    precio:      0,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' ? Number(value) : value
+      [name]: name === 'precio' ? Number(value) : value
     }));
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.description.trim() || formData.price <= 0) {
+    if (!formData.nombre.trim() || !formData.descripcion.trim() || formData.precio <= 0) {
       setError('Por favor complete todos los campos obligatorios.');
       return;
     }
@@ -39,7 +38,7 @@ export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave })
     try {
       await onSave(formData);
       onClose();
-      setFormData({ name: '', description: '', price: 0, unit: 'Unidad' }); // Reset
+      setFormData({ nombre: '', descripcion: '', precio: 0 })
     } catch (error) {
       console.error(error);
       setError('Error al guardar el servicio.');
@@ -66,36 +65,30 @@ export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave })
                     <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5">Añade un servicio al catálogo</p>
                 </div>
             </div>
-            <button 
-                onClick={onClose}
-                className="text-slate-400 hover:text-slate-700 transition-colors bg-slate-50 hover:bg-slate-100 p-2 rounded-lg"
-            >
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors bg-slate-50 hover:bg-slate-100 p-2 rounded-lg">
                 <X size={20} />
             </button>
         </div>
 
-        {/* Form Content */}
+        {/* Form */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
             {error && (
-                <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-xl flex items-center gap-3 border border-red-100 animate-shake">
+                <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-xl flex items-center gap-3 border border-red-100">
                     <AlertCircle size={18} />
                     {error}
                 </div>
             )}
-            <ServiceForm 
-                formData={formData}
-                onChange={handleChange}
-            />
+            <ServiceForm formData={formData} onChange={handleChange} />
         </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-             <button onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
-             <button 
+            <button onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
+            <button 
                 onClick={handleSave} 
                 disabled={loading}
-                className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-red-900/20 hover:shadow-red-900/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-red-900/20 transition-all disabled:opacity-50"
+            >
                 {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
                 Guardar Servicio
             </button>

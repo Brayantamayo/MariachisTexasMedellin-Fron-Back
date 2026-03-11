@@ -157,12 +157,11 @@ export interface CalendarBlock {
 
 // Interfaz de Servicio (Extra)
 export interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  unit: 'Hora' | 'Canción' | 'Evento' | 'Unidad';
-  isActive: boolean;
+  id:          string
+  nombre:      string
+  descripcion: string
+  precio:      number
+  estado:      boolean
 }
 
 // Módulos definidos en el requerimiento
