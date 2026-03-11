@@ -1,4 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg'
+import bcrypt from 'bcryptjs' 
 import { PrismaClient } from '../src/generated/prisma/client'
 import 'dotenv/config'
 
@@ -38,7 +39,6 @@ async function main() {
       { nombre: 'ensayos'        },
       { nombre: 'reservas'       },
       { nombre: 'cotizacion'     },
-      { nombre: 'mis_compras'    },
       { nombre: 'dashboard'      },
       { nombre: 'roles'          },
       { nombre: 'usuarios'       },
@@ -58,7 +58,7 @@ async function main() {
   // ─── MÓDULOS POR ROL ─────────────────────────────────────
   const modulosEmpleado = ['inicio', 'perfil', 'repertorio', 'ensayos', 'reservas']
 
-  const modulosCliente  = ['inicio', 'perfil', 'repertorio', 'cotizacion', 'reservas', 'mis_compras']
+  const modulosCliente = ['inicio', 'perfil', 'repertorio', 'reservas', 'abonos']
 
   const modulosAdmin    = todosLosPermisos.map(p => p.nombre)
 
@@ -82,7 +82,38 @@ async function main() {
   await asignar(cliente.id,  modulosCliente)
 
   console.log('✅ RolPermisos asignados')
+
+
+    // ─── USUARIOS ────────────────────────────────────────────
+  await prisma.usuario.upsert({
+    where: { email: 'admin@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Administrador',
+      email:    'admin@mariachistexas.com',
+      password: await bcrypt.hash('Admin-123456', 10),
+      rolId:    admin.id
+    }
+  })
+
+  await prisma.usuario.upsert({
+    where: { email: 'empleado@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Empleado',
+      email:    'empleado@mariachistexas.com',
+      password: await bcrypt.hash('Empleado-123456', 10),
+      rolId:    empleado.id
+    }
+  })
+
+  console.log('✅ Usuarios creados')
+
+
 }
+
+
+
 
 main()
   .catch(console.error)
