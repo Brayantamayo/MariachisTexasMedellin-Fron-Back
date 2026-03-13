@@ -1,11 +1,11 @@
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '../../types';
+import { authService } from '@/src/features/auth/pages/authService';
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean; // Nuevo estado
-  login: (email: string, password: string) => Promise<boolean>; // Ahora devuelve una promesa
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -14,119 +14,89 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // ✅ FIX 2: Iniciar en true para evitar flash de login al recargar
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Lógica de Login con credenciales de prueba
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulamos un delay de red para mostrar la pantalla de carga (2 segundos)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  // ✅ FIX 1 + 2: Recuperar sesión y adjuntar token a axios al arrancar
+  useEffect(() => {
+    const token    = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
 
-    // Validación de contraseña general para pruebas
-    if (password === '123456') {
-      
-      // Admin
-      if (email === 'admin@texas.com') {
-        setUser({
-          id: '1',
-          name: 'Administrador',
-          lastName: 'Principal',
-          email: email,
-          role: UserRole.ADMIN,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000001',
-          gender: 'M',
-          birthDate: '1980-01-01',
-          phone: '3001234567',
-          city: 'Medellín',
-          neighborhood: 'El Poblado',
-          address: 'Calle 10 # 5-51',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
-      
-      // Músico / Empleado
-      if (email === 'empleado@texas.com') {
-        setUser({
-          id: '2',
-          name: 'Músico',
-          lastName: 'Staff',
-          email: email,
-          role: UserRole.EMPLEADO,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000002',
-          gender: 'M',
-          birthDate: '1992-05-15',
-          phone: '3007654321',
-          city: 'Medellín',
-          neighborhood: 'Laureles',
-          address: 'Av Nutibara # 70-10',
-          mainInstrument: 'Trompeta',
-          experienceYears: 5,
-          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
+    if (token && userData) {
+      try {
+        // Restaurar usuario en estado
+        setUser(JSON.parse(userData));
 
-      // Cliente 1
-      if (email === 'cliente@texas.com') {
-        setUser({
-          id: '3',
-          name: 'Cliente',
-          lastName: 'VIP',
-          email: email,
-          role: UserRole.CLIENTE,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000003',
-          gender: 'F',
-          birthDate: '1995-08-20',
-          phone: '3101112233',
-          city: 'Envigado',
-          neighborhood: 'Jardines',
-          address: 'Cra 43A # 25S-15',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
-
-      // Cliente 2: Brayan Castañeda
-      if (email === 'brayan@texas.com') {
-        setUser({
-          id: '4',
-          name: 'Brayan',
-          lastName: 'Castañeda',
-          email: email,
-          role: UserRole.CLIENTE,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1152433654',
-          gender: 'M',
-          birthDate: '1998-11-20',
-          phone: '3219876543',
-          city: 'Medellín',
-          neighborhood: 'Robledo',
-          address: 'Calle 65 # 80-20',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
+        // ✅ FIX 1: Adjuntar token a todas las peticiones futuras
+        authService.setAuthToken(token);
+      } catch {
+        // Si el JSON está corrupto, limpiar
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
     }
 
-    // Si falla
+    // ✅ FIX 2: Terminar loading una vez verificada la sesión
     setIsLoading(false);
-    return false;
+  }, []);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const data = await authService.login(email, password);
+
+      // Guardar token
+      localStorage.setItem('token', data.token);
+
+      // ✅ FIX 1: Adjuntar token a axios inmediatamente tras login
+      authService.setAuthToken(data.token);
+
+      // ✅ FIX 3: Mapear rol del backend al enum — ajusta los valores si tu backend
+      // devuelve 'admin', 'ADMIN', 'cliente', etc.
+      const rolMap: Record<string, UserRole> = {
+        'ADMIN':    UserRole.ADMIN,
+        'admin':    UserRole.ADMIN,
+        'EMPLEADO': UserRole.EMPLEADO,
+        'empleado': UserRole.EMPLEADO,
+        'CLIENTE':  UserRole.CLIENTE,
+        'cliente':  UserRole.CLIENTE,
+      };
+
+      const usuario: User = {
+        id:             String(data.usuario.id),
+        name:           data.usuario.nombre,
+        lastName:       data.usuario.apellido  || '',
+        email:          data.usuario.email,
+        role:           rolMap[data.usuario.rol] ?? UserRole.CLIENTE,
+        isActive:       true,
+        documentType:   'CC',
+        documentNumber: data.usuario.numeroDocumento || '',
+        gender:         'M',
+        birthDate:      data.usuario.fechaNacimiento || '',
+        phone:          data.usuario.telefonoPrincipal || '',
+        secondaryPhone: data.usuario.telefonoAlternativo || '',
+        city:           data.usuario.ciudad || '',
+        neighborhood:   data.usuario.barrio  || '',
+        address:        data.usuario.direccion || '',
+      };
+
+      localStorage.setItem('user', JSON.stringify(usuario));
+      setUser(usuario);
+      return true;
+
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    // ✅ Limpiar token de axios al cerrar sesión
+    authService.setAuthToken(null);
     setUser(null);
   };
 
@@ -139,8 +109,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

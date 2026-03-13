@@ -6,6 +6,61 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+/// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum TipoDocumento {
+  CEDULA
+  PASAPORTE
+  CEDULA_EXTRANJERIA
+}
+
+enum ZonaServicio {
+  URBANA
+  RURAL
+}
+
+enum EstadoCotizacion {
+  EN_ESPERA
+  CONVERTIDA
+  ANULADA
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  CONFIRMADA
+  ANULADA
+}
+
+enum EstadoVenta {
+  CONFIRMADO
+  FINALIZADO
+  VENTA_DIRECTA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  NEQUI
+  DAVIPLATA
+  OTRO
+}
+
+enum TipoVenta {
+  RESERVA
+  DIRECTA
+}
+
+enum TipoEvento {
+  BODA
+  CUMPLEANOS
+  QUINCEANIOS
+  FUNERAL
+  RECONCILIACION
+  DIA_DE_MADRE
+  OTRO
+}
+
+// ─── AUTENTICACIÓN ───────────────────────────────────────────────────────────
 
 model Usuario {
   id        Int      @id @default(autoincrement())
@@ -13,7 +68,7 @@ model Usuario {
   email     String   @unique
   password  String
   estado    Boolean  @default(true)
-  rolId     Int                          // FK → Rol
+  rolId     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -29,10 +84,9 @@ model Rol {
   estado      Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  usuarios    Usuario[] ////
-  rolPermisos RolPermiso[] // FK → RolPermiso
-      // FK → Usuario
- // ← agrega esto
+
+  usuarios    Usuario[]
+  rolPermisos RolPermiso[]
 
   @@map("rol")
 }
@@ -43,8 +97,8 @@ model RolPermiso {
   permisoId Int
   createdAt DateTime @default(now())
 
-  rol       Rol      @relation(fields: [rolId],     references: [id], onDelete: Cascade)
-  permiso   Permiso  @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId],     references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, permisoId])
   @@map("rol_permiso")
@@ -56,28 +110,18 @@ model Permiso {
   estado      Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  rolPermisos RolPermiso[] // FK → RolPermiso
+
+  rolPermisos RolPermiso[]
 
   @@map("permiso")
 }
 
-///////REGISTRAR////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-enum TipoDocumento {
-  CEDULA
-  PASAPORTE
-  CEDULA_EXTRANJERIA
-}
-
-enum ZonaServicio {
-  URBANA
-  RURAL
-}
+// ─── CLIENTE ─────────────────────────────────────────────────────────────────
 
 model Cliente {
   id                  Int           @id @default(autoincrement())
   foto                String?
-  nombre              String 
+  nombre              String
   apellido            String
   tipoDocumento       TipoDocumento @default(CEDULA)
   numeroDocumento     String        @unique
@@ -94,10 +138,14 @@ model Cliente {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
+  cotizaciones        Cotizacion[]
+  abonos              Abono[]
+  ventas              Venta[]
+
   @@map("cliente")
 }
 
-////////////////////////////////////////////////////////////////////////
+// ─── SERVICIO ────────────────────────────────────────────────────────────────
 
 model Servicio {
   id          Int      @id @default(autoincrement())
@@ -108,5 +156,201 @@ model Servicio {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  cotizacionServicios CotizacionServicio[]
+
   @@map("servicio")
+}
+
+// ─── CANCIÓN ─────────────────────────────────────────────────────────────────
+
+model Repertorio {
+  id         Int      @id @default(autoincrement())
+  titulo     String
+  artista    String
+  genero     String
+  categoria  String
+  letra      String?
+  audioUrl   String?
+  duracion   String   // "3:45"
+  dificultad String   // Baja | Media | Alta
+  portada    String?
+  activa     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  cotizaciones CotizacionRepertorio[]
+  ensayos      EnsayoRepertorio[]
+
+  @@map("repertorio")
+}
+
+// ─── COTIZACIÓN ──────────────────────────────────────────────────────────────
+// Bloquea el calendario cuando estado = EN_ESPERA o CONVERTIDA
+// Al pasar a ANULADA libera la fecha automáticamente
+
+model Cotizacion {
+  id                  Int              @id @default(autoincrement())
+  clienteId           Int?
+  nombreHomenajeado   String
+  tipoEvento          TipoEvento
+  fechaEvento         DateTime
+  horaInicio          DateTime
+  horaFin             DateTime
+  direccionEvento     String
+  notasAdicionales    String?
+  totalEstimado       Decimal?         @db.Decimal(10, 2)
+  esReservaDirecta    Boolean          @default(false)
+  estado              EstadoCotizacion @default(EN_ESPERA)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  cliente   Cliente?             @relation(fields: [clienteId], references: [id])
+  servicios CotizacionServicio[]
+  repertorios CotizacionRepertorio[]
+  reserva   Reserva?
+
+  @@map("cotizacion")
+}
+
+model CotizacionServicio {
+  id           Int @id @default(autoincrement())
+  cotizacionId Int
+  servicioId   Int
+  cantidad     Int @default(1)
+
+  cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  servicio   Servicio   @relation(fields: [servicioId],   references: [id])
+
+  @@unique([cotizacionId, servicioId])
+  @@map("cotizacion_servicio")
+}
+
+model CotizacionRepertorio {
+  id           Int @id @default(autoincrement())
+  cotizacionId Int
+  repertorioId Int
+  orden        Int @default(0)
+
+  cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  repertorio Repertorio @relation(fields: [repertorioId], references: [id])
+
+  @@unique([cotizacionId, repertorioId])
+  @@map("cotizacion_repertorio")
+}
+
+// ─── RESERVA ─────────────────────────────────────────────────────────────────
+// Se crea al convertir una cotización (estado CONVERTIDA)
+// PENDIENTE → esperando 50% de abono
+// Al registrar primer abono → se crea Venta automáticamente
+// ANULADA → libera el calendario
+
+model Reserva {
+  id             Int           @id @default(autoincrement())
+  cotizacionId   Int           @unique
+  totalValor     Decimal       @db.Decimal(10, 2)
+  saldoPendiente Decimal       @db.Decimal(10, 2)
+  estado         EstadoReserva @default(PENDIENTE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id])
+  abonos     Abono[]
+  venta      Venta?
+
+  @@map("reserva")
+}
+
+// ─── ABONO ───────────────────────────────────────────────────────────────────
+
+model Abono {
+  id         Int        @id @default(autoincrement())
+  reservaId  Int
+  clienteId  Int
+  monto      Decimal    @db.Decimal(10, 2)
+  fechaPago  DateTime
+  metodoPago MetodoPago
+  notas      String?
+  nuevoSaldo Decimal    @db.Decimal(10, 2)
+  createdAt  DateTime   @default(now())
+
+  reserva Reserva @relation(fields: [reservaId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  @@map("abono")
+}
+
+// ─── VENTA ───────────────────────────────────────────────────────────────────
+// Se crea automáticamente al registrar el primer abono en la Reserva
+
+model Venta {
+  id          Int         @id @default(autoincrement())
+  reservaId   Int?        @unique
+  clienteId   Int
+  tipo        TipoVenta
+  estado      EstadoVenta
+  montoTotal  Decimal     @db.Decimal(10, 2)
+  montoPagado Decimal     @db.Decimal(10, 2)
+  fechaVenta  DateTime
+  metodoPago  MetodoPago
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  reserva Reserva? @relation(fields: [reservaId], references: [id])
+  cliente Cliente  @relation(fields: [clienteId], references: [id])
+
+  @@map("venta")
+}
+
+// ─── ENSAYO ──────────────────────────────────────────────────────────────────
+// Bloquea el calendario igual que una cotización activa
+
+model Ensayo {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  fechaHora DateTime
+  lugar     String
+  ubicacion String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repertorios EnsayoRepertorio[]
+
+  @@map("ensayo")
+}
+
+model EnsayoRepertorio {
+  id          Int @id @default(autoincrement())
+  ensayoId    Int
+  repertorioId Int
+
+  ensayo  Ensayo  @relation(fields: [ensayoId],  references: [id], onDelete: Cascade)
+  repertorio Repertorio @relation(fields: [repertorioId], references: [id])
+
+  @@unique([ensayoId, repertorioId])
+  @@map("ensayo_repertorio")
+}
+
+// ─── BLOQUEO MANUAL DE CALENDARIO ────────────────────────────────────────────
+
+model BloqueoCalendario {
+  id          Int      @id @default(autoincrement())
+  fechaInicio DateTime
+  fechaFin    DateTime
+  motivo      String?
+  createdAt   DateTime @default(now())
+
+  @@map("bloqueo_calendario")
+}
+
+// ─── OTP RECUPERACIÓN CONTRASEÑA ─────────────────────────────────────────────
+
+model PasswordResetOtp {
+  id        Int      @id @default(autoincrement())
+  email     String
+  otp       String
+  expiresAt DateTime
+  usado     Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_otp")
 }

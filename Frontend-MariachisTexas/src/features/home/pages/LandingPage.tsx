@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
 
+
 interface Props {
   onNavigate: (path: string) => void;
 }
@@ -80,8 +81,8 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                 initial={{ scale: 1 }}
                 animate={{ scale: 1.1 }}
                 transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
-                src="https://images.unsplash.com/photo-1549836938-f2785bdfae6a?q=80&w=2874&auto=format&fit=crop" 
-                alt="Mariachis Background" 
+                src="/shared/assets/images/Mariachis 16.jpeg" 
+                alt=""
                 className="w-full h-full object-cover object-[75%_center]" 
             />
         </div>
@@ -310,7 +311,8 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                                 muted 
                                 playsInline 
                                 className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity duration-700 transform scale-105"
-                                src="https://videos.pexels.com/video-files/3196344/3196344-uhd_2560_1440_25fps.mp4" 
+                                src="shared/assets/videos/Mariachis18.mp4"
+                                ////link para video
                             ></video>
                         </div>
                         
@@ -360,8 +362,8 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
           {/* Background Image with Overlay */}
           <div className="absolute inset-0 z-0">
               <img 
-                  src="https://images.unsplash.com/photo-1563841930606-67e26ce48b46?q=80&w=2000&auto=format&fit=crop" 
-                  alt="Repertoire Background" 
+                  src="shared/assets/images/Mariachis 15.jpeg"
+                  /////imagen repertorio 
                   className="w-full h-full object-cover opacity-20 blur-sm"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"></div>
@@ -378,8 +380,9 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                     className="w-64 h-64 md:w-80 md:h-80 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl group"
                   >
                       <img 
-                          src="https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=800&auto=format&fit=crop" 
+                          src="shared/assets/images/Mariachis 11.jpeg"
                           alt="Repertoire Cover" 
+                          //////imagen repertorio
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -447,12 +450,16 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
-                      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1516919549054-e08258825f80?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?q=80&w=800&auto=format&fit=crop"
+                      "shared/assets/images/Mariachis 10.jpeg",
+                      "shared/assets/images/Mariachis 7.jpeg",
+                      "shared/assets/images/Mariachis 12.jpeg",
+                      "shared/assets/images/Mariachis 13.jpeg",
+                      "shared/assets/images/Mariachis 9.jpeg",
+                      "shared/assets/images/Mariachis 15.jpeg",
+                      "shared/assets/images/Mariachis 16.jpeg",
+                      "shared/assets/images/Mariachis 17.jpeg",
+                      "shared/assets/images/Mariachis 14.jpeg",
+                      
                   ].map((img, idx) => (
                       <motion.div 
                         key={idx} 
@@ -469,7 +476,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-8">
                               <span className="text-[#f1bf00] font-serif font-bold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-500 flex items-center gap-2">
-                                  <Camera size={20} /> Ver Momento
+                                  <Camera size={20} /> Nuestros Momentos
                               </span>
                           </div>
                       </motion.div>
@@ -508,35 +515,33 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="relative aspect-video w-full rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 group"
-              >
-                  {/* Video Placeholder - Replace src with actual special video */}
-                  <video 
-                      poster="https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?q=80&w=1200&auto=format&fit=crop"
-                      controls
-                      className="w-full h-full object-cover"
-                  >
-                      <source src="https://videos.pexels.com/video-files/3196344/3196344-uhd_2560_1440_25fps.mp4" type="video/mp4" />
-                      Tu navegador no soporta el elemento de video.
-                  </video>
+            >
+                
+                <video 
+                loop 
+                muted 
+                playsInline 
+                poster=""
+                controls
+                className="w-full h-full object-cover"
+                src="shared/assets/videos/Mariachis20.mp4"
+                ></video> 
+            </motion.div>
+        </div>
+    </section>
 
-                  {/* Play Button Overlay (Hidden when playing usually, but simple html video controls handle this) */}
-                  {/* We rely on native controls for simplicity and reliability */}
-              </motion.div>
-          </div>
-      </section>
+    <section className="relative py-32 flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+            <img 
+                src="shared/assets/images/flores.jpg"
+                
+                className="w-full h-full object-cover opacity-40 bg-fixed "
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/50 to-[#050505]"></div>
+        </div>
+        
 
-      {/* --- CTA PARALLAX --- */}
-      <section className="relative py-32 flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 z-0">
-              <img 
-                  src="https://images.unsplash.com/photo-1514525253440-b393452e8d03?q=80&w=2000&auto=format&fit=crop" 
-                  alt="Background" 
-                  className="w-full h-full object-cover opacity-40 bg-fixed grayscale"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/50 to-[#050505]"></div>
-          </div>
-
-          <motion.div 
+        <motion.div 
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

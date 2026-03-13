@@ -5,6 +5,7 @@ import transporter from '../../config/mailer'
 import { TipoDocumento, ZonaServicio } from '../../generated/prisma'
 import validator from 'validator'
 
+
 // ─── REGISTRO CLIENTE ────────────────────────────────────
 export const registrarCliente = async (data: {
   foto?:                string
@@ -168,39 +169,74 @@ export const login = async (email: string, password: string) => {
 }
 
 // ─── RECUPERAR CONTRASEÑA ────────────────────────────────
+// ─── RECUPERAR CONTRASEÑA CON OTP ───────────────────────
 export const recuperarPassword = async (email: string) => {
 
   const usuario = await prisma.usuario.findUnique({ where: { email } })
-  if (!usuario) throw new Error('El correo no está registrado')
 
-  const token = jwt.sign(
-    { email: usuario.email },
-    process.env.JWT_SECRET!,
-    { expiresIn: '15m' }
-  )
+  // Seguridad: no revelar si el correo existe o no
+  if (!usuario) {
+    return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
+  }
 
-  const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+  // 1. Generar OTP de 6 dígitos
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
 
+  // 2. Expiración: 15 minutos
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
+
+  // 3. Invalidar OTPs anteriores del mismo email
+  await prisma.passwordResetOtp.updateMany({
+    where: { email, usado: false },
+    data:  { usado: true }
+  })
+
+  // 4. Guardar nuevo OTP
+  await prisma.passwordResetOtp.create({
+    data: { email, otp, expiresAt }
+  })
+
+  // 5. Enviar correo con el código
   await transporter.sendMail({
     from:    process.env.MAIL_FROM,
     to:      usuario.email,
-    subject: 'Recuperar contraseña - Mariachis Texas 🎺',
+    subject: 'Código de recuperación - Mariachis Texas 🎺',
     html: `
-      <h2>Recuperar contraseña</h2>
-      <p>Hola ${usuario.nombre}, recibimos una solicitud para restablecer tu contraseña.</p>
-      <a href="${link}" style="background:#c0392b;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin:16px 0;">
-        Restablecer contraseña
-      </a>
-      <p>Este link expira en <strong>15 minutos</strong>.</p>
-      <p>Si no solicitaste esto, ignora este correo.</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0a0a0a;color:#fff;border-radius:12px;">
+        <h2 style="color:#c0392b;margin-bottom:8px;">Recuperar contraseña</h2>
+        <p style="color:#aaa;">Hola <strong style="color:#fff">${usuario.nombre}</strong>, recibimos una solicitud para restablecer tu contraseña.</p>
+        <p style="color:#aaa;">Tu código de verificación es:</p>
+        <div style="background:#1a1a1a;border:2px solid #c0392b;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+          <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#fff;">${otp}</span>
+        </div>
+        <p style="color:#aaa;font-size:13px;">Este código expira en <strong style="color:#fff">15 minutos</strong>.</p>
+        <p style="color:#aaa;font-size:13px;">Si no solicitaste esto, ignora este correo.</p>
+      </div>
     `
   })
 
-  return { message: 'Correo de recuperación enviado, revisa tu bandeja' }
+  return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
 }
 
-// ─── RESETEAR CONTRASEÑA ─────────────────────────────────
-export const resetearPassword = async (token: string, nuevaPassword: string, confirmarPassword: string) => {
+// ─── VERIFICAR OTP ───────────────────────────────────────
+export const verificarOtp = async (email: string, otp: string) => {
+
+  const registro = await prisma.passwordResetOtp.findFirst({
+    where: {
+      email,
+      otp,
+      usado: false,
+      expiresAt: { gt: new Date() }
+    }
+  })
+
+  if (!registro) throw new Error('El código es inválido o ha expirado.')
+
+  return { message: 'Código válido', email }
+}
+
+// ─── RESETEAR CONTRASEÑA CON OTP ─────────────────────────
+export const resetearPassword = async (email: string, otp: string, nuevaPassword: string, confirmarPassword: string) => {
 
   // 1. Validar que las contraseñas coinciden
   if (nuevaPassword !== confirmarPassword) {
@@ -213,16 +249,20 @@ export const resetearPassword = async (token: string, nuevaPassword: string, con
     throw new Error('La contraseña debe tener mínimo 6 caracteres, una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&-_)')
   }
 
-  // 3. Verificar token
-  let payload: any
-  try {
-    payload = jwt.verify(token, process.env.JWT_SECRET!)
-  } catch (error) {
-    throw new Error('El link ha expirado o no es válido')
-  }
+  // 3. Verificar OTP válido y no usado
+  const registro = await prisma.passwordResetOtp.findFirst({
+    where: {
+      email,
+      otp,
+      usado: false,
+      expiresAt: { gt: new Date() }
+    }
+  })
+
+  if (!registro) throw new Error('El código es inválido o ha expirado.')
 
   // 4. Buscar usuario
-  const usuario = await prisma.usuario.findUnique({ where: { email: payload.email } })
+  const usuario = await prisma.usuario.findUnique({ where: { email } })
   if (!usuario) throw new Error('Usuario no encontrado')
 
   // 5. Verificar que la nueva contraseña no sea igual a la actual
@@ -233,18 +273,24 @@ export const resetearPassword = async (token: string, nuevaPassword: string, con
   const passwordHash = await bcrypt.hash(nuevaPassword, 10)
 
   await prisma.usuario.update({
-    where: { email: payload.email },
+    where: { email },
     data:  { password: passwordHash }
   })
 
   // 7. Si es cliente actualizar también en cliente
-  const cliente = await prisma.cliente.findUnique({ where: { email: payload.email } })
+  const cliente = await prisma.cliente.findUnique({ where: { email } })
   if (cliente) {
     await prisma.cliente.update({
-      where: { email: payload.email },
+      where: { email },
       data:  { password: passwordHash }
     })
   }
+
+  // 8. Marcar OTP como usado
+  await prisma.passwordResetOtp.update({
+    where: { id: registro.id },
+    data:  { usado: true }
+  })
 
   return { message: 'Contraseña actualizada correctamente' }
 }

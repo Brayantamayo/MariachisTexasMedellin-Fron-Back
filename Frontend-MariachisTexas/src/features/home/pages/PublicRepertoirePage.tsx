@@ -173,13 +173,13 @@ export const PublicRepertoirePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#121212] text-white font-sans pb-32">
       
-      {/* Hero Section with Album Art Style */}
+      
       <div className="relative overflow-hidden bg-[#121212] pt-32 pb-12 px-8">
-        {/* Background Image */}
+        
         <div className="absolute inset-0 z-0">
              <img 
-                  src="https://images.unsplash.com/photo-1563841930606-67e26ce48b46?q=80&w=2000&auto=format&fit=crop" 
-                  alt="Repertoire Background" 
+                  src=" shared/assets/images/Fiesta.jpg"
+                  
                   className="w-full h-full object-cover opacity-20 blur-sm"
               />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-[#121212]/80 to-[#121212]"></div>
@@ -192,8 +192,7 @@ export const PublicRepertoirePage: React.FC = () => {
                 className="w-52 h-52 md:w-64 md:h-64 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex-shrink-0 rounded-xl overflow-hidden group"
             >
                 <img 
-                    src="https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=800&auto=format&fit=crop" 
-                    alt="Repertoire Cover" 
+                    src="shared/assets/images/Mariachis 10.jpeg"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
             </motion.div>

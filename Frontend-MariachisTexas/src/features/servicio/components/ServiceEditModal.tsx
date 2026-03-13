@@ -80,7 +80,6 @@ export const ServiceEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, ser
           </button>
         </div>
 
-        {/* Form */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-xl flex items-center gap-3 border border-red-100">
@@ -91,7 +90,7 @@ export const ServiceEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, ser
           <ServiceForm formData={formData} onChange={handleChange} />
         </div>
 
-        {/* Footer */}
+        
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
           <button

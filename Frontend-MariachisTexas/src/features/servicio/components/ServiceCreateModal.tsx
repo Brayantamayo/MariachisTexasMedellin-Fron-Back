@@ -35,6 +35,7 @@ export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave })
 
     setLoading(true);
     setError(null);
+    
     try {
       await onSave(formData);
       onClose();
