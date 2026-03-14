@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import authRoutes from './modules/auth/auth.routes'
 import serviciosRoutes from './modules/Servicios/servicios.routes'
+import repertoireRoutes from './modules/Repertorio/Repertoire.routes'
 
 const app = express()
 
@@ -14,5 +15,6 @@ app.use(cors({
 app.use(express.json())
 app.use('/api/auth',      authRoutes)
 app.use('/api/servicios', serviciosRoutes)
+app.use('/api/repertorio', repertoireRoutes)
 
 export default app
