@@ -1,65 +1,24 @@
 import { Request, Response } from 'express'
 import * as repertoireService from './Repertoire.services'
+import { asyncHandler } from '../../middlewares/Asynchandler'
 
-// GET /api/repertorio
-export const getAll = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.getSongs())
-  } catch (error: any) {
-    res.status(500).json({ message: error.message })
-  }
-}
+export const getAll = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.getSongs())
+}, 500)
 
-// GET /api/repertorio/public
-export const getPublic = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.getSongsPublic())
-  } catch (error: any) {
-    res.status(500).json({ message: error.message })
-  }
-}
+export const getPublic = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.getSongsPublic())
+}, 500)
 
-// GET /api/repertorio/:id
-export const getById = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.getSongById(Number(req.params.id)))
-  } catch (error: any) {
-    res.status(404).json({ message: error.message })
-  }
-}
+export const getById = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.getSongById(Number(req.params.id)))
+}, 404)
 
-// POST /api/repertorio
-export const create = async (req: Request, res: Response) => {
-  try {
-    res.status(201).json(await repertoireService.createSong(req.body))
-  } catch (error: any) {
-    res.status(400).json({ message: error.message })
-  }
-}
+export const create = asyncHandler(async (req: Request, res: Response) => {res.status(201).json(await repertoireService.createSong(req.body))
+})
 
-// PUT /api/repertorio/:id
-export const update = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.updateSong(Number(req.params.id), req.body))
-  } catch (error: any) {
-    res.status(400).json({ message: error.message })
-  }
-}
+export const update = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.updateSong(Number(req.params.id), req.body))
+})
 
-// PATCH /api/repertorio/:id/toggle
-export const toggle = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.toggleStatus(Number(req.params.id)))
-  } catch (error: any) {
-    res.status(400).json({ message: error.message })
-  }
-}
+export const toggle = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.toggleStatus(Number(req.params.id)))
+})
 
-// DELETE /api/repertorio/:id
-export const remove = async (req: Request, res: Response) => {
-  try {
-    res.json(await repertoireService.deleteSong(Number(req.params.id)))
-  } catch (error: any) {
-    res.status(404).json({ message: error.message })
-  }
-}
+export const remove = asyncHandler(async (req: Request, res: Response) => {res.json(await repertoireService.deleteSong(Number(req.params.id)))
+}, 404)

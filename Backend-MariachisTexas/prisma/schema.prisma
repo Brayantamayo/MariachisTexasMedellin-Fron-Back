@@ -201,6 +201,13 @@ model Cotizacion {
   totalEstimado       Decimal?         @db.Decimal(10, 2)
   esReservaDirecta    Boolean          @default(false)
   estado              EstadoCotizacion @default(EN_ESPERA)
+
+  // ✅ Campos nuevos para cliente externo (antes vivían en notasAdicionales)
+  contactoNombre      String?
+  contactoTelefono    String?
+  contactoTelefono2   String?
+  contactoEmail       String?
+
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 

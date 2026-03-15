@@ -12,103 +12,108 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// Centralizar acceso a sessionStorage evita errores de typo y facilita cambios
+const SESSION_KEYS = { TOKEN: 'token', USER: 'user' } as const
+
+const getSession = () => ({
+  token:    sessionStorage.getItem(SESSION_KEYS.TOKEN),
+  userData: sessionStorage.getItem(SESSION_KEYS.USER),
+})
+
+const setSession = (token: string, user: User) => {
+  sessionStorage.setItem(SESSION_KEYS.TOKEN, token)
+  sessionStorage.setItem(SESSION_KEYS.USER, JSON.stringify(user))
+}
+
+const clearSession = () => {
+  sessionStorage.removeItem(SESSION_KEYS.TOKEN)
+  sessionStorage.removeItem(SESSION_KEYS.USER)
+}
+
+const ROL_MAP: Record<string, UserRole> = {
+  ADMIN:    UserRole.ADMIN,
+  admin:    UserRole.ADMIN,
+  EMPLEADO: UserRole.EMPLEADO,
+  empleado: UserRole.EMPLEADO,
+  CLIENTE:  UserRole.CLIENTE,
+  cliente:  UserRole.CLIENTE,
+}
+
+// ─── PROVIDER ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  // ✅ FIX 2: Iniciar en true para evitar flash de login al recargar
+  const [user, setUser]         = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ FIX 1 + 2: Recuperar sesión y adjuntar token a axios al arrancar
+  // Recuperar sesión al montar — solo existe si la pestaña sigue abierta
   useEffect(() => {
-    const token    = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const { token, userData } = getSession()
 
     if (token && userData) {
       try {
-        // Restaurar usuario en estado
-        setUser(JSON.parse(userData));
-
-        // ✅ FIX 1: Adjuntar token a todas las peticiones futuras
-        authService.setAuthToken(token);
+        const parsed = JSON.parse(userData) as User
+        setUser(parsed)
+        authService.setAuthToken(token)
       } catch {
-        // Si el JSON está corrupto, limpiar
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // JSON corrupto — limpiar y forzar login
+        clearSession()
       }
     }
 
-    // ✅ FIX 2: Terminar loading una vez verificada la sesión
-    setIsLoading(false);
-  }, []);
+    setIsLoading(false)
+  }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const data = await authService.login(email, password);
-
-      // Guardar token
-      localStorage.setItem('token', data.token);
-
-      // ✅ FIX 1: Adjuntar token a axios inmediatamente tras login
-      authService.setAuthToken(data.token);
-
-      // ✅ FIX 3: Mapear rol del backend al enum — ajusta los valores si tu backend
-      // devuelve 'admin', 'ADMIN', 'cliente', etc.
-      const rolMap: Record<string, UserRole> = {
-        'ADMIN':    UserRole.ADMIN,
-        'admin':    UserRole.ADMIN,
-        'EMPLEADO': UserRole.EMPLEADO,
-        'empleado': UserRole.EMPLEADO,
-        'CLIENTE':  UserRole.CLIENTE,
-        'cliente':  UserRole.CLIENTE,
-      };
+      const data = await authService.login(email, password)
 
       const usuario: User = {
         id:             String(data.usuario.id),
         name:           data.usuario.nombre,
-        lastName:       data.usuario.apellido  || '',
+        lastName:       data.usuario.apellido        || '',
         email:          data.usuario.email,
-        role:           rolMap[data.usuario.rol] ?? UserRole.CLIENTE,
+        role:           ROL_MAP[data.usuario.rol]    ?? UserRole.CLIENTE,
         isActive:       true,
         documentType:   'CC',
         documentNumber: data.usuario.numeroDocumento || '',
         gender:         'M',
         birthDate:      data.usuario.fechaNacimiento || '',
-        phone:          data.usuario.telefonoPrincipal || '',
-        secondaryPhone: data.usuario.telefonoAlternativo || '',
-        city:           data.usuario.ciudad || '',
-        neighborhood:   data.usuario.barrio  || '',
+        phone:          data.usuario.telefonoPrincipal    || '',
+        secondaryPhone: data.usuario.telefonoAlternativo  || '',
+        city:           data.usuario.ciudad    || '',
+        neighborhood:   data.usuario.barrio    || '',
         address:        data.usuario.direccion || '',
-      };
+      }
 
-      localStorage.setItem('user', JSON.stringify(usuario));
-      setUser(usuario);
-      return true;
+      setSession(data.token, usuario)
+      authService.setAuthToken(data.token)
+      setUser(usuario)
+      return true
 
     } catch (error) {
-      console.error('Login error:', error);
-      return false;
+      console.error('Login error:', error)
+      return false
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // ✅ Limpiar token de axios al cerrar sesión
-    authService.setAuthToken(null);
-    setUser(null);
-  };
+    clearSession()
+    authService.setAuthToken(null)
+    setUser(null)
+  }
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
-  );
-};
+  )
+}
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
-  return context;
-};
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within an AuthProvider')
+  return context
+}

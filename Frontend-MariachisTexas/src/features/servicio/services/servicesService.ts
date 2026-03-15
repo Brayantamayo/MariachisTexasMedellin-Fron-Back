@@ -6,8 +6,13 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-export const servicesService = {
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
+export const servicesService = {
   getServices: async (buscar?: string): Promise<Service[]> => {
     const { data } = await api.get('/servicios', { params: { buscar } })
     return data

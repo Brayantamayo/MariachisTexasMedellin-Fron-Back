@@ -3,58 +3,25 @@ import {
   crearServicio, listarServicios, verServicio,
   editarServicio, cambiarEstadoServicio, eliminarServicio
 } from './servicios.service'
+import { asyncHandler } from '../../middlewares/Asynchandler'
 
-export const crear = async (req: Request, res: Response) => {
-  try {
-    const data = await crearServicio(req.body)
-    return res.status(201).json(data)
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message })
-  }
-}
+export const crear = asyncHandler(async (req: Request, res: Response) => {res.status(201).json(await crearServicio(req.body))
+})
 
-export const listar = async (req: Request, res: Response) => {
-  try {
-    const { buscar } = req.query
-    const data = await listarServicios(buscar as string)
-    return res.status(200).json(data)
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message })
-  }
-}
+export const listar = asyncHandler(async (req: Request, res: Response) => {const { buscar } = req.query
+res.status(200).json(await listarServicios(buscar as string))
+})
 
-export const detalle = async (req: Request, res: Response) => {
-  try {
-    const data = await verServicio(Number(req.params.id))
-    return res.status(200).json(data)
-  } catch (error: any) {
-    return res.status(404).json({ message: error.message })
-  }
-}
+export const detalle = asyncHandler(async (req: Request, res: Response) => {res.status(200).json(await verServicio(Number(req.params.id)))
+}, 404)
 
-export const editar = async (req: Request, res: Response) => {
-  try {
-    const data = await editarServicio(Number(req.params.id), req.body)
-    return res.status(200).json(data)
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message })
-  }
-}
+export const editar = asyncHandler(async (req: Request, res: Response) => {res.status(200).json(await editarServicio(Number(req.params.id), req.body))
+})
 
-export const cambiarEstado = async (req: Request, res: Response) => {
-  try {
-    const data = await cambiarEstadoServicio(Number(req.params.id))
-    return res.status(200).json(data)
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message })
-  }
-}
+export const cambiarEstado = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await cambiarEstadoServicio(Number(req.params.id)))
+})
 
-export const eliminar = async (req: Request, res: Response) => {
-  try {
-    const data = await eliminarServicio(Number(req.params.id))
-    return res.status(200).json(data)
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message })
-  }
-}
+export const eliminar = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await eliminarServicio(Number(req.params.id)))
+})
