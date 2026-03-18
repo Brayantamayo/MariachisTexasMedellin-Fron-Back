@@ -3,11 +3,11 @@ import { crear, listar, detalle, editar, cambiarEstado, eliminar } from './servi
 
 const router = Router()
 
-router.get('/',              listar)////segundo 
-router.get('/:id',           detalle)///tercero
-router.post('/',             crear)  /////primero 
-router.put('/:id',           editar)  ////// cuarto
-router.patch('/:id/estado',  cambiarEstado) //////quinto
-router.delete('/:id',        eliminar) //////sexto
+router.get('/',             listar)
+router.get('/:id',          detalle)
+router.post('/',            crear)
+router.put('/:id',          editar)
+router.patch('/:id/estado', cambiarEstado)
+router.delete('/:id',       eliminar)
 
 export default router

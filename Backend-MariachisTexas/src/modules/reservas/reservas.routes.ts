@@ -2,6 +2,7 @@ import { Router } from 'express'
 import * as reservaController from './reserva.controller'
 import { verifyToken } from '../../middlewares/Auth.middleware'
 import { requireRole } from '../../middlewares/Role.middleware'
+import { asyncHandler } from '../../middlewares/Asynchandler'
 
 const router = Router()
 
@@ -12,13 +13,13 @@ router.get('/available-hours/:date', reservaController.getAvailableHours)
 router.use(verifyToken)
 
 router.get('/calendario', reservaController.getCalendario)
-router.get('/',    reservaController.getAll)
-router.get('/:id', reservaController.getById)
+router.get('/',           reservaController.getAll)
+router.get('/:id',        reservaController.getById)
 
-router.post('/', requireRole(['ADMIN', 'CLIENTE']), reservaController.create)
-
-router.patch('/:id/anular',    requireRole(['ADMIN']), reservaController.anular)
-router.patch('/:id/confirmar', requireRole(['ADMIN']), reservaController.confirmar)
-router.delete('/:id',          requireRole(['ADMIN']), reservaController.remove) // ✅ nuevo
+router.post('/',               requireRole(['ADMIN', 'CLIENTE']), reservaController.create)
+router.put('/:id',             requireRole(['ADMIN']),            reservaController.update)
+router.patch('/:id/anular',    requireRole(['ADMIN']),            reservaController.anular)
+router.patch('/:id/confirmar', requireRole(['ADMIN']),            reservaController.confirmar)
+router.delete('/:id',          requireRole(['ADMIN']),            reservaController.remove)
 
 export default router

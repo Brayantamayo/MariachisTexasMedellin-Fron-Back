@@ -36,14 +36,13 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
     if (isOpen && quotation) {
       repertoireService.getSongs().then(setSongs);
       servicesService.getServices().then(setServices);
-      if (isAdmin) clientService.getClients().then(setClients);
+      // ✅ No cargar clientes en edición — no se puede cambiar el cliente
       setFormData(quotation);
-      setIsManuallyOverridden(false); // Permitir recálculo al cambiar servicios
+      setIsManuallyOverridden(false);
       checkBlockAndHours(quotation.eventDate);
     }
   }, [isOpen, quotation, isAdmin]);
 
-  // Recalcular si no está sobreescrito
   useEffect(() => {
     if (!isOpen || !formData || isManuallyOverridden) return;
 
@@ -52,7 +51,6 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
       ? (songCount - INCLUDED_SONGS) * PRICE_PER_EXTRA_SONG
       : 0;
 
-    // Usar precio (español)
     const servicesCost = (formData.selectedServices || []).reduce((total: number, item: any) => {
       const service = services.find(s => String(s.id) === item.serviceId);
       return total + (service ? Number(service.precio) * item.quantity : 0);
@@ -87,25 +85,6 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
     setFormData((prev: any) => ({ ...prev, [name]: value, startTime: '', endTime: '' }));
     setIsManuallyOverridden(false);
     if (name === 'eventDate') checkBlockAndHours(value);
-  };
-
-  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id     = e.target.value;
-    const client = clients.find(c => c.id === id);
-    if (client) {
-      setFormData((prev: any) => ({
-        ...prev,
-        clientId:       client.id,
-        clientName:     `${client.nombre} ${client.apellido}`,       // ← español
-        clientPhone:    client.telefonoPrincipal,                     // ← español
-        secondaryPhone: client.telefonoAlternativo || '',             // ← español
-        clientEmail:    client.email,
-        location:       client.direccion                              // ← español
-      }));
-      setIsManuallyOverridden(false);
-    } else {
-      setFormData((prev: any) => ({ ...prev, clientId: '' }));
-    }
   };
 
   const toggleSong = (songId: string) => {
@@ -143,7 +122,6 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
     if (blockStatus.isBlocked) { alert(`Fecha bloqueada: ${blockStatus.reason}`); return; }
     if (!formData.startTime || !formData.endTime) { alert('Selecciona hora de inicio y fin.'); return; }
 
-    // Validar usando nombre (español)
     const hasBaseService = formData.selectedServices?.some((s: any) => {
       const service = services.find(srv => String(srv.id) === s.serviceId);
       return service && service.nombre.toLowerCase().includes('serenata');
@@ -160,9 +138,8 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-
         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shadow-sm">
@@ -182,6 +159,7 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
           <CotizacionForm
             formData={formData}
             isAdmin={isAdmin}
+            isEditing={true}          // ✅ oculta buscador y bloquea campos cliente
             clients={clients}
             songs={songs}
             services={services}
@@ -189,7 +167,7 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
             blockStatus={blockStatus}
             onChange={handleChange}
             onDateChange={handleDateChange}
-            onClientSelect={handleClientSelect}
+            onClientSelect={() => {}} // no se usa en edición
             onToggleSong={toggleSong}
             onServiceChange={handleServiceChange}
             onSubmit={handleSubmit}

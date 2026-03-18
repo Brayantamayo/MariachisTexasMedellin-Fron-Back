@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft } from 'lucide-react';
+import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock } from 'lucide-react';
 import { User as UserType, Song, Service } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
@@ -31,11 +31,19 @@ interface Props {
   formData: FormData;
   isAdmin: boolean;
   isPublic?: boolean;
+  isEditing?: boolean; // editar reserva existente — bloquea campos cliente
+  isClient?: boolean;  // cliente creando su reserva — bloquea campos cliente
   clients: UserType[];
   songs: Song[];
   services: Service[];
   availableHours?: string[];
-  blockStatus?: { isBlocked: boolean; reason?: string; hasPartialBlocks?: boolean; blockedRanges?: any[] };
+  blockStatus?: {
+    isBlocked: boolean;
+    reason?: string;
+    type?: string;
+    hasPartialBlocks?: boolean;
+    blockedRanges?: { start: string; end: string; reason: string }[];
+  };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onDateChange: (name: string, value: string) => void;
   onClientSelect: (e: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -46,112 +54,95 @@ interface Props {
 }
 
 export const ReservaForm: React.FC<Props> = ({
-  formData,
-  isAdmin,
-  isPublic = false,
-  clients,
-  songs,
-  services = [],
+  formData, isAdmin, isPublic = false,
+  isEditing = false,  // editar reserva — bloquea cliente
+  isClient = false,   // cliente creando — bloquea cliente
+  clients, songs, services = [],
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
-  onChange,
-  onDateChange,
-  onClientSelect,
-  onToggleSong,
-  onServiceChange,
-  onSubmit,
-  onCancel,
+  onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ✅ Solo mostrar servicios activos en el formulario
-  const activeServices = services.filter(s => s.estado === true);
-  const baseServices = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'));
-  const additionalServices = activeServices.filter(s => !s.nombre.toLowerCase().includes('serenata'));
+  // ✅ Bloquear campos de cliente si está editando O si es cliente
+  const lockClientFields = isEditing || isClient
+
+  const activeServices      = services.filter(s => s.estado === true);
+  const baseServices        = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'));
+  const additionalServices  = activeServices.filter(s => !s.nombre.toLowerCase().includes('serenata'));
+
+  const normalizeStr = (str: string) =>
+    str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
   const handleBaseServiceSelect = (serviceId: string) => {
-    const isCurrentlySelected = formData.selectedServices?.find(s => s.serviceId === serviceId)?.quantity > 0;
+    const isCurrentlySelected = formData.selectedServices?.find(
+      s => String(s.serviceId) === String(serviceId)
+    )?.quantity > 0;
     if (!isCurrentlySelected) {
       baseServices.forEach(bs => {
-        if (bs.id !== serviceId) {
-          const selected = formData.selectedServices?.find(s => s.serviceId === bs.id);
-          if (selected && selected.quantity > 0) {
-            onServiceChange(bs.id, 0);
-          }
+        if (String(bs.id) !== String(serviceId)) {
+          const selected = formData.selectedServices?.find(s => String(s.serviceId) === String(bs.id));
+          if (selected && selected.quantity > 0) onServiceChange(bs.id, 0);
         }
       });
       onServiceChange(serviceId, 1);
     }
   };
 
-  // ✅ Normaliza: trim + lowercase + sin tildes para máxima robustez ante datos sucios de BD
-  const normalizeStr = (str: string) =>
-    str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-
-  const extraHoursService = services.find(s => normalizeStr(s.nombre) === 'hora extra');
-  const extraSongsService = services.find(s => normalizeStr(s.nombre) === 'cancion extra');
+  const extraHoursService  = services.find(s => normalizeStr(s.nombre) === 'hora extra');
+  const extraSongsService  = services.find(s => normalizeStr(s.nombre) === 'cancion extra');
 
   const extraHoursQuantity = extraHoursService
-    ? (formData.selectedServices?.find(s => s.serviceId === extraHoursService.id)?.quantity || 0)
+    ? (formData.selectedServices?.find(s => String(s.serviceId) === String(extraHoursService.id))?.quantity || 0)
     : 0;
 
   const extraSongsQuantity = extraSongsService
-    ? (formData.selectedServices?.find(s => s.serviceId === extraSongsService.id)?.quantity || 0)
+    ? (formData.selectedServices?.find(s => String(s.serviceId) === String(extraSongsService.id))?.quantity || 0)
     : 0;
 
-  // endTime es calculado por el modal padre (ReservaCreateModal) y pasado via formData
-  // No se necesita calcularlo aquí para evitar conflictos de estado
-
-  const maxSongs = 7 + extraSongsQuantity;
+  const maxSongs         = 7 + extraSongsQuantity;
   const currentSongCount = formData.repertoireIds?.length || 0;
 
   const handleToggleSong = (id: string) => {
     const isSelected = formData.repertoireIds?.includes(id);
     if (!isSelected && currentSongCount >= maxSongs) {
-      alert(`Has alcanzado el límite de ${maxSongs} canciones. Agrega "Canciones Extra" en Servicios Adicionales para seleccionar más.`);
+      alert(`Has alcanzado el límite de ${maxSongs} canciones. Agrega "Canciones Extra" en Servicios Adicionales.`);
       return;
     }
     onToggleSong(id);
   };
 
-  // ✅ FIX 5: Cálculo del total extraído y usando s.precio
   const totalExtras = useMemo(() =>
     formData.selectedServices?.reduce((acc, item) => {
-      const s = services.find(srv => srv.id === item.serviceId);
+      const s = services.find(srv => String(srv.id) === String(item.serviceId));
       return acc + (s ? Number(s.precio) * item.quantity : 0);
     }, 0) ?? 0,
     [formData.selectedServices, services]
   );
 
-  const today = new Date().toISOString().split('T')[0];
-
-  const filteredSongs = searchTerm.trim() === ''
+  const today             = new Date().toISOString().split('T')[0];
+  const filteredSongs     = searchTerm.trim() === ''
     ? []
     : songs.filter(s =>
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.artist.toLowerCase().includes(searchTerm.toLowerCase())
       );
-
   const selectedSongsList = songs.filter(s => formData.repertoireIds?.includes(s.id));
-
-  const containerClass = isPublic ? "bg-white/50" : "bg-white border border-slate-100 shadow-sm";
 
   const headerClass = isPublic
     ? "text-xl font-serif font-bold text-slate-800 mb-8 flex items-center gap-3 border-b border-orange-100/50 pb-4"
     : "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2";
-
-  // ✅ MEJORA: Variantes de header explícitas en lugar de .replace() encadenados
   const headerClassInline = isPublic
     ? "text-xl font-serif font-bold text-slate-800 mb-6 flex items-center gap-3"
     : "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2";
-
-  const labelClass = "label-form";
-  const inputClass = "input-form";
+  const labelClass    = "label-form";
+  const inputClass    = "input-form";
+  const lockedClass   = `${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`;
 
   return (
     <form id="reserva-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
 
-      {/* COLUMNA IZQUIERDA: Datos Cliente y Evento */}
+      {/* COLUMNA IZQUIERDA */}
       <div className={`w-full lg:w-7/12 p-8 lg:p-10 space-y-10 ${isPublic ? 'bg-white' : 'bg-white border-r border-slate-100'}`}>
 
         {/* 1. Datos del Cliente */}
@@ -163,17 +154,14 @@ export const ReservaForm: React.FC<Props> = ({
             Información del Cliente
           </h4>
 
-          {isAdmin && (
+          {/* ✅ Buscador solo si es admin Y NO está en modo bloqueado */}
+          {isAdmin && !lockClientFields && (
             <div className="mb-4">
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <select
-                  name="clientId"
-                  value={formData.clientId || ''}
-                  onChange={onClientSelect}
-                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium"
-                >
+                <select name="clientId" value={formData.clientId || ''} onChange={onClientSelect}
+                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
                   <option value="">-- Buscar en base de datos --</option>
                   {clients.map(c => (
                     <option key={c.id} value={c.id}>{c.name} {c.lastName} - {c.phone}</option>
@@ -184,25 +172,56 @@ export const ReservaForm: React.FC<Props> = ({
             </div>
           )}
 
+          {/* ✅ Aviso cuando los campos están bloqueados */}
+          {lockClientFields && (
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
+              <Lock size={12} className="text-slate-400" />
+              <p className="text-[11px] text-slate-400 font-medium">
+                {isClient
+                  ? 'Tus datos se toman de tu perfil registrado.'
+                  : 'Los datos del cliente no se pueden modificar.'}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
-              <input type="text" name="clientName" required value={formData.clientName || ''} onChange={onChange} className={inputClass} placeholder="Tu nombre completo" />
+              <input type="text" name="clientName" required
+                value={formData.clientName || ''}
+                onChange={onChange}
+                disabled={lockClientFields}
+                className={lockClientFields ? lockedClass : inputClass}
+                placeholder="Tu nombre completo" />
             </div>
             <div>
               <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
-              <input type="tel" name="clientPhone" required value={formData.clientPhone || ''} onChange={onChange} className={inputClass} placeholder="Ej: 300 123 4567" />
+              <input type="tel" name="clientPhone" required
+                value={formData.clientPhone || ''}
+                onChange={onChange}
+                disabled={lockClientFields}
+                className={lockClientFields ? lockedClass : inputClass}
+                placeholder="Ej: 300 123 4567" />
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div>
               <label className={labelClass}>Teléfono Secundario</label>
-              <input type="tel" name="secondaryPhone" value={formData.secondaryPhone || ''} onChange={onChange} className={inputClass} placeholder="Opcional" />
+              <input type="tel" name="secondaryPhone"
+                value={formData.secondaryPhone || ''}
+                onChange={onChange}
+                disabled={lockClientFields}
+                className={lockClientFields ? lockedClass : inputClass}
+                placeholder="Opcional" />
             </div>
             <div>
               <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
-              <input type="email" name="clientEmail" required value={formData.clientEmail || ''} onChange={onChange} className={inputClass} placeholder="tucorreo@ejemplo.com" />
+              <input type="email" name="clientEmail" required
+                value={formData.clientEmail || ''}
+                onChange={onChange}
+                disabled={lockClientFields}
+                className={lockClientFields ? lockedClass : inputClass}
+                placeholder="tucorreo@ejemplo.com" />
             </div>
           </div>
         </div>
@@ -218,7 +237,8 @@ export const ReservaForm: React.FC<Props> = ({
 
           <div className="mb-6">
             <label className={labelClass}>Nombre del Homenajeado</label>
-            <input type="text" name="homenajeado" value={formData.homenajeado || ''} onChange={onChange} className={inputClass} placeholder="¿A quién va dirigida la serenata? (Opcional)" />
+            <input type="text" name="homenajeado" value={formData.homenajeado || ''} onChange={onChange}
+              className={inputClass} placeholder="¿A quién va dirigida la serenata? (Opcional)" />
           </div>
 
           {blockStatus.isBlocked && (
@@ -259,7 +279,8 @@ export const ReservaForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
-                <select name="eventType" value={formData.eventType || 'Cumpleaños'} onChange={onChange} className={`${inputClass} appearance-none cursor-pointer`}>
+                <select name="eventType" value={formData.eventType || 'Cumpleaños'} onChange={onChange}
+                  className={`${inputClass} appearance-none cursor-pointer`}>
                   <option value="Serenata">Serenata</option>
                   <option value="Boda">Boda</option>
                   <option value="Cumpleaños">Cumpleaños</option>
@@ -279,28 +300,24 @@ export const ReservaForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
-                    <select
-                      name="startTime"
-                      required
+                    <select name="startTime" required
                       value={formData.startTime || formData.eventTime || ''}
                       onChange={(e) => {
                         onChange(e);
                         onChange({ target: { name: 'eventTime', value: e.target.value } } as any);
                       }}
-                      className={`${isPublic ? inputClass : 'w-full bg-white border border-orange-200 text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium'}`}
-                    >
+                      className={`${isPublic ? inputClass : 'w-full bg-white border border-orange-200 text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium'}`}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
                       ))}
-                      {(formData.startTime || formData.eventTime) && !availableHours.includes(formData.startTime || formData.eventTime) && (
-                        <option key={`start-current`} value={formData.startTime || formData.eventTime}>{formData.startTime || formData.eventTime} (Actual)</option>
+                      {(formData.startTime || formData.eventTime) && !availableHours.includes(formData.startTime || formData.eventTime || '') && (
+                        <option value={formData.startTime || formData.eventTime}>{formData.startTime || formData.eventTime} (Actual)</option>
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
                   </div>
                 </div>
-
                 <div className="flex-1">
                   <label className={labelClass}>HORA FIN</label>
                   <div className={`flex items-center justify-between rounded-xl px-4 border ${isPublic ? 'bg-white border-slate-200 h-[50px]' : 'bg-white border-orange-200 h-[42px]'}`}>
@@ -310,7 +327,6 @@ export const ReservaForm: React.FC<Props> = ({
                   </div>
                 </div>
               </div>
-
               <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
                 <div className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                   <Check size={10} strokeWidth={3} />
@@ -318,27 +334,23 @@ export const ReservaForm: React.FC<Props> = ({
                 <span className="font-bold text-orange-700">Duración Estimada:</span>
                 <span>1 Hora (Base)</span>
                 {extraHoursQuantity > 0 && (
-                  <>
-                    <span>+</span>
-                    <span className="font-bold text-orange-700">{extraHoursQuantity} Horas Extra</span>
-                  </>
+                  <><span>+</span><span className="font-bold text-orange-700">{extraHoursQuantity} Horas Extra</span></>
                 )}
               </div>
             </div>
           </div>
 
-          {/* ✅ FIX 4: Render de baseServices usando nombre, descripcion y precio */}
+          {/* Tipo de Serenata */}
           <div className="mb-6">
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {baseServices.map(service => {
-                const isSelected = formData.selectedServices?.find(s => s.serviceId === service.id)?.quantity > 0;
+                const isSelected = formData.selectedServices?.find(
+                  s => String(s.serviceId) === String(service.id)
+                )?.quantity > 0;
                 return (
-                  <div
-                    key={service.id}
-                    onClick={() => handleBaseServiceSelect(service.id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}
-                  >
+                  <div key={service.id} onClick={() => handleBaseServiceSelect(service.id)}
+                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
                         <Check size={12} strokeWidth={3} />
@@ -358,24 +370,64 @@ export const ReservaForm: React.FC<Props> = ({
               <label className={labelClass}>Dirección del Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" name="location" required value={formData.location || ''} onChange={onChange} className={`${inputClass} !pl-12`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+                <input type="text" name="location" required value={formData.location || ''} onChange={onChange}
+                  className={`${inputClass} !pl-12`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
               </div>
             </div>
           </div>
 
           <div>
             <label className={labelClass}>Notas Adicionales</label>
-            <textarea name="notes" value={formData.notes || ''} onChange={onChange} className={`${inputClass} min-h-[100px] resize-none`} placeholder="¿Alguna petición especial, dedicatoria o indicación para llegar?" />
+            <textarea name="notes" value={formData.notes || ''} onChange={onChange}
+              className={`${inputClass} min-h-[100px] resize-none`}
+              placeholder="¿Alguna petición especial, dedicatoria o indicación para llegar?" />
           </div>
         </div>
       </div>
 
-      {/* COLUMNA DERECHA: Servicios y Totales */}
+      {/* COLUMNA DERECHA */}
       <div className={`w-full lg:w-5/12 p-0 flex flex-col ${isPublic ? 'bg-slate-50 border-l border-slate-100' : 'bg-slate-50'}`}>
-
+          {/* Servicios Adicionales */}
+          <div className={`p-8 border-b border-slate-100 ${isPublic ? 'bg-slate-50/50' : 'bg-slate-50/30'}`}>
+            <h4 className={headerClassInline}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
+                <Package size={isPublic ? 18 : 12} />
+              </div>
+              Servicios Adicionales
+            </h4>
+            <div className="space-y-4">
+              {additionalServices.map(service => {
+                const selected = formData.selectedServices?.find(s => String(s.serviceId) === String(service.id));
+                const quantity = selected?.quantity || 0;
+                return (
+                  <div key={service.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg shadow-orange-900/5 ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                    <div>
+                      <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">${service.precio.toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
+                      <button type="button" onClick={() => onServiceChange(service.id, Math.max(0, quantity - 1))}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}
+                        disabled={quantity === 0}>
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
+                      <button type="button" onClick={() => onServiceChange(service.id, quantity + 1)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm">
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {additionalServices.length === 0 && (
+                <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
+              )}
+            </div>
+          </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
 
-          {/* Buscador de Repertorio */}
+          {/* Repertorio */}
           <div className={`p-8 border-b border-slate-100 ${isPublic ? 'bg-white' : 'bg-white'}`}>
             <div className={`flex items-center justify-between mb-6 border-b pb-4 ${isPublic ? 'border-orange-100/50' : 'border-primary-100'}`}>
               <h4 className={headerClassInline}>
@@ -388,15 +440,12 @@ export const ReservaForm: React.FC<Props> = ({
 
             <div className="relative mb-4">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Buscar canción por título o artista..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={isPublic ? `${inputClass} pl-12` : "w-full pl-9 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-primary-300 transition-all"}
-              />
+              <input type="text" placeholder="Buscar canción por título o artista..."
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className={isPublic ? `${inputClass} pl-12` : "w-full pl-9 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-primary-300 transition-all"} />
               {searchTerm && (
-                <button type="button" onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button type="button" onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   <X size={16} />
                 </button>
               )}
@@ -407,9 +456,7 @@ export const ReservaForm: React.FC<Props> = ({
                 Seleccionadas: <span className={`${currentSongCount >= maxSongs ? 'text-orange-600' : 'text-slate-800'}`}>{currentSongCount}</span> / {maxSongs}
               </span>
               {currentSongCount >= maxSongs && (
-                <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded-full animate-pulse">
-                  ¡Límite alcanzado!
-                </span>
+                <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded-full animate-pulse">¡Límite alcanzado!</span>
               )}
             </div>
 
@@ -419,11 +466,8 @@ export const ReservaForm: React.FC<Props> = ({
                   filteredSongs.map(song => {
                     const isSelected = formData.repertoireIds?.includes(song.id);
                     return (
-                      <div
-                        key={song.id}
-                        onClick={() => handleToggleSong(song.id)}
-                        className={`flex items-center justify-between p-4 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors ${isSelected ? 'bg-orange-50/50' : ''}`}
-                      >
+                      <div key={song.id} onClick={() => handleToggleSong(song.id)}
+                        className={`flex items-center justify-between p-4 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors ${isSelected ? 'bg-orange-50/50' : ''}`}>
                         <div>
                           <p className={`text-sm font-bold ${isSelected ? 'text-orange-700' : 'text-slate-700'}`}>{song.title}</p>
                           <p className="text-xs text-slate-400 uppercase tracking-wide">{song.artist}</p>
@@ -444,7 +488,8 @@ export const ReservaForm: React.FC<Props> = ({
                   {selectedSongsList.map(song => (
                     <div key={song.id} className="flex items-center gap-2 bg-white text-slate-700 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 shadow-sm group hover:border-red-200 transition-colors">
                       <span>{song.title}</span>
-                      <button type="button" onClick={() => onToggleSong(song.id)} className="text-slate-400 hover:text-red-500 transition-colors">
+                      <button type="button" onClick={() => onToggleSong(song.id)}
+                        className="text-slate-400 hover:text-red-500 transition-colors">
                         <X size={14} />
                       </button>
                     </div>
@@ -459,57 +504,11 @@ export const ReservaForm: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Servicios Extra */}
-          <div className={`p-8 border-b border-slate-100 ${isPublic ? 'bg-slate-50/50' : 'bg-slate-50/30'}`}>
-            <h4 className={headerClassInline}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
-                <Package size={isPublic ? 18 : 12} />
-              </div>
-              Servicios Adicionales
-            </h4>
-            <div className="space-y-4">
-              {/* ✅ FIX 4b: Render de additionalServices usando nombre y precio */}
-              {additionalServices.map(service => {
-                const selected = formData.selectedServices?.find(s => s.serviceId === service.id);
-                const quantity = selected?.quantity || 0;
-                return (
-                  <div key={service.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg shadow-orange-900/5 ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
-                    <div>
-                      <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
-                      <p className="text-xs text-slate-400 mt-1 font-medium">${service.precio.toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onServiceChange(service.id, Math.max(0, quantity - 1))}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}
-                        disabled={quantity === 0}
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => onServiceChange(service.id, quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {additionalServices.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Resumen de Costos */}
         <div className={`p-8 border-t border-slate-200 ${isPublic ? 'bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20' : 'bg-white'}`}>
           <div className="space-y-3 mb-8 text-sm">
-            {/* ✅ FIX 5: Usar totalExtras calculado con useMemo y s.precio */}
             {formData.selectedServices && formData.selectedServices.length > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Servicios Adicionales</span>
@@ -517,7 +516,6 @@ export const ReservaForm: React.FC<Props> = ({
               </div>
             )}
             <div className="h-px bg-slate-100 my-4" />
-
             <div className="flex flex-col">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                 TOTAL ESTIMADO {isAdmin && <span className="text-emerald-500">(Editable)</span>}
@@ -533,8 +531,8 @@ export const ReservaForm: React.FC<Props> = ({
                   className={`w-full pl-8 pr-4 py-2 rounded-xl font-serif font-black border outline-none transition-all
                     ${isAdmin
                       ? 'bg-white border-slate-200 text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-2xl'
-                      : `bg-transparent border-transparent text-slate-800 cursor-default ${isPublic ? 'text-5xl tracking-tight' : 'text-2xl'}`}
-                  `}
+                      : `bg-transparent border-transparent text-slate-800 cursor-default ${isPublic ? 'text-5xl tracking-tight' : 'text-2xl'}`
+                    }`}
                 />
                 {!isAdmin && (
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -546,21 +544,18 @@ export const ReservaForm: React.FC<Props> = ({
           </div>
 
           <div className="flex gap-4">
-            <button type="button" onClick={onCancel} className="flex-1 py-4 border border-slate-200 rounded-xl text-xs font-bold uppercase text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
+            <button type="button" onClick={onCancel}
+              className="flex-1 py-4 border border-slate-200 rounded-xl text-xs font-bold uppercase text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={blockStatus.isBlocked}
+            <button type="submit" disabled={blockStatus.isBlocked}
               className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all transform flex items-center justify-center gap-2
                 ${blockStatus.isBlocked
                   ? 'bg-slate-400 cursor-not-allowed shadow-none'
                   : isPublic
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-orange-900/20 hover:shadow-orange-900/30 hover:-translate-y-1'
-                    : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-900/20 hover:shadow-primary-900/30 hover:-translate-y-0.5'
-                }
-              `}
-            >
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-orange-900/20 hover:-translate-y-1'
+                    : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-900/20 hover:-translate-y-0.5'
+                }`}>
               {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Reserva'}
               {!blockStatus.isBlocked && <ArrowLeft className="rotate-180" size={18} />}
             </button>
@@ -569,33 +564,11 @@ export const ReservaForm: React.FC<Props> = ({
       </div>
 
       <style>{`
-        .label-form {
-          display: block;
-          font-size: 10px;
-          font-weight: 800;
-          color: #94a3b8;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 6px;
-          padding-left: 2px;
-        }
-        .input-form {
-          width: 100%;
-          padding: 10px 12px;
-          border-radius: 8px;
-          background-color: white;
-          border: 1px solid #e2e8f0;
-          color: #334155;
-          font-size: 13px;
-          outline: none;
-          transition: all 0.2s;
-        }
+        .label-form { display: block; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; padding-left: 2px; }
+        .input-form { width: 100%; padding: 10px 12px; border-radius: 8px; background-color: white; border: 1px solid #e2e8f0; color: #334155; font-size: 13px; outline: none; transition: all 0.2s; }
         .input-form.pl-9, .input-form.pl-10 { padding-left: 36px; }
         .input-form.pl-12 { padding-left: 48px; }
-        .input-form:focus {
-          border-color: #f87171;
-          box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.1);
-        }
+        .input-form:focus { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.1); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }

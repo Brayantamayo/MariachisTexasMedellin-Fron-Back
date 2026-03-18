@@ -93,19 +93,25 @@ export const DateDetailsModal: React.FC<Props> = ({
     }, 700);
   };
 
-  const handleMouseUp = (time: string, slotData: any) => {
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    if (isLongPressRef.current) return;
+const handleMouseUp = (time: string, slotData: any) => {
+  if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  if (isLongPressRef.current) return;
 
-    if (slotData.status === 'free') {
-      onCreateNew(time);
-    } else if (slotData.status === 'reserved') {
-      const res = slotData.data as Reservation;
-      const isMyReservation = user?.id === res.clientId || user?.email === res.clientEmail;
-      if (isClient && !isMyReservation) return;
-      onViewReservation(slotData.data);
+  if (slotData.status === 'free') {
+    onCreateNew(time);
+  } else if (slotData.status === 'reserved') {
+    const res = slotData.data as Reservation;
+
+    // ✅ Cliente solo puede ver sus propias reservas — comparar por email
+    // clientId en calendario es ID de tabla cliente, no usuario — usar email
+    if (isClient) {
+      const isMyReservation = user?.email === res.clientEmail
+      if (!isMyReservation) return // bloquear silenciosamente
     }
-  };
+
+    onViewReservation(slotData.data);
+  }
+};
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -139,7 +145,8 @@ export const DateDetailsModal: React.FC<Props> = ({
 
               if (status === 'reserved') {
                 const res = data as Reservation;
-                const isMyReservation = !isClient || user?.id === res.clientId || user?.email === res.clientEmail;
+                
+                const isMyReservation = !isClient || user?.email === res.clientEmail;
 
                 if (isMyReservation) {
                   containerClass = "border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer";

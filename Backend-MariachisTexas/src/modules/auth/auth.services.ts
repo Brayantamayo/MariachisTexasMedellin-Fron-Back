@@ -3,86 +3,63 @@ import jwt from 'jsonwebtoken'
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { TipoDocumento, ZonaServicio } from '../../generated/prisma'
-import validator from 'validator'
+import { RegistroSchema, ResetPasswordSchema, zodError } from '../schemas'
 import { vincularCotizacionesPorEmail } from '../Cotizacion/cotizacion.services'
 
 // ─── REGISTRO CLIENTE ─────────────────────────────────────────────────────────
-export const registrarCliente = async (data: {
-  foto?:                string
-  nombre:               string
-  apellido:             string
-  tipoDocumento:        TipoDocumento
-  numeroDocumento:      string
-  fechaNacimiento:      string
-  email:                string
-  telefonoPrincipal:    string
-  telefonoAlternativo?: string
-  ciudad:               string
-  barrio:               string
-  direccion:            string
-  zonaServicio:         ZonaServicio
-  password:             string
-  passwordConfirmation: string
-}) => {
+export const registrarCliente = async (data: any) => {
+  const parsed = RegistroSchema.safeParse(data)
+  if (!parsed.success) throw new Error(zodError(parsed.error))
 
-  if (data.password !== data.passwordConfirmation)
-    throw new Error('Las contraseñas no coinciden')
+  const { passwordConfirmation, ...datosCliente } = parsed.data
 
-  if (!validator.isEmail(data.email))
-    throw new Error('El correo electrónico no es válido')
-
-  const dominiosValidos = ['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','protonmail.com']
-  const dominio = data.email.split('@')[1]
-  if (!dominiosValidos.includes(dominio))
-    throw new Error('El dominio del correo no es válido')
-
-  const correoExiste = await prisma.cliente.findUnique({ where: { email: data.email } })
+  const [correoExiste, cedulaExiste] = await Promise.all([
+    prisma.cliente.findUnique({ where: { email: datosCliente.email } }),
+    prisma.cliente.findUnique({ where: { numeroDocumento: datosCliente.numeroDocumento } })
+  ])
   if (correoExiste) throw new Error('El correo ya está registrado')
-
-  const cedulaExiste = await prisma.cliente.findUnique({ where: { numeroDocumento: data.numeroDocumento } })
   if (cedulaExiste) throw new Error('El número de documento ya está registrado')
 
-  if (!/^\d{6,10}$/.test(data.numeroDocumento))
-    throw new Error('El número de documento no es válido, debe tener entre 6 y 10 dígitos')
-
-  if (!/^3\d{9}$/.test(data.telefonoPrincipal))
-    throw new Error('El teléfono principal no es válido, debe iniciar con 3 y tener 10 dígitos')
-
-  const passwordSegura = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_])[A-Za-z\d@$!%*?&\-_]{6,}$/
-  if (!passwordSegura.test(data.password))
-    throw new Error('La contraseña debe tener mínimo 6 caracteres, una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&-_)')
-
-  const passwordHash = await bcrypt.hash(data.password, 10)
+  const passwordHash = await bcrypt.hash(datosCliente.password, 10)
 
   const rolCliente = await prisma.rol.findUnique({ where: { nombre: 'CLIENTE' } })
   if (!rolCliente) throw new Error('Rol CLIENTE no encontrado, ejecuta el seed')
 
-  const { passwordConfirmation, ...datosCliente } = data
   const cliente = await prisma.cliente.create({
     data: {
-      ...datosCliente,
-      password:        passwordHash,
-      fechaNacimiento: new Date(data.fechaNacimiento)
+      nombre:              datosCliente.nombre,
+      apellido:            datosCliente.apellido,
+      tipoDocumento:       datosCliente.tipoDocumento as TipoDocumento,  // ✅ cast correcto
+      numeroDocumento:     datosCliente.numeroDocumento,
+      fechaNacimiento:     new Date(datosCliente.fechaNacimiento),
+      email:               datosCliente.email,
+      telefonoPrincipal:   datosCliente.telefonoPrincipal,
+      telefonoAlternativo: datosCliente.telefonoAlternativo || null,
+      ciudad:              datosCliente.ciudad,
+      barrio:              datosCliente.barrio,
+      direccion:           datosCliente.direccion,
+      zonaServicio:        datosCliente.zonaServicio as ZonaServicio,    // ✅ cast correcto
+      password:            passwordHash,
+      foto:                datosCliente.foto || null,
     }
   })
 
   await prisma.usuario.create({
     data: {
-      nombre:   cliente.nombre,
-      email:    cliente.email,
+      nombre:  cliente.nombre,
+      email:   cliente.email,
       password: passwordHash,
-      rolId:    rolCliente.id
+      rolId:   rolCliente.id
     }
   })
 
-  // ── Vincular cotizaciones/reservas que el cliente haya hecho antes de registrarse
   const cotizacionesVinculadas = await vincularCotizacionesPorEmail(cliente.email, cliente.id)
     .catch(err => { console.error('Error vinculando cotizaciones:', err); return 0 })
 
-  const loginUrl   = `${process.env.FRONTEND_URL}login`
-  const reservasUrl = `${process.env.FRONTEND_URL}reservas`
+  const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
+  const loginUrl    = `${base}/login`
+  const reservasUrl = `${base}/reservas`
 
-  // ── Correo de bienvenida — con o sin reservas vinculadas
   await transporter.sendMail({
     from:    process.env.MAIL_FROM,
     to:      cliente.email,
@@ -92,60 +69,38 @@ export const registrarCliente = async (data: {
         <div style="text-align:center;margin-bottom:24px;">
           <h1 style="color:#c0392b;font-size:28px;margin:0;">🎺 Mariachis Texas</h1>
         </div>
-
         <h2 style="color:#fff;margin-bottom:8px;">¡Hola ${cliente.nombre}! 👋</h2>
-        <p style="color:#aaa;line-height:1.6;">
-          Tu registro fue exitoso. Ya puedes iniciar sesión y disfrutar de todos los beneficios de tener una cuenta.
-        </p>
-
+        <p style="color:#aaa;line-height:1.6;">Tu registro fue exitoso. Ya puedes iniciar sesión y disfrutar de todos los beneficios de tener una cuenta.</p>
         ${cotizacionesVinculadas > 0 ? `
         <div style="background:#1a1a1a;border:1px solid #c0392b;border-radius:10px;padding:16px;margin:20px 0;">
           <p style="color:#fff;font-weight:bold;margin:0 0 8px;">🎉 ¡Buenas noticias!</p>
-          <p style="color:#aaa;margin:0;font-size:14px;">
-            Encontramos <strong style="color:#fff">${cotizacionesVinculadas} reserva(s)</strong> asociadas a tu correo.
-            Ya están disponibles en tu cuenta.
-          </p>
+          <p style="color:#aaa;margin:0;font-size:14px;">Encontramos <strong style="color:#fff">${cotizacionesVinculadas} reserva(s)</strong> asociadas a tu correo. Ya están disponibles en tu cuenta.</p>
         </div>
         <div style="text-align:center;margin:20px 0;">
-          <a href="${reservasUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
-            Ver mis Reservas
-          </a>
+          <a href="${reservasUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Ver mis Reservas</a>
         </div>
         ` : `
         <div style="text-align:center;margin:24px 0;">
-          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
-            Iniciar Sesión
-          </a>
+          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Iniciar Sesión</a>
         </div>
         `}
-
         <hr style="border:none;border-top:1px solid #222;margin:24px 0;" />
-        <p style="color:#555;font-size:12px;text-align:center;">
-          ¡Gracias por confiar en Mariachis Texas! • Medellín, Colombia
-        </p>
+        <p style="color:#555;font-size:12px;text-align:center;">¡Gracias por confiar en Mariachis Texas! • Medellín, Colombia</p>
       </div>
     `
   })
 
   return {
     message: 'Registro exitoso. Inicia sesión para continuar',
-    cliente: {
-      id:     cliente.id,
-      nombre: cliente.nombre,
-      email:  cliente.email
-    }
+    cliente: { id: cliente.id, nombre: cliente.nombre, email: cliente.email }
   }
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 export const login = async (email: string, password: string) => {
   const usuario = await prisma.usuario.findUnique({
-    where: { email },
-    include: {
-      rol: {
-        include: { rolPermisos: { include: { permiso: true } } }
-      }
-    }
+    where:   { email },
+    include: { rol: { include: { rolPermisos: { include: { permiso: true } } } } }
   })
 
   if (!usuario || !usuario.estado) throw new Error('Credenciales inválidas')
@@ -153,32 +108,38 @@ export const login = async (email: string, password: string) => {
   const passwordValido = await bcrypt.compare(password, usuario.password)
   if (!passwordValido) throw new Error('Credenciales inválidas')
 
+  // ✅ Buscar datos completos del cliente para pre-llenar formularios
+  let datosCliente = null
   if (usuario.rol.nombre === 'CLIENTE') {
     const cliente = await prisma.cliente.findUnique({ where: { email } })
     if (!cliente || !cliente.activo) throw new Error('Credenciales inválidas')
+    datosCliente = cliente
   }
 
   const permisos = usuario.rol.rolPermisos.map(rp => rp.permiso.nombre)
-
-  const token = jwt.sign(
+  const token    = jwt.sign(
     { id: usuario.id, email: usuario.email, rol: usuario.rol.nombre, permisos },
     process.env.JWT_SECRET!,
-    { expiresIn: '15m' }
+    { expiresIn: '8h' }
   )
 
   return {
     token,
     usuario: {
-      id:       usuario.id,
-      nombre:   usuario.nombre,
-      email:    usuario.email,
-      rol:      usuario.rol.nombre,
+      id:                  usuario.id,
+      nombre:              usuario.nombre,
+      apellido:            datosCliente?.apellido            || '',
+      telefonoPrincipal:   datosCliente?.telefonoPrincipal   || '',
+      telefonoAlternativo: datosCliente?.telefonoAlternativo || '',
+      direccion:           datosCliente?.direccion           || '',
+      email:               usuario.email,
+      rol:                 usuario.rol.nombre,
       permisos
     }
   }
 }
 
-// ─── RECUPERAR CONTRASEÑA CON OTP ─────────────────────────────────────────────
+// ─── RECUPERAR CONTRASEÑA ─────────────────────────────────────────────────────
 export const recuperarPassword = async (email: string) => {
   const usuario = await prisma.usuario.findUnique({ where: { email } })
   if (!usuario) return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
@@ -186,11 +147,7 @@ export const recuperarPassword = async (email: string) => {
   const otp       = Math.floor(100000 + Math.random() * 900000).toString()
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
 
-  await prisma.passwordResetOtp.updateMany({
-    where: { email, usado: false },
-    data:  { usado: true }
-  })
-
+  await prisma.passwordResetOtp.updateMany({ where: { email, usado: false }, data: { usado: true } })
   await prisma.passwordResetOtp.create({ data: { email, otp, expiresAt } })
 
   await transporter.sendMail({
@@ -201,7 +158,6 @@ export const recuperarPassword = async (email: string) => {
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0a0a0a;color:#fff;border-radius:12px;">
         <h2 style="color:#c0392b;">Recuperar contraseña</h2>
         <p style="color:#aaa;">Hola <strong style="color:#fff">${usuario.nombre}</strong>, recibimos una solicitud para restablecer tu contraseña.</p>
-        <p style="color:#aaa;">Tu código de verificación es:</p>
         <div style="background:#1a1a1a;border:2px solid #c0392b;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
           <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#fff;">${otp}</span>
         </div>
@@ -225,14 +181,11 @@ export const verificarOtp = async (email: string, otp: string) => {
 
 // ─── RESETEAR CONTRASEÑA ──────────────────────────────────────────────────────
 export const resetearPassword = async (
-  email: string, otp: string, nuevaPassword: string, confirmarPassword: string
+  email: string, otp: string,
+  nuevaPassword: string, confirmarPassword: string
 ) => {
-  if (nuevaPassword !== confirmarPassword)
-    throw new Error('Las contraseñas no coinciden')
-
-  const passwordSegura = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_])[A-Za-z\d@$!%*?&\-_]{6,}$/
-  if (!passwordSegura.test(nuevaPassword))
-    throw new Error('La contraseña debe tener mínimo 6 caracteres, una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&-_)')
+  const parsed = ResetPasswordSchema.safeParse({ email, otp, nuevaPassword, confirmarPassword })
+  if (!parsed.success) throw new Error(zodError(parsed.error))
 
   const registro = await prisma.passwordResetOtp.findFirst({
     where: { email, otp, usado: false, expiresAt: { gt: new Date() } }
@@ -247,12 +200,13 @@ export const resetearPassword = async (
 
   const passwordHash = await bcrypt.hash(nuevaPassword, 10)
 
-  await prisma.usuario.update({ where: { email }, data: { password: passwordHash } })
-
-  const cliente = await prisma.cliente.findUnique({ where: { email } })
-  if (cliente) await prisma.cliente.update({ where: { email }, data: { password: passwordHash } })
-
-  await prisma.passwordResetOtp.update({ where: { id: registro.id }, data: { usado: true } })
+  await Promise.all([
+    prisma.usuario.update({ where: { email }, data: { password: passwordHash } }),
+    prisma.cliente.findUnique({ where: { email } }).then(c =>
+      c ? prisma.cliente.update({ where: { email }, data: { password: passwordHash } }) : null
+    ),
+    prisma.passwordResetOtp.update({ where: { id: registro.id }, data: { usado: true } })
+  ])
 
   return { message: 'Contraseña actualizada correctamente' }
 }

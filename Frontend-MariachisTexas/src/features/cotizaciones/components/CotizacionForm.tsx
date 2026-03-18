@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { User as UserType, Song, Service } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
@@ -7,11 +7,19 @@ interface Props {
   formData: any;
   isAdmin: boolean;
   isPublic?: boolean;
+  isEditing?: boolean;
+  isSubmitting?: boolean;
   clients: UserType[];
   songs: Song[];
   services: Service[];
   availableHours?: string[];
-  blockStatus?: { isBlocked: boolean; reason?: string; hasPartialBlocks?: boolean; blockedRanges?: any[] };
+  blockStatus?: {
+    isBlocked: boolean;
+    reason?: string;
+    type?: string;
+    hasPartialBlocks?: boolean;
+    blockedRanges?: { start: string; end: string; reason: string }[];
+  };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onDateChange: (name: string, value: string) => void;
   onClientSelect: (e: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -21,27 +29,29 @@ interface Props {
   onCancel: () => void;
 }
 
-export const CotizacionForm: React.FC<Props> = ({ 
-    formData, isAdmin, isPublic = false,
-    clients, songs, services,
-    availableHours = [], 
-    blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
-    onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
+export const CotizacionForm: React.FC<Props> = ({
+  formData, isAdmin, isPublic = false, isEditing = false, isSubmitting = false,
+  clients, songs, services,
+  availableHours = [],
+  blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
+  onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm,      setSearchTerm]      = useState('');
+  // ✅ Paso 1 = detalles del evento, Paso 2 = datos del cliente (solo en público)
+  const [showClientStep,  setShowClientStep]  = useState(false);
+  const clientSectionRef = useRef<HTMLDivElement>(null);
 
-  // ─── Usar campos en español (nombre, precio, descripcion) ─────────────────────
   const baseServices       = services.filter(s => s.nombre.toLowerCase().includes('serenata'))
   const additionalServices = services.filter(s => !s.nombre.toLowerCase().includes('serenata'))
 
-  // Búsqueda case-insensitive para evitar problemas con mayúsculas/minúsculas
   const extraHoursService = services.find(s => s.nombre.toLowerCase().includes('hora extra'))
-  const extraSongsService = services.find(s => s.nombre.toLowerCase().includes('canción extra') || s.nombre.toLowerCase().includes('cancion extra'))
+  const extraSongsService = services.find(s =>
+    s.nombre.toLowerCase().includes('canción extra') || s.nombre.toLowerCase().includes('cancion extra')
+  )
 
   const extraHoursQuantity = extraHoursService
     ? (formData.selectedServices?.find((s: any) => s.serviceId === String(extraHoursService.id))?.quantity || 0)
     : 0
-
   const extraSongsQuantity = extraSongsService
     ? (formData.selectedServices?.find((s: any) => s.serviceId === String(extraSongsService.id))?.quantity || 0)
     : 0
@@ -62,11 +72,11 @@ export const CotizacionForm: React.FC<Props> = ({
 
   const calculateEndTime = (start: string, extra: number) => {
     if (!start) return ''
-    const [h, m] = start.split(':').map(Number)
+    const [h, m]       = start.split(':').map(Number)
     const totalMinutes = h * 60 + m + (1 + extra) * 60
-    const newH = Math.floor(totalMinutes / 60) % 24
-    const newM = totalMinutes % 60
-    return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`
+    const newH         = Math.floor(totalMinutes / 60) % 24
+    const newM         = totalMinutes % 60
+    return `${newH.toString().padStart(2,'0')}:${newM.toString().padStart(2,'0')}`
   }
 
   React.useEffect(() => {
@@ -78,43 +88,45 @@ export const CotizacionForm: React.FC<Props> = ({
     }
   }, [formData.startTime, extraHoursQuantity])
 
-  const maxSongs = 7 + extraSongsQuantity
+  const maxSongs         = 7 + extraSongsQuantity
   const currentSongCount = formData.repertoireIds?.length || 0
-  const today = new Date().toISOString().split('T')[0]
+  const today            = new Date().toISOString().split('T')[0]
 
-  const filteredSongs = searchTerm.trim() === ''
+  const filteredSongs    = searchTerm.trim() === ''
     ? []
     : songs.filter(s =>
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.artist.toLowerCase().includes(searchTerm.toLowerCase())
       )
-
   const selectedSongsList = songs.filter(s => formData.repertoireIds?.includes(s.id))
 
   const handleToggleSong = (id: string) => {
-    const isSelected = formData.repertoireIds?.includes(id)
-
-    // Recalcular en el momento del click para tener el valor más actualizado
+    const isSelected        = formData.repertoireIds?.includes(id)
     const currentExtraSongs = extraSongsService
       ? (formData.selectedServices?.find((s: any) => s.serviceId === String(extraSongsService.id))?.quantity || 0)
       : 0
-    const currentMax = 7 + currentExtraSongs
-
-    if (!isSelected && currentSongCount >= currentMax) {
-      alert(`Has alcanzado el límite de ${currentMax} canciones. Agrega "Canción extra" en Servicios Adicionales para seleccionar más.`)
+    if (!isSelected && currentSongCount >= 7 + currentExtraSongs) {
+      alert(`Has alcanzado el límite de ${7 + currentExtraSongs} canciones.`)
       return
     }
     onToggleSong(id)
   }
 
+  // ✅ Cuando el cliente hace click en "Continuar" — mostrar paso 2 y subir
+  const handleContinueToClient = () => {
+    setShowClientStep(true)
+    setTimeout(() => {
+      clientSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }
+
   const headerClass = isPublic
     ? "text-xl font-serif font-bold text-slate-800 mb-8 flex items-center gap-3 border-b border-orange-100/50 pb-4"
     : "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"
+  const labelClass      = "label-form"
+  const inputClass      = "input-form"
+  const lockedInputClass = `${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`
 
-  const labelClass = "label-form"
-  const inputClass = "input-form"
-
-  // Calcular total servicios usando precio (español)
   const calcServicesTotal = () =>
     (formData.selectedServices || []).reduce((acc: number, item: any) => {
       const s = services.find(srv => String(srv.id) === item.serviceId)
@@ -124,57 +136,104 @@ export const CotizacionForm: React.FC<Props> = ({
   return (
     <form id="cotizacion-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
 
-      {/* ── COLUMNA IZQUIERDA ─────────────────────────────────────────────────── */}
+      {/* ── COLUMNA IZQUIERDA ─────────────────────────────────────────────── */}
       <div className={`w-full lg:w-7/12 p-8 lg:p-10 space-y-10 ${isPublic ? 'bg-white' : 'bg-white border-r border-slate-100'}`}>
 
-        {/* 1. Datos del Cliente */}
-        <div className={isPublic ? "" : "bg-white p-5 rounded-xl border border-slate-100 shadow-sm"}>
-          <h4 className={headerClass}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
-              <User size={isPublic ? 18 : 12} />
-            </div>
-            Información del Cliente
-          </h4>
+        {/* ✅ PASO 2 — Datos del Cliente (solo visible en público después de continuar) */}
+        {(!isPublic || showClientStep) && (
+          <div ref={clientSectionRef} className={isPublic ? "" : "bg-white p-5 rounded-xl border border-slate-100 shadow-sm"}>
 
-          {isAdmin && (
-            <div className="mb-4">
-              <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <select name="clientId" value={formData.clientId} onChange={onClientSelect}
-                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
-                  <option value="">-- Buscar en base de datos --</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre} {c.apellido} - {c.telefonoPrincipal}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
+            {/* ✅ Banner motivador solo en público */}
+            {isPublic && showClientStep && (
+              <div className="mb-6 p-5 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-2xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                    <Sparkles size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-orange-800 text-base mb-1">¡Tu evento está casi listo! 🎺</p>
+                    <p className="text-sm text-orange-700 leading-relaxed">
+                      Para hacer realidad este evento, anota tus datos reales.
+                      Nos pondremos en contacto contigo en las próximas horas.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <h4 className={headerClass}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
+                <User size={isPublic ? 18 : 12} />
+              </div>
+              Información del Cliente
+            </h4>
+
+            {isAdmin && !isEditing && (
+              <div className="mb-4">
+                <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  <select name="clientId" value={formData.clientId} onChange={onClientSelect}
+                    className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
+                    <option value="">-- Buscar en base de datos --</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre} {c.apellido} - {c.telefonoPrincipal}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
+                </div>
+              </div>
+            )}
+
+            {isEditing && (
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
+                <Lock size={12} className="text-slate-400" />
+                <p className="text-[11px] text-slate-400 font-medium">Los datos del cliente no se pueden modificar.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
+                <input type="text" name="clientName" required
+                  value={formData.clientName || ''}
+                  onChange={onChange}
+                  disabled={isEditing}
+                  className={isEditing ? lockedInputClass : inputClass}
+                  placeholder="Tu nombre completo" />
+              </div>
+              <div>
+                <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
+                <input type="tel" name="clientPhone" required
+                  value={formData.clientPhone || ''}
+                  onChange={onChange}
+                  disabled={isEditing}
+                  className={isEditing ? lockedInputClass : inputClass}
+                  placeholder="Ej: 300 123 4567" />
               </div>
             </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
-              <input type="text" name="clientName" required value={formData.clientName || ''} onChange={onChange} className={inputClass} placeholder="Tu nombre completo" />
-            </div>
-            <div>
-              <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
-              <input type="tel" name="clientPhone" required value={formData.clientPhone || ''} onChange={onChange} className={inputClass} placeholder="Ej: 300 123 4567" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            <div>
-              <label className={labelClass}>Teléfono Secundario</label>
-              <input type="tel" name="secondaryPhone" value={formData.secondaryPhone || ''} onChange={onChange} className={inputClass} placeholder="Opcional" />
-            </div>
-            <div>
-              <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
-              <input type="email" name="clientEmail" required value={formData.clientEmail || ''} onChange={onChange} className={inputClass} placeholder="tucorreo@ejemplo.com" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className={labelClass}>Teléfono Secundario</label>
+                <input type="tel" name="secondaryPhone"
+                  value={formData.secondaryPhone || ''}
+                  onChange={onChange}
+                  disabled={isEditing}
+                  className={isEditing ? lockedInputClass : inputClass}
+                  placeholder="Opcional" />
+              </div>
+              <div>
+                <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
+                <input type="email" name="clientEmail" required
+                  value={formData.clientEmail || ''}
+                  onChange={onChange}
+                  disabled={isEditing}
+                  className={isEditing ? lockedInputClass : inputClass}
+                  placeholder="tucorreo@ejemplo.com" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 2. Detalles del Evento */}
         <div className={isPublic ? "" : "bg-white p-5 rounded-xl border border-slate-100 shadow-sm"}>
@@ -187,10 +246,10 @@ export const CotizacionForm: React.FC<Props> = ({
 
           <div className="mb-6">
             <label className={labelClass}>Nombre del Homenajeado</label>
-            <input type="text" name="homenajeado" value={formData.homenajeado || ''} onChange={onChange} className={inputClass} placeholder="¿A quién va dirigida la serenata? (Opcional)" />
+            <input type="text" name="homenajeado" value={formData.homenajeado || ''} onChange={onChange}
+              className={inputClass} placeholder="¿A quién va dirigida la serenata? (Opcional)" />
           </div>
 
-          {/* Alertas de Bloqueo */}
           {blockStatus.isBlocked && (
             <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100 text-red-600 mb-6">
               <ShieldAlert size={20} className="shrink-0" />
@@ -226,7 +285,8 @@ export const CotizacionForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
-                <select name="eventType" value={formData.eventType} onChange={onChange} className={`${inputClass} appearance-none cursor-pointer`}>
+                <select name="eventType" value={formData.eventType} onChange={onChange}
+                  className={`${inputClass} appearance-none cursor-pointer`}>
                   <option value="Serenata">Serenata</option>
                   <option value="Boda">Boda</option>
                   <option value="Cumpleaños">Cumpleaños</option>
@@ -279,12 +339,12 @@ export const CotizacionForm: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Tipo de Serenata — usando nombre y precio en español */}
+          {/* Tipo de Serenata */}
           <div className="mb-6">
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {baseServices.map(service => {
-                const id = String(service.id)
+                const id         = String(service.id)
                 const isSelected = formData.selectedServices?.find((s: any) => s.serviceId === id)?.quantity > 0
                 return (
                   <div key={id} onClick={() => handleBaseServiceSelect(id)}
@@ -323,8 +383,47 @@ export const CotizacionForm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ── COLUMNA DERECHA ───────────────────────────────────────────────────── */}
+      {/* ── COLUMNA DERECHA ───────────────────────────────────────────────── */}
       <div className={`w-full lg:w-5/12 flex flex-col ${isPublic ? 'bg-slate-50 border-l border-slate-100' : 'bg-slate-50'}`}>
+          {/* Servicios Adicionales */}
+          <div className="p-8 border-b border-slate-100 bg-slate-50/30">
+            <h4 className={headerClass}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
+                <Package size={isPublic ? 18 : 12} />
+              </div>
+              Servicios Adicionales
+            </h4>
+            <div className="space-y-4">
+              {additionalServices.map(service => {
+                const id       = String(service.id)
+                const selected = formData.selectedServices?.find((s: any) => s.serviceId === id)
+                const quantity = selected?.quantity || 0
+                return (
+                  <div key={id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                    <div>
+                      <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">${Number(service.precio).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
+                      <button type="button" onClick={() => onServiceChange(id, Math.max(0, quantity - 1))}
+                        disabled={quantity === 0}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}>
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
+                      <button type="button" onClick={() => onServiceChange(id, quantity + 1)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm">
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {additionalServices.length === 0 && (
+                <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
+              )}
+            </div>
+          </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
 
           {/* Repertorio */}
@@ -397,49 +496,10 @@ export const CotizacionForm: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Servicios Adicionales — usando nombre y precio en español */}
-          <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-            <h4 className={headerClass}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
-                <Package size={isPublic ? 18 : 12} />
-              </div>
-              Servicios Adicionales
-            </h4>
-            <div className="space-y-4">
-              {additionalServices.map(service => {
-                const id = String(service.id)
-                const selected = formData.selectedServices?.find((s: any) => s.serviceId === id)
-                const quantity = selected?.quantity || 0
-                return (
-                  <div key={id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
-                    <div>
-                      <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
-                      <p className="text-xs text-slate-400 mt-1 font-medium">${Number(service.precio).toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
-                      <button type="button" onClick={() => onServiceChange(id, Math.max(0, quantity - 1))}
-                        disabled={quantity === 0}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}>
-                        <Minus size={16} />
-                      </button>
-                      <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
-                      <button type="button" onClick={() => onServiceChange(id, quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm">
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-              {additionalServices.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* Resumen de Costos */}
-        <div className="p-8 border-t border-slate-200 bg-white">
+        {/* Resumen de Costos + Botones */}
+        <div className={`p-8 border-t border-slate-200 ${isPublic ? 'bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20' : 'bg-white'}`}>
           <div className="space-y-3 mb-8 text-sm">
             {formData.selectedServices?.length > 0 && (
               <div className="flex justify-between text-slate-500">
@@ -447,7 +507,7 @@ export const CotizacionForm: React.FC<Props> = ({
                 <span className="font-bold text-slate-700">+${calcServicesTotal().toLocaleString()}</span>
               </div>
             )}
-            <div className="h-px bg-slate-100 my-4"></div>
+            <div className="h-px bg-slate-100 my-4" />
             <div className="flex flex-col">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                 TOTAL ESTIMADO {isAdmin && <span className="text-emerald-500">(Editable)</span>}
@@ -460,7 +520,7 @@ export const CotizacionForm: React.FC<Props> = ({
                   value={(formData.totalAmount || 0).toLocaleString()}
                   onChange={(e) => {
                     if (!isAdmin) return
-                    const rawValue = e.target.value.replace(/\D/g, '')
+                    const rawValue     = e.target.value.replace(/\D/g, '')
                     const numericValue = rawValue ? parseInt(rawValue) : 0
                     onChange({ target: { name: 'totalAmount', value: numericValue } } as any)
                   }}
@@ -485,17 +545,36 @@ export const CotizacionForm: React.FC<Props> = ({
               className="flex-1 py-4 border border-slate-200 rounded-xl text-xs font-bold uppercase text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={blockStatus.isBlocked}
-              className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
-                ${blockStatus.isBlocked
-                  ? 'bg-slate-400 cursor-not-allowed shadow-none'
-                  : isPublic
-                    ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
-                    : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 hover:-translate-y-0.5'
-                }`}>
-              {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
-              {!blockStatus.isBlocked && <ArrowLeft className="rotate-180" size={18} />}
-            </button>
+
+            {/* ✅ En público: Paso 1 → botón "Continuar", Paso 2 → botón "Enviar" */}
+            {isPublic && !showClientStep ? (
+              <button
+                type="button"
+                onClick={handleContinueToClient}
+                disabled={blockStatus.isBlocked}
+                className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
+                  ${blockStatus.isBlocked
+                    ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                    : 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
+                  }`}>
+                Continuar
+                <ArrowRight size={18} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={blockStatus.isBlocked || isSubmitting}
+                className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
+                  ${blockStatus.isBlocked || isSubmitting
+                    ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                    : isPublic
+                      ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
+                      : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 hover:-translate-y-0.5'
+                  }`}>
+                {isSubmitting ? 'Enviando...' : blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
+                {!blockStatus.isBlocked && !isSubmitting && <ArrowLeft className="rotate-180" size={18} />}
+              </button>
+            )}
           </div>
         </div>
       </div>

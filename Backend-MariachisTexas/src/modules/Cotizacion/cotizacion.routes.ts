@@ -5,18 +5,18 @@ import { requireRole } from '../../middlewares/Role.middleware'
 
 const router = Router()
 
-// ─── PÚBLICA — formulario landing ─────────────────────────────────────────────
+// ─── PÚBLICA ──────────────────────────────────────────────────────────────────
 router.post('/public', cotizacionController.create)
 
 // ─── PROTEGIDAS — solo ADMIN ──────────────────────────────────────────────────
 router.use(verifyToken)
 router.use(requireRole(['ADMIN']))
 
-router.get('/',    cotizacionController.getAll)
-router.get('/:id', cotizacionController.getById)
-router.put('/:id',             cotizacionController.update)
-router.patch('/:id/anular',    cotizacionController.anular)
-router.patch('/:id/convertir', cotizacionController.convertir)
-router.delete('/:id',          cotizacionController.remove) // ✅ nuevo
+router.get('/',                    cotizacionController.getAll)
+router.get('/:id',                 cotizacionController.getById)
+router.put('/:id',                 cotizacionController.update)
+router.patch('/:id/anular',        cotizacionController.anular)
+router.patch('/:id/convertir',     cotizacionController.convertir)
+router.delete('/:id',              cotizacionController.remove)
 
 export default router

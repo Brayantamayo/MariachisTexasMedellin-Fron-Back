@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, X, Lock, ShieldAlert, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, X, Lock, ShieldAlert, FileText, Clock, Phone } from 'lucide-react';
 import { UserRole } from '@/types';
 import { useReservasManager } from '../hooks/useReservasManager';
 
@@ -13,6 +13,120 @@ import { AbonoCreateModal }   from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal }     from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal }  from '@/shared/components/ConfirmationModal';
 
+// ─── Banner de cuenta regresiva para reservas pendientes ──────────────────────
+const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
+  const [now, setNow] = useState(new Date())
+
+  // Actualizar cada segundo para el contador
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Solo mostrar reservas PENDIENTES con fecha futura
+  const pendingReservations = reservations.filter(r =>
+    r.status === 'PENDIENTE' && new Date(r.eventDate) >= new Date(now.toDateString())
+  )
+
+  if (!pendingReservations.length) return null
+
+  const formatCountdown = (eventDate: string) => {
+    const target  = new Date(eventDate + 'T00:00:00')
+    const diff    = target.getTime() - now.getTime()
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, urgent: true }
+
+    const days    = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+    return { days, hours, minutes, seconds, urgent: days <= 3 }
+  }
+
+  return (
+    <div className="space-y-3 mb-6">
+      {pendingReservations.map(res => {
+        const { days, hours, minutes, seconds, urgent } = formatCountdown(res.eventDate)
+        const anticipo = Math.ceil(Number(res.totalAmount) / 2)
+
+        return (
+          <div key={res.id}
+            className={`relative overflow-hidden rounded-2xl border p-5 ${
+              urgent
+                ? 'bg-red-50 border-red-200'
+                : 'bg-amber-50 border-amber-200'
+            }`}
+          >
+            {/* Fondo decorativo */}
+            <div className={`absolute right-0 top-0 bottom-0 w-32 opacity-5 flex items-center justify-center ${urgent ? 'text-red-900' : 'text-amber-900'}`}>
+              <Clock size={120} />
+            </div>
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
+
+              {/* Icono + texto */}
+              <div className="flex items-start gap-3 flex-1">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${urgent ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <p className={`font-bold text-sm mb-0.5 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>
+                    ⚠️ Reserva #{res.id} pendiente de pago
+                  </p>
+                  <p className={`text-xs leading-relaxed ${urgent ? 'text-red-700' : 'text-amber-700'}`}>
+                    Para confirmar tu evento del <strong>{res.eventDate}</strong> debes pagar el anticipo del 50%.
+                    Comunícate con nosotros para realizar el pago.
+                  </p>
+                  {/* Anticipo */}
+                  <p className={`text-sm font-bold mt-1 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>
+                    Anticipo requerido: <span className="text-lg">${anticipo.toLocaleString('es-CO')} COP</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Contador */}
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${urgent ? 'text-red-500' : 'text-amber-500'}`}>
+                  {urgent ? '⏰ ¡Tiempo límite!' : 'Tiempo restante'}
+                </p>
+                <div className="flex items-center gap-1">
+                  {[
+                    { value: days,    label: 'días' },
+                    { value: hours,   label: 'hrs' },
+                    { value: minutes, label: 'min' },
+                    { value: seconds, label: 'seg' },
+                  ].map(({ value, label }, i) => (
+                    <React.Fragment key={label}>
+                      {i > 0 && <span className={`text-lg font-bold ${urgent ? 'text-red-400' : 'text-amber-400'}`}>:</span>}
+                      <div className={`flex flex-col items-center px-2 py-1 rounded-lg min-w-[42px] ${urgent ? 'bg-red-100' : 'bg-amber-100'}`}>
+                        <span className={`text-xl font-mono font-black ${urgent ? 'text-red-700' : 'text-amber-700'}`}>
+                          {String(value).padStart(2, '0')}
+                        </span>
+                        <span className={`text-[9px] uppercase font-bold ${urgent ? 'text-red-400' : 'text-amber-400'}`}>{label}</span>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                {/* Teléfono */}
+                <a href="tel:3122373486"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    urgent
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30'
+                  }`}>
+                  <Phone size={14} />
+                  312 237 3486
+                </a>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export const ReservasPage: React.FC = () => {
   const {
     view, setView,
@@ -53,7 +167,7 @@ export const ReservasPage: React.FC = () => {
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization,
     handleCancelReserva, handleTimeSlotBlock,
-    handleViewReserva, // ✅
+    handleViewReserva,
   } = useReservasManager();
 
   // ─── Calendar Logic ───────────────────────────────────────────────────────────
@@ -236,17 +350,17 @@ export const ReservasPage: React.FC = () => {
               </div>
             ))}
             {dayEvents.map(ev => {
-              const isMyEvent = !isClient || user?.email === ev.clientEmail || user?.id === ev.clientId;
+              const isMyEvent = !isClient || user?.email === ev.clientEmail
               const statusStyle = ev.status === 'CONFIRMADA'
                 ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                : 'bg-amber-50 border-amber-100 text-amber-700';
+                : 'bg-amber-50 border-amber-100 text-amber-700'
               return (
                 <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate ${
                   isMyEvent ? statusStyle : 'bg-slate-50 border-slate-100 text-slate-400'
                 }`}>
                   <span className="font-bold">{ev.eventTime}</span> {isMyEvent ? ev.eventType : 'Reservado'}
                 </div>
-              );
+              )
             })}
           </div>
 
@@ -317,6 +431,9 @@ export const ReservasPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ✅ Banner contador — solo visible para clientes con reservas pendientes */}
+      {isClient && <PendingPaymentBanner reservations={reservations} />}
+
       {/* Main */}
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
         {view === 'list' ? (
@@ -333,7 +450,7 @@ export const ReservasPage: React.FC = () => {
               reservations={filteredReservations}
               loading={loading}
               userRole={user?.role}
-              onView={(res) => handleViewReserva(res)} // ✅
+              onView={(res) => handleViewReserva(res)}
               onEdit={(res) => { setEditingReserva(res); setIsEditOpen(true); }}
               onAddPayment={(id) => { setAbonoReservationId(id); setIsAbonoModalOpen(true); }}
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
@@ -376,7 +493,7 @@ export const ReservasPage: React.FC = () => {
         blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails||'') && b.endDate >= (selectedDateForDetails||'') && b.isActive)}
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status === 'Programado')}
         quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
-        onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }} // ✅
+        onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
         onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time||null); setIsCreateOpen(true); }}
         onBlockTime={handleTimeSlotBlock}
         onDeleteBlock={(id) => setDeleteBlockModal({ isOpen: true, blockId: id })}

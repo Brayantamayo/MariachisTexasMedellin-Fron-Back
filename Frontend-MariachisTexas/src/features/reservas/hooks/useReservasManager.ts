@@ -99,35 +99,54 @@ export const useReservasManager = () => {
   }, [user]);
 
   // ─── VER DETALLE COMPLETO ─────────────────────────────────────────────────────
-  // Cuando se abre desde el calendario, el objeto viene del mapeo público (sin datos privados)
-  // Buscar primero en reservations (ya cargado) o hacer fetch por id
-  const handleViewReserva = async (res: Reservation) => {
-    const full = reservations.find(r => r.id === res.id);
-    if (full) {
-      setSelectedReserva(full);
-      setIsDetailOpen(true);
-      return;
+const handleViewReserva = async (res: Reservation) => {
+  // ✅ Si es cliente, verificar que la reserva sea suya antes de hacer fetch
+  if (isClient) {
+    const full = reservations.find(r => r.id === res.id)
+    if (!full) {
+      // La reserva no está en sus reservas — no es suya, bloquear
+      showNotification('No tienes permiso para ver esta reserva.', 'error')
+      return
     }
-    try {
-      const fetched = await reservaService.getReservationById(res.id);
-      setSelectedReserva(fetched);
-      setIsDetailOpen(true);
-    } catch {
-      showNotification('No se pudo cargar el detalle de la reserva.', 'error');
-    }
-  };
+    setSelectedReserva(full)
+    setIsDetailOpen(true)
+    return
+  }
+
+  // Admin/Empleado — puede ver cualquier reserva
+  const full = reservations.find(r => r.id === res.id)
+  if (full) {
+    setSelectedReserva(full)
+    setIsDetailOpen(true)
+    return
+  }
+  try {
+    const fetched = await reservaService.getReservationById(res.id)
+    setSelectedReserva(fetched)
+    setIsDetailOpen(true)
+  } catch {
+    showNotification('No se pudo cargar el detalle de la reserva.', 'error')
+  }
+}
 
   // ─── HANDLERS RESERVAS ───────────────────────────────────────────────────────
-  const handleCreate = async (data: any) => {
-    try {
-      const newRes = await reservaService.createReservation(data);
-      setReservations(prev => [newRes, ...prev]);
-      showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000);
-      setIsCreateOpen(false);
-    } catch (error: any) {
-      showNotification(error?.response?.data?.message || error.message || 'Error al crear reserva.', 'error');
-    }
-  };
+  // ✅ Después
+const handleCreate = async (data: any) => {
+  try {
+    const newRes = await reservaService.createReservation(data)
+
+    // ✅ Actualizar lista completa
+    setReservations(prev => [newRes, ...prev])
+
+    // ✅ Actualizar calendario — agregar versión pública de la reserva
+    setCalendarReservations(prev => [newRes, ...prev])
+
+    showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000)
+    setIsCreateOpen(false)
+  } catch (error: any) {
+    showNotification(error?.response?.data?.message || error.message || 'Error al crear reserva.', 'error')
+  }
+}
 
   const handleUpdate = async (data: any) => {
     if (!editingReserva) return;

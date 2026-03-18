@@ -5,10 +5,10 @@ import { requireRole } from '../../middlewares/Role.middleware'
 
 const router = Router()
 
-// ─── PÚBLICAS (sin token) — landing pública 
+// ─── PÚBLICA ──────────────────────────────────────────────────────────────────
 router.get('/public', repertoireController.getPublic)
 
-/////Protegidas
+// ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 
 router.get('/',    repertoireController.getAll)

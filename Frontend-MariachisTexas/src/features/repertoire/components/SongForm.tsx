@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   Music, User, List, Tag, AlignLeft,
-  Image as ImageIcon, UploadCloud, PlayCircle,
-  Trash2, Loader2, AlertCircle, CheckCircle2
+  Image as ImageIcon, UploadCloud, PlayCircle, StopCircle,
+  Trash2, Loader2, AlertCircle, CheckCircle2, Search, Sparkles, ExternalLink
 } from 'lucide-react';
 import { uploadImage, uploadAudio } from '@/shared/services/uploadService';
+import { repertoireService, SpotifySong } from '@/src/features/repertoire/services/repertoireService';
 
 export interface SongFormErrors {
   title?:    string;
@@ -15,11 +16,11 @@ export interface SongFormErrors {
 }
 
 interface Props {
-  formData:     any;
-  onChange:     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  onFieldChange:(field: string, value: any) => void;
-  onSubmit:     (e: React.FormEvent) => void;
-  errors?:      SongFormErrors;
+  formData:      any;
+  onChange:      (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onFieldChange: (field: string, value: any) => void;
+  onSubmit:      (e: React.FormEvent) => void;
+  errors?:       SongFormErrors;
 }
 
 export const SongForm: React.FC<Props> = ({
@@ -27,6 +28,8 @@ export const SongForm: React.FC<Props> = ({
 }) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const audioRef      = useRef<HTMLAudioElement | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -34,49 +37,113 @@ export const SongForm: React.FC<Props> = ({
   const [audioProgress,  setAudioProgress]  = useState(0);
   const [uploadError,    setUploadError]     = useState<string | null>(null);
 
-  // ─── Subir imagen ────────────────────────────────────────────────────────────
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadError(null);
-    setUploadingImage(true);
-    try {
-      const url = await uploadImage(file, 'repertorio/portadas', setImageProgress);
-      onFieldChange('coverImage', url);
-    } catch (err: any) {
-      setUploadError(err.message || 'Error al subir la imagen.');
-    } finally {
-      setUploadingImage(false);
-      setImageProgress(0);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-    }
-  };
+  // ─── Spotify ──────────────────────────────────────────────────────────────
+  const [spotifyQuery,   setSpotifyQuery]   = useState('');
+  const [spotifyResults, setSpotifyResults] = useState<SpotifySong[]>([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [spotifyError,   setSpotifyError]   = useState<string | null>(null);
+  const [playingId,      setPlayingId]      = useState<string | null>(null);
+  const [showResults,    setShowResults]    = useState(false);
 
-  // ─── Subir audio ─────────────────────────────────────────────────────────────
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadError(null);
-    setUploadingAudio(true);
-    try {
-      const url = await uploadAudio(file, setAudioProgress);
-      onFieldChange('audioUrl', url);
-    } catch (err: any) {
-      setUploadError(err.message || 'Error al subir el audio.');
-    } finally {
-      setUploadingAudio(false);
-      setAudioProgress(0);
-      if (audioInputRef.current) audioInputRef.current.value = '';
+  // ─── Buscar en Spotify con debounce 500ms ─────────────────────────────────
+  useEffect(() => {
+    if (spotifyQuery.trim().length < 2) {
+      setSpotifyResults([])
+      setShowResults(false)
+      return
     }
-  };
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(async () => {
+      setSpotifyLoading(true)
+      setSpotifyError(null)
+      try {
+        const results = await repertoireService.searchSpotify(spotifyQuery, 8)
+        setSpotifyResults(results)
+        setShowResults(true)
+      } catch {
+        setSpotifyError('Error al buscar en Spotify')
+      } finally {
+        setSpotifyLoading(false)
+      }
+    }, 500)
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
+  }, [spotifyQuery])
+
+  // ─── Reproducir preview 30s ───────────────────────────────────────────────
+  const togglePreview = useCallback((song: SpotifySong) => {
+    if (!song.previewUrl) return
+    if (playingId === song.spotifyId) {
+      audioRef.current?.pause()
+      setPlayingId(null)
+      return
+    }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+    }
+    const audio = new Audio(song.previewUrl)
+    audioRef.current  = audio
+    audio.volume      = 0.7
+    audio.play().catch(() => {})
+    audio.onended     = () => setPlayingId(null)
+    setPlayingId(song.spotifyId)
+  }, [playingId])
+
+  // Detener audio al desmontar
+  useEffect(() => () => { audioRef.current?.pause() }, [])
+
+  // ─── Seleccionar canción → llenar todos los campos ────────────────────────
+  const handleSelectSpotify = (song: SpotifySong) => {
+    if (playingId === song.spotifyId) {
+      audioRef.current?.pause()
+      setPlayingId(null)
+    }
+    onFieldChange('title',      song.title)
+    onFieldChange('artist',     song.artist)
+    onFieldChange('duration',   song.duration)
+    onFieldChange('coverImage', song.coverImage  ?? '')
+    onFieldChange('audioUrl',   song.previewUrl  ?? '')
+    setSpotifyQuery('')
+    setSpotifyResults([])
+    setShowResults(false)
+  }
+
+  // ─── Subir imagen ─────────────────────────────────────────────────────────
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError(null); setUploadingImage(true)
+    try {
+      onFieldChange('coverImage', await uploadImage(file, 'repertorio/portadas', setImageProgress))
+    } catch (err: any) {
+      setUploadError(err.message || 'Error al subir la imagen.')
+    } finally {
+      setUploadingImage(false); setImageProgress(0)
+      if (imageInputRef.current) imageInputRef.current.value = ''
+    }
+  }
+
+  // ─── Subir audio ──────────────────────────────────────────────────────────
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError(null); setUploadingAudio(true)
+    try {
+      onFieldChange('audioUrl', await uploadAudio(file, setAudioProgress))
+    } catch (err: any) {
+      setUploadError(err.message || 'Error al subir el audio.')
+    } finally {
+      setUploadingAudio(false); setAudioProgress(0)
+      if (audioInputRef.current) audioInputRef.current.value = ''
+    }
+  }
 
   return (
     <form id="song-form" onSubmit={onSubmit} className="flex flex-col md:flex-row h-full gap-6">
 
-      
+      {/* ── COLUMNA IZQUIERDA: Portada ──────────────────────────────────── */}
       <div className="w-full md:w-[35%] flex flex-col gap-3">
         <label className="label-form">PORTADA DEL ÁLBUM</label>
-
         <input type="file" ref={imageInputRef} onChange={handleImageUpload}
           accept="image/jpeg,image/png,image/webp" className="hidden" />
 
@@ -90,8 +157,7 @@ export const SongForm: React.FC<Props> = ({
               <Loader2 size={36} className="animate-spin text-red-400" />
               <span className="text-xs font-bold text-slate-500">{imageProgress}%</span>
               <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-red-400 rounded-full transition-all duration-300"
-                  style={{ width: `${imageProgress}%` }} />
+                <div className="h-full bg-red-400 rounded-full transition-all duration-300" style={{ width: `${imageProgress}%` }} />
               </div>
             </div>
           ) : formData.coverImage ? (
@@ -118,7 +184,6 @@ export const SongForm: React.FC<Props> = ({
             <Trash2 size={12} /> Quitar imagen
           </button>
         )}
-
         {uploadError && (
           <div className="flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 border border-red-100 rounded-lg px-3 py-2">
             <AlertCircle size={14} className="flex-shrink-0" /> {uploadError}
@@ -126,8 +191,98 @@ export const SongForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* ── COLUMNA DERECHA: Datos ──────────────────────────────────────────── */}
+      {/* ── COLUMNA DERECHA: Datos ──────────────────────────────────────── */}
       <div className="w-full md:w-[65%] space-y-5">
+
+        {/* ✅ Buscador Spotify */}
+        <div>
+          <label className="label-form flex items-center gap-2">
+            <Sparkles size={12} className="text-green-500" />
+            BUSCAR EN SPOTIFY — AUTOCOMPLETA LOS CAMPOS
+          </label>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            {spotifyLoading && (
+              <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 animate-spin" size={16} />
+            )}
+            <input
+              type="text"
+              value={spotifyQuery}
+              onChange={e => setSpotifyQuery(e.target.value)}
+              placeholder="Escribe el nombre de la canción o artista..."
+              className="input-form border-green-200 focus:border-green-400"
+            />
+
+            {/* Dropdown resultados */}
+            {showResults && spotifyResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {spotifyResults.length} resultados · Click para seleccionar · ▶ para escuchar
+                  </span>
+                  <button type="button" onClick={() => setShowResults(false)}
+                    className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+                </div>
+
+                {spotifyResults.map(song => (
+                  <div key={song.spotifyId}
+                    className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
+                    onClick={() => handleSelectSpotify(song)}
+                  >
+                    {/* Portada */}
+                    {song.coverImage
+                      ? <img src={song.coverImage} alt={song.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                      : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Music size={16} className="text-slate-400" /></div>
+                    }
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{song.title}</p>
+                      <p className="text-xs text-slate-500 truncate">{song.artist}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{song.album} · {song.duration}</p>
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      {song.previewUrl ? (
+                        <button type="button" onClick={() => togglePreview(song)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                            playingId === song.spotifyId
+                              ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                              : 'bg-slate-100 text-slate-500 hover:bg-green-100 hover:text-green-600'
+                          }`}
+                          title={playingId === song.spotifyId ? 'Pausar' : 'Preview 30s'}>
+                          {playingId === song.spotifyId ? <StopCircle size={16} /> : <PlayCircle size={16} />}
+                        </button>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center" title="Sin preview">
+                          <Music size={14} className="text-slate-300" />
+                        </div>
+                      )}
+
+                      <a href={song.externalUrl} target="_blank" rel="noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+                        title="Abrir en Spotify">
+                        <ExternalLink size={13} />
+                      </a>
+
+                      <button type="button" onClick={() => handleSelectSpotify(song)}
+                        className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
+                        Usar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {spotifyError && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <AlertCircle size={12} /> {spotifyError}
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Título */}
         <div>
@@ -153,7 +308,6 @@ export const SongForm: React.FC<Props> = ({
             </div>
             {errors.artist && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.artist}</p>}
           </div>
-
           <div>
             <label className="label-form">GÉNERO MUSICAL <span className="text-red-500">*</span></label>
             <div className="relative group">
@@ -194,8 +348,6 @@ export const SongForm: React.FC<Props> = ({
 
         {/* Detalles técnicos */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-
-          {/* Duración */}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">
               Duración <span className="text-red-400">*</span>
@@ -207,7 +359,6 @@ export const SongForm: React.FC<Props> = ({
             {errors.duration && <p className="text-red-500 text-[10px] mt-0.5">{errors.duration}</p>}
           </div>
 
-          {/* Dificultad */}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">Dificultad</label>
             <select name="difficulty" value={formData.difficulty} onChange={onChange}
@@ -218,12 +369,10 @@ export const SongForm: React.FC<Props> = ({
             </select>
           </div>
 
-          {/* Audio */}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">Audio Demo</label>
             <input type="file" ref={audioInputRef} onChange={handleAudioUpload}
               accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg" className="hidden" />
-
             {uploadingAudio ? (
               <div className="flex items-center gap-2 border-b border-red-200 py-1">
                 <Loader2 size={12} className="animate-spin text-red-400" />
@@ -265,5 +414,5 @@ export const SongForm: React.FC<Props> = ({
         .input-form:focus { border-color:#f87171; box-shadow:0 0 0 4px rgba(254,202,202,.3); }
       `}</style>
     </form>
-  );
-};
+  )
+}
