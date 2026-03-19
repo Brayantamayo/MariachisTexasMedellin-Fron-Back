@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Plus, Clock, User, ArrowRight, MapPin, ShieldAlert, Lock, Info, AlertTriangle, Music, FileText } from 'lucide-react';
+import { X, Plus, User, ArrowRight, ShieldAlert, Lock, Info, AlertTriangle, Music, FileText } from 'lucide-react';
 import { Reservation, CalendarBlock, UserRole, Rehearsal, Quotation } from '@/types';
 import { useAuth } from '@/shared/contexts/AuthContext';
 
@@ -18,10 +18,9 @@ interface Props {
   onDeleteBlock: (blockId: string) => void;
 }
 
-// Limpiar __CONTACTO__ de las notas
-const limpiarNotas = (notas: string | null | undefined): string => {
-  if (!notas) return ''
-  return notas.split('\n').filter(l => !l.startsWith('__CONTACTO__:')).join('\n').trim()
+const timeToMinutes = (t: string): number => {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
 }
 
 export const DateDetailsModal: React.FC<Props> = ({
@@ -33,8 +32,8 @@ export const DateDetailsModal: React.FC<Props> = ({
   const isAdmin  = user?.role === UserRole.ADMIN;
   const isClient = user?.role === UserRole.CLIENTE;
 
-  const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLongPressRef  = useRef(false);
+  const timerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = useRef(false);
 
   if (!isOpen || !date) return null;
 
@@ -46,43 +45,70 @@ export const DateDetailsModal: React.FC<Props> = ({
   hours.push('00:00');
 
   const getSlotStatus = (time: string) => {
-    const [h, m] = time.split(':').map(Number);
-    let prevH = h - 1;
-    if (prevH < 0) prevH = 23;
-    const prevTime = `${prevH.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+    const hMin    = timeToMinutes(time)
+    const prevMin = hMin - 60
+    const prevTime = prevMin >= 0
+      ? `${Math.floor(prevMin / 60).toString().padStart(2,'0')}:${String(prevMin % 60).padStart(2,'0')}`
+      : `${(23).toString().padStart(2,'0')}:00`
 
-    // 1. Reserva exacta — comparar con startTime (viene del backend)
-    const reservation = reservations.find(r => r.startTime === time || r.eventTime === time);
-    if (reservation) return { status: 'reserved', data: reservation };
+    // 1. Reserva — hora exacta de inicio
+    const reservation = reservations.find(r => r.startTime === time || r.eventTime === time)
+    if (reservation) return { status: 'reserved', data: reservation }
 
-    // 2. Buffer por reserva anterior
-    const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime);
-    if (prevReservation) return { status: 'buffer', data: prevReservation };
+    // 2. Horas intermedias de una reserva (entre startTime y endTime)
+    const reservaEnRango = reservations.find(r => {
+      const start = timeToMinutes(r.startTime || r.eventTime || '00:00')
+      const end   = timeToMinutes(r.endTime   || '00:00')
+      return hMin > start && hMin < end
+    })
+    if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Cotización EN_ESPERA — rango completo (solo admin/empleado las carga)
-    const quote = quotations.find(q => time >= q.startTime && time < q.endTime);
-    if (quote) return { status: 'quote', data: quote };
+    // 3. Buffer DESPUÉS de una reserva (hora siguiente al endTime)
+    const bufferPostReserva = reservations.find(r => {
+      const end = timeToMinutes(r.endTime || '00:00')
+      return hMin === end
+    })
+    if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
-    // 4. Ensayo (solo admin/empleado los carga)
-    const rehearsal = rehearsals.find(r => r.time === time);
-    if (rehearsal) return { status: 'rehearsal', data: rehearsal };
+    // 4. Buffer ANTES de una reserva (hora previa al startTime)
+    const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime)
+    if (prevReservation) return { status: 'buffer', data: prevReservation }
 
-    // 5. Buffer por ensayo anterior
-    const prevRehearsal = rehearsals.find(r => r.time === prevTime);
-    if (prevRehearsal) return { status: 'buffer_rehearsal', data: prevRehearsal };
+    // 5. Cotización EN_ESPERA — rango completo
+    const quote = quotations.find(q => {
+      const start = timeToMinutes(q.startTime)
+      const end   = timeToMinutes(q.endTime)
+      return hMin >= start && hMin < end
+    })
+    if (quote) return { status: 'quote', data: quote }
 
-    // 6. Bloqueo manual total
-    const fullBlock = blocks.find(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE');
-    if (fullBlock) return { status: 'blocked_full', data: fullBlock };
+    // ✅ 6. Buffer DESPUÉS de cotización (1 hora después del endTime)
+    const bufferPostCotizacion = quotations.find(q => {
+      const end = timeToMinutes(q.endTime)
+      return hMin === end
+    })
+    if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
 
-    // 7. Bloqueo manual por horas
+    // 7. Ensayo
+    const rehearsal = rehearsals.find(r => (r.time ?? r.hora) === time)
+    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
+
+    // 8. Buffer ensayo (1 hora después)
+    const prevRehearsal = rehearsals.find(r => (r.time ?? r.hora) === prevTime)
+    if (prevRehearsal) return { status: 'buffer_rehearsal', data: prevRehearsal }
+
+    // 9. Bloqueo total
+    const fullBlock = blocks.find(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE')
+    if (fullBlock) return { status: 'blocked_full', data: fullBlock }
+
+    // 10. Bloqueo por horas
     const timeBlock = blocks.find(b =>
       b.type === 'TIME_RANGE' && time >= (b.startTime||'') && time < (b.endTime||'')
-    );
-    if (timeBlock) return { status: 'blocked_partial', data: timeBlock };
+    )
+    if (timeBlock) return { status: 'blocked_partial', data: timeBlock }
 
-    return { status: 'free', data: null };
-  };
+    return { status: 'free', data: null }
+  }
 
   const handleMouseDown = (time: string, slotData: any) => {
     isLongPressRef.current = false;
@@ -93,30 +119,24 @@ export const DateDetailsModal: React.FC<Props> = ({
     }, 700);
   };
 
-const handleMouseUp = (time: string, slotData: any) => {
-  if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-  if (isLongPressRef.current) return;
-
-  if (slotData.status === 'free') {
-    onCreateNew(time);
-  } else if (slotData.status === 'reserved') {
-    const res = slotData.data as Reservation;
-
-    // ✅ Cliente solo puede ver sus propias reservas — comparar por email
-    // clientId en calendario es ID de tabla cliente, no usuario — usar email
-    if (isClient) {
-      const isMyReservation = user?.email === res.clientEmail
-      if (!isMyReservation) return // bloquear silenciosamente
+  const handleMouseUp = (time: string, slotData: any) => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (isLongPressRef.current) return;
+    if (slotData.status === 'free') {
+      onCreateNew(time);
+    } else if (slotData.status === 'reserved' || slotData.status === 'reserved_range') {
+      const res = slotData.data as Reservation;
+      if (isClient) {
+        const isMyReservation = user?.email === res.clientEmail
+        if (!isMyReservation) return
+      }
+      onViewReservation(slotData.data);
     }
-
-    onViewReservation(slotData.data);
-  }
-};
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
 
         {/* Header */}
@@ -140,32 +160,37 @@ const handleMouseUp = (time: string, slotData: any) => {
           <div className="space-y-2">
             {hours.map(time => {
               const { status, data } = getSlotStatus(time);
-              let containerClass = "border-slate-100 hover:border-primary-200 hover:shadow-sm bg-white cursor-pointer";
+              let containerClass = '';
               let content: React.ReactNode = null;
 
-              if (status === 'reserved') {
+              if (status === 'reserved' || status === 'reserved_range') {
                 const res = data as Reservation;
-                
                 const isMyReservation = !isClient || user?.email === res.clientEmail;
-
                 if (isMyReservation) {
-                  containerClass = "border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer";
-                  content = (
-                    <div className="flex items-center justify-between w-full">
-                      <div>
-                        <p className="text-xs font-bold text-emerald-800">{res.eventType}</p>
-                        <p className="text-[10px] text-emerald-600 flex items-center gap-1"><User size={10}/> {res.clientName}</p>
+                  if (status === 'reserved') {
+                    containerClass = "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
+                    content = (
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <p className="text-xs font-bold text-emerald-800">{res.eventType}</p>
+                          <p className="text-[10px] text-emerald-600 flex items-center gap-1"><User size={10}/> {res.clientName}</p>
+                        </div>
+                        <ArrowRight size={14} className="text-emerald-400" />
                       </div>
-                      <ArrowRight size={14} className="text-emerald-400" />
-                    </div>
-                  );
+                    );
+                  } else {
+                    containerClass = "border-emerald-100 bg-emerald-50/40 cursor-pointer";
+                    content = (
+                      <div className="flex items-center gap-2 w-full text-emerald-600 opacity-70">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">En curso — {res.eventType}</span>
+                      </div>
+                    );
+                  }
                 } else {
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                        <Lock size={10} /> No disponible
-                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Lock size={10}/> No disponible</span>
                     </div>
                   );
                 }
@@ -173,7 +198,7 @@ const handleMouseUp = (time: string, slotData: any) => {
               } else if (status === 'quote') {
                 const q = data as Quotation;
                 const isMyQuote = !isClient || user?.id === q.clientId || user?.email === q.clientEmail;
-                if (isMyQuote) {
+                if (isMyQuote && !isClient) {
                   containerClass = "border-amber-100 bg-amber-50 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-between w-full text-amber-800">
@@ -185,6 +210,7 @@ const handleMouseUp = (time: string, slotData: any) => {
                     </div>
                   );
                 } else {
+                  // Cliente ve "No disponible"
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
@@ -242,7 +268,6 @@ const handleMouseUp = (time: string, slotData: any) => {
                 );
 
               } else {
-                // Libre
                 containerClass = "border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 hover:shadow-sm bg-white cursor-pointer";
                 content = (
                   <div className="flex items-center justify-between w-full opacity-0 group-hover:opacity-100 transition-opacity">

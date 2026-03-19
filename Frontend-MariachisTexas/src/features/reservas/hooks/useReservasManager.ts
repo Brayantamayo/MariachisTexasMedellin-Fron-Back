@@ -31,7 +31,6 @@ export const useReservasManager = () => {
   const longPressTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressAction = useRef(false);
 
-  // ─── Modales ──────────────────────────────────────────────────────────────────
   const [isCreateOpen,      setIsCreateOpen]      = useState(false);
   const [isEditOpen,        setIsEditOpen]        = useState(false);
   const [isDetailOpen,      setIsDetailOpen]      = useState(false);
@@ -67,6 +66,7 @@ export const useReservasManager = () => {
       setBlocks(blocksData);
 
       if (!isClient) {
+        // Admin / Empleado — datos completos
         const [resData, rehData, quoteData] = await Promise.all([
           reservaService.getReservations(),
           rehearsalService.getRehearsals(),
@@ -76,15 +76,61 @@ export const useReservasManager = () => {
         setCalendarReservations(resData);
         setRehearsals(rehData);
         setQuotations(quoteData);
+
       } else {
-        const [misReservas, todasReservas] = await Promise.all([
+        // Cliente — sus reservas + calendario público + ensayos + cotizaciones como bloqueados
+        const [misReservas, todasReservas, ensayosDisp, cotDisp] = await Promise.all([
           reservaService.getReservations(),
-          reservaService.getReservationsForCalendar()
+          reservaService.getReservationsForCalendar(),
+          rehearsalService.getRehearsalsPublic(),
+          cotizacionService.getDisponibilidad(),
         ]);
+
         setReservations(misReservas);
         setCalendarReservations(todasReservas);
-        setRehearsals([]);
-        setQuotations([]);
+
+        // ✅ Ensayos: mapear { fecha, hora } → { date, time } (backend devuelve fecha/hora)
+        setRehearsals(
+          (ensayosDisp as any[]).map((e, i) => ({
+            id:            `pub-ens-${i}`,
+            title:         '',
+            location:      '',
+            address:       '',
+            date:          e.fecha ?? e.date ?? '',
+            time:          e.hora  ?? e.time  ?? '',
+            notes:         '',
+            repertoireIds: [],
+            status:        'Programado' as const,
+            createdAt:     '',
+            updatedAt:     '',
+          }))
+        );
+
+        // ✅ Cotizaciones EN_ESPERA: mapear al tipo Quotation que espera el calendario
+        setQuotations(
+          cotDisp.map((c, i) => ({
+            id:           `pub-cot-${i}`,
+            clientId:     '',
+            clientName:   '',
+            clientEmail:  '',
+            eventDate:    c.date,
+            startTime:    c.startTime,
+            endTime:      c.endTime,
+            status:       'EN_ESPERA' as const,
+            eventType:    '',
+            // campos opcionales del tipo Quotation
+            clientPhone:   '',
+            secondaryPhone:'',
+            homenajeado:   '',
+            location:      '',
+            notes:         '',
+            totalAmount:   0,
+            selectedServices: [],
+            repertoireIds: [],
+            createdAt:     '',
+            updatedAt:     '',
+          }))
+        );
       }
     } catch (error: any) {
       console.error(error);
@@ -98,61 +144,44 @@ export const useReservasManager = () => {
     if (user) fetchData();
   }, [user]);
 
-  // ─── VER DETALLE COMPLETO ─────────────────────────────────────────────────────
-const handleViewReserva = async (res: Reservation) => {
-  // ✅ Si es cliente, verificar que la reserva sea suya antes de hacer fetch
-  if (isClient) {
-    const full = reservations.find(r => r.id === res.id)
-    if (!full) {
-      // La reserva no está en sus reservas — no es suya, bloquear
-      showNotification('No tienes permiso para ver esta reserva.', 'error')
-      return
+  const handleViewReserva = async (res: Reservation) => {
+    if (isClient) {
+      const full = reservations.find(r => r.id === res.id);
+      if (!full) { showNotification('No tienes permiso para ver esta reserva.', 'error'); return; }
+      setSelectedReserva(full);
+      setIsDetailOpen(true);
+      return;
     }
-    setSelectedReserva(full)
-    setIsDetailOpen(true)
-    return
-  }
+    const full = reservations.find(r => r.id === res.id);
+    if (full) { setSelectedReserva(full); setIsDetailOpen(true); return; }
+    try {
+      const fetched = await reservaService.getReservationById(res.id);
+      setSelectedReserva(fetched);
+      setIsDetailOpen(true);
+    } catch {
+      showNotification('No se pudo cargar el detalle de la reserva.', 'error');
+    }
+  };
 
-  // Admin/Empleado — puede ver cualquier reserva
-  const full = reservations.find(r => r.id === res.id)
-  if (full) {
-    setSelectedReserva(full)
-    setIsDetailOpen(true)
-    return
-  }
-  try {
-    const fetched = await reservaService.getReservationById(res.id)
-    setSelectedReserva(fetched)
-    setIsDetailOpen(true)
-  } catch {
-    showNotification('No se pudo cargar el detalle de la reserva.', 'error')
-  }
-}
-
-  // ─── HANDLERS RESERVAS ───────────────────────────────────────────────────────
-  // ✅ Después
-const handleCreate = async (data: any) => {
-  try {
-    const newRes = await reservaService.createReservation(data)
-
-    // ✅ Actualizar lista completa
-    setReservations(prev => [newRes, ...prev])
-
-    // ✅ Actualizar calendario — agregar versión pública de la reserva
-    setCalendarReservations(prev => [newRes, ...prev])
-
-    showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000)
-    setIsCreateOpen(false)
-  } catch (error: any) {
-    showNotification(error?.response?.data?.message || error.message || 'Error al crear reserva.', 'error')
-  }
-}
+  const handleCreate = async (data: any) => {
+    try {
+      const newRes = await reservaService.createReservation(data);
+      setReservations(prev => [newRes, ...prev]);
+      setCalendarReservations(prev => [newRes, ...prev]);
+      showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000);
+      setIsCreateOpen(false);
+    } catch (error: any) {
+      showNotification(error?.response?.data?.message || error.message || 'Error al crear reserva.', 'error');
+    }
+  };
 
   const handleUpdate = async (data: any) => {
     if (!editingReserva) return;
     try {
       const updated = await reservaService.updateReservation(editingReserva.id, data);
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      if (selectedReserva?.id === updated.id) setSelectedReserva(updated);
       showNotification('Reserva actualizada.');
       setIsEditOpen(false);
     } catch (error: any) {
@@ -160,7 +189,6 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── ELIMINAR RESERVA ─────────────────────────────────────────────────────────
   const handleDeleteReserva = async () => {
     if (!deleteReservaModal.id) return;
     try {
@@ -175,7 +203,6 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── HANDLERS BLOQUEOS ───────────────────────────────────────────────────────
   const handleSaveBlock = async (data: any) => {
     try {
       const newBlock = await blockService.createBlock(data);
@@ -207,8 +234,7 @@ const handleCreate = async (data: any) => {
         b.isActive && b.type === 'TIME_RANGE' && b.startDate === deleteTimeBlocksModal.date
       );
       await Promise.all(blocksToDelete.map(b => blockService.deleteBlock(b.id)));
-      const ids = blocksToDelete.map(b => b.id);
-      setBlocks(prev => prev.filter(b => !ids.includes(b.id)));
+      setBlocks(prev => prev.filter(b => !blocksToDelete.map(x => x.id).includes(b.id)));
       showNotification('Se han liberado las horas bloqueadas de este día.');
     } catch (error) {
       showNotification('Error al eliminar bloqueos de hora.', 'error');
@@ -217,7 +243,6 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── HANDLER ABONO ───────────────────────────────────────────────────────────
   const handleSaveAbono = async (data: any) => {
     try {
       await abonoService.createAbono(data);
@@ -229,12 +254,12 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── FINALIZAR ────────────────────────────────────────────────────────────────
   const processFinalization = async () => {
     if (!finalizeModal.id) return;
     try {
       const updated = await reservaService.finalizeReservation(finalizeModal.id);
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
       if (selectedReserva?.id === updated.id) setSelectedReserva(updated);
       showNotification('Evento finalizado exitosamente.');
     } catch (error) {
@@ -244,12 +269,12 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── CANCELAR ────────────────────────────────────────────────────────────────
   const handleCancelReserva = async (id: string) => {
     if (!window.confirm('¿Estás seguro de anular esta reserva? Esta acción es irreversible.')) return;
     try {
       const updated = await reservaService.cancelReservation(id, 'Cancelación manual por usuario');
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
       if (selectedReserva?.id === id) setSelectedReserva(updated);
       showNotification('Reserva anulada.');
     } catch (error: any) {
@@ -257,7 +282,6 @@ const handleCreate = async (data: any) => {
     }
   };
 
-  // ─── BLOQUEO DE HORA ─────────────────────────────────────────────────────────
   const handleTimeSlotBlock = (date: string, time: string) => {
     if (!canManage) return;
     const [h, m] = time.split(':').map(Number);
@@ -294,6 +318,6 @@ const handleCreate = async (data: any) => {
     fetchData, handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization, handleCancelReserva, handleTimeSlotBlock,
-    handleViewReserva, // ✅ nuevo
+    handleViewReserva,
   };
 };

@@ -13,109 +13,68 @@ import { AbonoCreateModal }   from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal }     from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal }  from '@/shared/components/ConfirmationModal';
 
-// ─── Banner de cuenta regresiva para reservas pendientes ──────────────────────
 const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
   const [now, setNow] = useState(new Date())
-
-  // Actualizar cada segundo para el contador
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(interval)
   }, [])
-
-  // Solo mostrar reservas PENDIENTES con fecha futura
   const pendingReservations = reservations.filter(r =>
     r.status === 'PENDIENTE' && new Date(r.eventDate) >= new Date(now.toDateString())
   )
-
   if (!pendingReservations.length) return null
-
   const formatCountdown = (eventDate: string) => {
     const target  = new Date(eventDate + 'T00:00:00')
     const diff    = target.getTime() - now.getTime()
     if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, urgent: true }
-
     const days    = Math.floor(diff / (1000 * 60 * 60 * 24))
     const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
     return { days, hours, minutes, seconds, urgent: days <= 3 }
   }
-
   return (
     <div className="space-y-3 mb-6">
       {pendingReservations.map(res => {
         const { days, hours, minutes, seconds, urgent } = formatCountdown(res.eventDate)
         const anticipo = Math.ceil(Number(res.totalAmount) / 2)
-
         return (
-          <div key={res.id}
-            className={`relative overflow-hidden rounded-2xl border p-5 ${
-              urgent
-                ? 'bg-red-50 border-red-200'
-                : 'bg-amber-50 border-amber-200'
-            }`}
-          >
-            {/* Fondo decorativo */}
+          <div key={res.id} className={`relative overflow-hidden rounded-2xl border p-5 ${urgent ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
             <div className={`absolute right-0 top-0 bottom-0 w-32 opacity-5 flex items-center justify-center ${urgent ? 'text-red-900' : 'text-amber-900'}`}>
               <Clock size={120} />
             </div>
-
             <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
-
-              {/* Icono + texto */}
               <div className="flex items-start gap-3 flex-1">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${urgent ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
                   <Clock size={20} />
                 </div>
                 <div>
-                  <p className={`font-bold text-sm mb-0.5 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>
-                    ⚠️ Reserva #{res.id} pendiente de pago
-                  </p>
+                  <p className={`font-bold text-sm mb-0.5 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>⚠️ Reserva #{res.id} pendiente de pago</p>
                   <p className={`text-xs leading-relaxed ${urgent ? 'text-red-700' : 'text-amber-700'}`}>
-                    Para confirmar tu evento del <strong>{res.eventDate}</strong> debes pagar el anticipo del 50%.
-                    Comunícate con nosotros para realizar el pago.
+                    Para confirmar tu evento del <strong>{res.eventDate}</strong> debes pagar el anticipo del 50%. Comunícate con nosotros para realizar el pago.
                   </p>
-                  {/* Anticipo */}
                   <p className={`text-sm font-bold mt-1 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>
                     Anticipo requerido: <span className="text-lg">${anticipo.toLocaleString('es-CO')} COP</span>
                   </p>
                 </div>
               </div>
-
-              {/* Contador */}
               <div className="flex flex-col items-center gap-2 shrink-0">
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${urgent ? 'text-red-500' : 'text-amber-500'}`}>
                   {urgent ? '⏰ ¡Tiempo límite!' : 'Tiempo restante'}
                 </p>
                 <div className="flex items-center gap-1">
-                  {[
-                    { value: days,    label: 'días' },
-                    { value: hours,   label: 'hrs' },
-                    { value: minutes, label: 'min' },
-                    { value: seconds, label: 'seg' },
-                  ].map(({ value, label }, i) => (
+                  {[{ value: days, label: 'días' }, { value: hours, label: 'hrs' }, { value: minutes, label: 'min' }, { value: seconds, label: 'seg' }].map(({ value, label }, i) => (
                     <React.Fragment key={label}>
                       {i > 0 && <span className={`text-lg font-bold ${urgent ? 'text-red-400' : 'text-amber-400'}`}>:</span>}
                       <div className={`flex flex-col items-center px-2 py-1 rounded-lg min-w-[42px] ${urgent ? 'bg-red-100' : 'bg-amber-100'}`}>
-                        <span className={`text-xl font-mono font-black ${urgent ? 'text-red-700' : 'text-amber-700'}`}>
-                          {String(value).padStart(2, '0')}
-                        </span>
+                        <span className={`text-xl font-mono font-black ${urgent ? 'text-red-700' : 'text-amber-700'}`}>{String(value).padStart(2, '0')}</span>
                         <span className={`text-[9px] uppercase font-bold ${urgent ? 'text-red-400' : 'text-amber-400'}`}>{label}</span>
                       </div>
                     </React.Fragment>
                   ))}
                 </div>
-
-                {/* Teléfono */}
-                <a href="tel:3122373486"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                    urgent
-                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
-                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30'
-                  }`}>
-                  <Phone size={14} />
-                  312 237 3486
+                <a href="tel:3122373486" className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${urgent ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30' : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30'}`}>
+                  <Phone size={14} /> 312 237 3486
                 </a>
               </div>
             </div>
@@ -126,71 +85,43 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+
+
+
 export const ReservasPage: React.FC = () => {
   const {
-    view, setView,
-    currentDate, setCurrentDate,
-    reservations,
-    calendarReservations,
-    blocks, setBlocks,
-    rehearsals,
-    quotations,
-    loading,
-    searchTerm, setSearchTerm,
-    isDragging, setIsDragging,
-    dragStart, setDragStart,
-    dragEnd, setDragEnd,
-    longPressTimer,
-    isLongPressAction,
-    isCreateOpen, setIsCreateOpen,
-    isEditOpen, setIsEditOpen,
-    isDetailOpen, setIsDetailOpen,
-    isAbonoModalOpen, setIsAbonoModalOpen,
-    isDateDetailsOpen, setIsDateDetailsOpen,
-    isBlockModalOpen, setIsBlockModalOpen,
-    editingReserva, setEditingReserva,
-    selectedReserva, setSelectedReserva,
-    selectedDateForForm, setSelectedDateForForm,
-    selectedTimeForForm, setSelectedTimeForForm,
+    view, setView, currentDate, setCurrentDate,
+    reservations, calendarReservations, blocks, setBlocks,
+    rehearsals, quotations, loading, searchTerm, setSearchTerm,
+    isDragging, setIsDragging, dragStart, setDragStart, dragEnd, setDragEnd,
+    longPressTimer, isLongPressAction,
+    isCreateOpen, setIsCreateOpen, isEditOpen, setIsEditOpen,
+    isDetailOpen, setIsDetailOpen, isAbonoModalOpen, setIsAbonoModalOpen,
+    isDateDetailsOpen, setIsDateDetailsOpen, isBlockModalOpen, setIsBlockModalOpen,
+    editingReserva, setEditingReserva, selectedReserva, setSelectedReserva,
+    selectedDateForForm, setSelectedDateForForm, selectedTimeForForm, setSelectedTimeForForm,
     selectedDateForDetails, setSelectedDateForDetails,
-    abonoReservationId, setAbonoReservationId,
-    selectedBlockForEdit, setSelectedBlockForEdit,
-    finalizeModal, setFinalizeModal,
-    deleteBlockModal, setDeleteBlockModal,
+    abonoReservationId, setAbonoReservationId, selectedBlockForEdit, setSelectedBlockForEdit,
+    finalizeModal, setFinalizeModal, deleteBlockModal, setDeleteBlockModal,
     deleteTimeBlocksModal, setDeleteTimeBlocksModal,
     deleteReservaModal, setDeleteReservaModal, handleDeleteReserva,
-    notification, setNotification,
-    showNotification,
+    notification, setNotification, showNotification,
     canManage, isClient, user,
     handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
-    handleSaveAbono, processFinalization,
-    handleCancelReserva, handleTimeSlotBlock,
-    handleViewReserva,
+    handleSaveAbono, processFinalization, handleCancelReserva, handleTimeSlotBlock, handleViewReserva,
   } = useReservasManager();
 
-  // ─── Calendar Logic ───────────────────────────────────────────────────────────
   const handleDateMouseDown = (dateStr: string) => {
-    setIsDragging(true);
-    setDragStart(dateStr);
-    setDragEnd(dateStr);
+    setIsDragging(true); setDragStart(dateStr); setDragEnd(dateStr);
     isLongPressAction.current = false;
-
     if (canManage) {
       longPressTimer.current = setTimeout(() => {
-        isLongPressAction.current = true;
-        setIsDragging(false);
-
-        const existingFullBlock = blocks.find(b =>
-          b.isActive && (b.type === 'FULL_DATE' || b.type === 'DATE_RANGE') &&
-          dateStr >= b.startDate && dateStr <= b.endDate
-        );
+        isLongPressAction.current = true; setIsDragging(false);
+        const existingFullBlock = blocks.find(b => b.isActive && (b.type === 'FULL_DATE' || b.type === 'DATE_RANGE') && dateStr >= b.startDate && dateStr <= b.endDate);
         if (existingFullBlock) { setDeleteBlockModal({ isOpen: true, blockId: existingFullBlock.id }); return; }
-
         const hasTimeBlocks = blocks.some(b => b.isActive && b.type === 'TIME_RANGE' && b.startDate === dateStr);
         if (hasTimeBlocks) { setDeleteTimeBlocksModal({ isOpen: true, date: dateStr }); return; }
-
         setSelectedBlockForEdit({ id: '', type: 'FULL_DATE', reason: '', description: '', startDate: dateStr, endDate: dateStr, isActive: true });
         setIsBlockModalOpen(true);
       }, 700);
@@ -209,35 +140,23 @@ export const ReservasPage: React.FC = () => {
     setIsDragging(false);
     if (isLongPressAction.current) return;
     if (!dragStart || !dragEnd) return;
-
     let start = dragStart, end = dragEnd;
     if (start > end) [start, end] = [end, start];
-
     if (start === end) {
       handleDateClick(start);
     } else if (canManage) {
       setSelectedBlockForEdit({ id: '', type: 'DATE_RANGE', reason: '', description: '', startDate: start, endDate: end, isActive: true });
       setIsBlockModalOpen(true);
     } else {
-      setSelectedDateForForm(start);
-      setIsCreateOpen(true);
+      setSelectedDateForForm(start); setIsCreateOpen(true);
     }
-
-    setDragStart(null);
-    setDragEnd(null);
+    setDragStart(null); setDragEnd(null);
   };
 
   const handleDateClick = (dateStr: string) => {
-    const fullBlock = blocks.find(b =>
-      b.isActive && (b.type === 'FULL_DATE' || b.type === 'DATE_RANGE') &&
-      dateStr >= b.startDate && dateStr <= b.endDate
-    );
-    if (fullBlock && !canManage) {
-      showNotification(`Fecha bloqueada: ${fullBlock.reason}.`, 'error');
-      return;
-    }
-    setSelectedDateForDetails(dateStr);
-    setIsDateDetailsOpen(true);
+    const fullBlock = blocks.find(b => b.isActive && (b.type === 'FULL_DATE' || b.type === 'DATE_RANGE') && dateStr >= b.startDate && dateStr <= b.endDate);
+    if (fullBlock && !canManage) { showNotification(`Fecha bloqueada: ${fullBlock.reason}.`, 'error'); return; }
+    setSelectedDateForDetails(dateStr); setIsDateDetailsOpen(true);
   };
 
   const daysInMonth     = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -245,11 +164,7 @@ export const ReservasPage: React.FC = () => {
   const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
   const changeMonth = (offset: number) => {
-    setCurrentDate(prev => {
-      const d = new Date(prev);
-      d.setMonth(d.getMonth() + offset);
-      return d;
-    });
+    setCurrentDate(prev => { const d = new Date(prev); d.setMonth(d.getMonth() + offset); return d; });
   };
 
   const isDateSelected = (dateStr: string) => {
@@ -260,16 +175,11 @@ export const ReservasPage: React.FC = () => {
   };
 
   const filteredReservations = reservations.filter(r => {
-    const matchesSearch =
-      (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.id.includes(searchTerm);
+    const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || r.id.includes(searchTerm);
     if (isClient) return matchesSearch;
-    const matchesStatus = ['PENDIENTE', 'CONFIRMADA', 'ANULADA'].includes(r.status);
-    return matchesSearch && matchesStatus;
+    return matchesSearch && ['PENDIENTE', 'CONFIRMADA', 'ANULADA'].includes(r.status);
   });
 
-  // ─── Render Calendar ──────────────────────────────────────────────────────────
   const renderCalendar = () => {
     const totalDays = daysInMonth(currentDate);
     const startDay  = firstDayOfMonth(currentDate);
@@ -335,20 +245,35 @@ export const ReservasPage: React.FC = () => {
                 <span className="truncate">{b.startTime} Bloqueo</span>
               </div>
             ))}
-            {dayQuotes.map(quote => (
-              <div key={quote.id} className="text-[9px] border border-amber-200 bg-amber-50 text-amber-700 px-1 py-0.5 rounded font-medium truncate flex items-center gap-1">
-                <FileText size={9} />
-                <span className="font-bold">{quote.startTime}</span> Cotización
+
+            {/* ✅ FIX: cliente ve "Reservado" en gris, admin ve "Cotización" en amarillo */}
+            {dayQuotes.map((quote, index) => (
+              <div
+                key={quote.id || `cot-${dateStr}-${index}`}
+                className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate flex items-center gap-1 ${
+                  isClient
+                    ? 'border-slate-100 bg-slate-100 text-slate-400'
+                    : 'border-amber-200 bg-amber-50 text-amber-700'
+                }`}
+              >
+                {isClient ? <Lock size={9} /> : <FileText size={9} />}
+                <span className="font-bold">{quote.startTime}</span>
+                {isClient ? ' Reservado' : ' Cotización'}
               </div>
             ))}
-            {dayRehearsals.map(reh => (
-              <div key={reh.id} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${
-                !isClient ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-100 text-slate-400'
-              }`}>
+
+            {dayRehearsals.map((reh, index) => (
+              <div
+                key={reh.id || `reh-${dateStr}-${index}`}
+                className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${
+                  !isClient ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-100 text-slate-400'
+                }`}
+              >
                 {isClient ? <Lock size={9} /> : null}
                 <span className="font-bold">{reh.time}</span> {isClient ? 'Reservado' : 'Ensayo'}
               </div>
             ))}
+
             {dayEvents.map(ev => {
               const isMyEvent = !isClient || user?.email === ev.clientEmail
               const statusStyle = ev.status === 'CONFIRMADA'
@@ -358,7 +283,7 @@ export const ReservasPage: React.FC = () => {
                 <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate ${
                   isMyEvent ? statusStyle : 'bg-slate-50 border-slate-100 text-slate-400'
                 }`}>
-                  <span className="font-bold">{ev.eventTime}</span> {isMyEvent ? ev.eventType : 'Reservado'}
+                  <span className="font-bold">{ev.eventTime}</span> {isMyEvent ? (canManage ? ev.clientName : ev.eventType) : 'Reservado'}
                 </div>
               )
             })}
@@ -371,10 +296,8 @@ export const ReservasPage: React.FC = () => {
           )}
           {!isDragging && !isFullDayBlock && !isPast && (
             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDateClick(dateStr); }}
-                className="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-primary-600 hover:border-primary-200 shadow-sm"
-              >
+              <button onClick={(e) => { e.stopPropagation(); handleDateClick(dateStr); }}
+                className="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-primary-600 hover:border-primary-200 shadow-sm">
                 <Plus size={11} />
               </button>
             </div>
@@ -386,25 +309,15 @@ export const ReservasPage: React.FC = () => {
   };
 
   return (
-    <div
-      className="space-y-6 animate-fade-in-up pb-10"
-      onMouseUp={() => { if (isDragging || longPressTimer.current) handleDateMouseUp(); }}
-    >
-      {/* Toast */}
+    <div className="space-y-6 animate-fade-in-up pb-10" onMouseUp={() => { if (isDragging || longPressTimer.current) handleDateMouseUp(); }}>
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
-          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${
-            notification.type === 'success' ? 'bg-white/95 border-emerald-100' : 'bg-white/95 border-red-100'
-          }`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-              notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-            }`}>
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${notification.type === 'success' ? 'bg-white/95 border-emerald-100' : 'bg-white/95 border-red-100'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
               {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
             </div>
             <div className="flex-1">
-              <h4 className={`font-bold text-sm ${notification.type === 'success' ? 'text-emerald-950' : 'text-red-950'}`}>
-                {notification.type === 'success' ? 'Notificación' : 'Alerta'}
-              </h4>
+              <h4 className={`font-bold text-sm ${notification.type === 'success' ? 'text-emerald-950' : 'text-red-950'}`}>{notification.type === 'success' ? 'Notificación' : 'Alerta'}</h4>
               <p className="text-xs text-slate-500 font-medium">{notification.message}</p>
             </div>
             <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
@@ -413,28 +326,23 @@ export const ReservasPage: React.FC = () => {
         document.body
       )}
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
           <p className="text-slate-500 mt-2 text-sm">Control de agenda, fechas y disponibilidad de eventos.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-lg">
-          <button onClick={() => setView('list')}
-            className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => setView('list')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
             <List size={16} /> Lista
           </button>
-          <button onClick={() => setView('calendar')}
-            className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => setView('calendar')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
             <CalendarIcon size={16} /> Calendario
           </button>
         </div>
       </div>
 
-      {/* ✅ Banner contador — solo visible para clientes con reservas pendientes */}
       {isClient && <PendingPaymentBanner reservations={reservations} />}
 
-      {/* Main */}
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
         {view === 'list' ? (
           <div className="flex flex-col h-full">
@@ -447,9 +355,7 @@ export const ReservasPage: React.FC = () => {
               </div>
             </div>
             <ReservasTable
-              reservations={filteredReservations}
-              loading={loading}
-              userRole={user?.role}
+              reservations={filteredReservations} loading={loading} userRole={user?.role}
               onView={(res) => handleViewReserva(res)}
               onEdit={(res) => { setEditingReserva(res); setIsEditOpen(true); }}
               onAddPayment={(id) => { setAbonoReservationId(id); setIsAbonoModalOpen(true); }}
@@ -479,16 +385,13 @@ export const ReservasPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modales */}
       <ReservaCreateModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSave={handleCreate} selectedDate={selectedDateForForm} selectedTime={selectedTimeForForm} />
       <ReservaEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdate} reservation={editingReserva} />
       <ReservaDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} reservation={selectedReserva} onFinalize={processFinalization} />
       <AbonoCreateModal   isOpen={isAbonoModalOpen} onClose={() => setIsAbonoModalOpen(false)} onSave={handleSaveAbono} initialReservationId={abonoReservationId} />
 
       <DateDetailsModal
-        isOpen={isDateDetailsOpen}
-        onClose={() => setIsDateDetailsOpen(false)}
-        date={selectedDateForDetails}
+        isOpen={isDateDetailsOpen} onClose={() => setIsDateDetailsOpen(false)} date={selectedDateForDetails}
         reservations={calendarReservations.filter(r => r.eventDate === selectedDateForDetails && r.status !== 'ANULADA')}
         blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails||'') && b.endDate >= (selectedDateForDetails||'') && b.isActive)}
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status === 'Programado')}
@@ -499,9 +402,7 @@ export const ReservasPage: React.FC = () => {
         onDeleteBlock={(id) => setDeleteBlockModal({ isOpen: true, blockId: id })}
       />
 
-      {canManage && (
-        <BlockFormModal isOpen={isBlockModalOpen} onClose={() => setIsBlockModalOpen(false)} onSave={handleSaveBlock} initialData={selectedBlockForEdit} />
-      )}
+      {canManage && <BlockFormModal isOpen={isBlockModalOpen} onClose={() => setIsBlockModalOpen(false)} onSave={handleSaveBlock} initialData={selectedBlockForEdit} />}
 
       <ConfirmationModal isOpen={finalizeModal.isOpen} onClose={() => setFinalizeModal({ ...finalizeModal, isOpen: false })} onConfirm={processFinalization} title="¿Finalizar Evento?" message="Marcará la reserva como completada." confirmText="Sí, Finalizar" />
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
@@ -516,4 +417,4 @@ export const ReservasPage: React.FC = () => {
       />
     </div>
   );
-};
+};  

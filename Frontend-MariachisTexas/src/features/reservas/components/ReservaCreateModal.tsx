@@ -55,7 +55,9 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
 
   useEffect(() => {
     if (isOpen) {
-      repertoireService.getSongs().then(setSongs)
+      // ✅ FIX: getSongsPublic() solo trae canciones con activa = true
+      // getSongs() traía TODAS incluyendo las desactivadas por el admin
+      repertoireService.getSongsPublic().then(setSongs)
       servicesService.getServices().then(setServices)
       if (isAdmin) clientService.getClients().then(setClients)
 
@@ -69,13 +71,13 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
         startTime: timeToUse,
       }
 
-      // ✅ Pre-llenar datos del cliente registrado
+      // Pre-llenar datos del cliente registrado
       if (user && !isAdmin) {
         baseState = {
           ...baseState,
           clientId:       user.id,
           clientName:     `${user.name} ${user.lastName}`.trim(),
-          clientPhone:    user.phone      || '',
+          clientPhone:    user.phone          || '',
           secondaryPhone: user.secondaryPhone || '',
           clientEmail:    user.email,
         }

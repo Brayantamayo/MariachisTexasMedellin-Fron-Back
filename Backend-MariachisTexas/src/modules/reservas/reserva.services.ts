@@ -6,6 +6,9 @@ import { ReservaCreateSchema, zodError } from '../schemas'
 const toLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 const toLocalTime = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 
+// ✅ FIX ZONA HORARIA: parsear fecha como local, no UTC
+const parseLocalDate = (dateStr: string): Date => new Date(`${dateStr}T00:00:00`)
+
 const mapEventType = (tipo: string): string => {
   const map: Record<string, string> = {
     'Serenata':'OTRO','Boda':'BODA','Cumpleaños':'CUMPLEANOS','Empresarial':'OTRO',
@@ -14,6 +17,29 @@ const mapEventType = (tipo: string): string => {
     'DIA_DE_MADRE':'DIA_DE_MADRE','OTRO':'OTRO',
   }
   return map[tipo] ?? 'OTRO'
+}
+
+// ✅ Helper para bloquear un rango de horas + buffers usando comparación numérica
+const bloquearRango = (
+  allHours: string[],
+  blocked: Set<string>,
+  startTime: string,
+  endTime: string
+) => {
+  const [sh] = startTime.split(':').map(Number)
+  const [eh] = endTime.split(':').map(Number)
+
+  // Buffer ANTES
+  blocked.add(`${((sh - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
+
+  // Todo el rango de inicio a fin inclusive (comparación numérica)
+  allHours.forEach(h => {
+    const [hh] = h.split(':').map(Number)
+    if (hh >= sh && hh <= eh) blocked.add(h)
+  })
+
+  // Buffer DESPUÉS
+  blocked.add(`${((eh + 1) % 24).toString().padStart(2,'0')}:00`)
 }
 
 const mapToReservation = (r: any) => {
@@ -104,7 +130,8 @@ export const getReservasCalendario = async () => {
   }))
 }
 
-export const getAvailableHours = async (dateStr: string): Promise<string[]> => {
+// ✅ excludeId — excluye una reserva específica del cálculo (para edición)
+export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {
   const allHours: string[] = []
   for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2,'0')}:00`)
   allHours.push('00:00')
@@ -113,6 +140,7 @@ export const getAvailableHours = async (dateStr: string): Promise<string[]> => {
   const dayEnd   = new Date(`${dateStr}T23:59:59`)
   const blocked  = new Set<string>()
 
+  // ─── Bloqueos manuales ────────────────────────────────────────────────────
   const bloqueos = await prisma.bloqueoCalendario.findMany({
     where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } }
   })
@@ -123,34 +151,34 @@ export const getAvailableHours = async (dateStr: string): Promise<string[]> => {
     allHours.forEach(h => { if (h >= start && h < end) blocked.add(h) })
   }
 
+  // ─── Cotizaciones activas ─────────────────────────────────────────────────
   const cotizaciones = await prisma.cotizacion.findMany({
     where: { fechaEvento: { gte: dayStart, lte: dayEnd }, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } }
   })
   for (const c of cotizaciones) {
-    const start = toLocalTime(c.horaInicio)
-    const end   = toLocalTime(c.horaFin)
-    allHours.forEach(h => { if (h >= start && h < end) blocked.add(h) })
-    const [sh] = start.split(':').map(Number)
-    blocked.add(`${((sh - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
+    bloquearRango(allHours, blocked, toLocalTime(c.horaInicio), toLocalTime(c.horaFin))
   }
 
+  // ─── Reservas — ✅ excluir la que se está editando ────────────────────────
   const reservas = await prisma.reserva.findMany({
-    where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] }, cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } } },
+    where: {
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } },
+      ...(excludeId ? { id: { not: excludeId } } : {}), // ✅ excluir reserva actual
+    },
     include: { cotizacion: true }
   })
   for (const r of reservas) {
-    const start = toLocalTime(r.cotizacion.horaInicio)
-    const end   = toLocalTime(r.cotizacion.horaFin)
-    allHours.forEach(h => { if (h >= start && h < end) blocked.add(h) })
-    const [sh] = start.split(':').map(Number)
-    blocked.add(`${((sh - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
+    bloquearRango(allHours, blocked, toLocalTime(r.cotizacion.horaInicio), toLocalTime(r.cotizacion.horaFin))
   }
 
+  // ─── Ensayos ──────────────────────────────────────────────────────────────
   const ensayos = await prisma.ensayo.findMany({ where: { fechaHora: { gte: dayStart, lte: dayEnd } } })
   for (const e of ensayos) {
     const time = toLocalTime(e.fechaHora)
+    const [h]  = time.split(':').map(Number)
     blocked.add(time)
-    const [h] = time.split(':').map(Number)
+    blocked.add(`${((h - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
     blocked.add(`${((h + 1) % 24).toString().padStart(2,'0')}:00`)
   }
 
@@ -175,37 +203,33 @@ export const createReserva = async (data: any) => {
   const cliente = await prisma.cliente.findUnique({ where: { email: usuario.email } })
   if (!cliente) throw new Error('Cliente no encontrado. Asegúrate de completar tu perfil.')
 
-  // ─── VALIDACIÓN DE SOLAPAMIENTO DE HORARIO ────────────────────────────────
-  const nuevaInicio = new Date(`${d.eventDate}T${d.startTime}:00`)
-  const nuevaFin    = new Date(`${d.eventDate}T${d.endTime}:00`)
+  // ─── VALIDACIÓN DE SOLAPAMIENTO ───────────────────────────────────────────
+  const nuevaInicio  = new Date(`${d.eventDate}T${d.startTime}:00`)
+  const nuevaFin     = new Date(`${d.eventDate}T${d.endTime}:00`)
+  const bufferInicio = new Date(nuevaInicio.getTime() - 60 * 60 * 1000)
+  const bufferFin    = new Date(nuevaFin.getTime()    + 60 * 60 * 1000)
 
   const reservaSolapada = await prisma.reserva.findFirst({
     where: {
       estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
       cotizacion: {
-        fechaEvento: new Date(d.eventDate),
-        horaInicio:  { lt: nuevaFin },
-        horaFin:     { gt: nuevaInicio },
+        fechaEvento: parseLocalDate(d.eventDate),
+        horaInicio:  { lt: bufferFin },
+        horaFin:     { gt: bufferInicio },
       }
     }
   })
-
-  if (reservaSolapada) {
-    throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
-  }
+  if (reservaSolapada) throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
 
   const cotizacionSolapada = await prisma.cotizacion.findFirst({
     where: {
       estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] },
-      fechaEvento: new Date(d.eventDate),
-      horaInicio:  { lt: nuevaFin },
-      horaFin:     { gt: nuevaInicio },
+      fechaEvento: parseLocalDate(d.eventDate),
+      horaInicio:  { lt: bufferFin },
+      horaFin:     { gt: bufferInicio },
     }
   })
-
-  if (cotizacionSolapada) {
-    throw new Error(`Ya hay una solicitud pendiente en ese horario. Por favor elige otro horario.`)
-  }
+  if (cotizacionSolapada) throw new Error(`Ya hay una solicitud pendiente en ese horario. Por favor elige otro horario.`)
   // ─────────────────────────────────────────────────────────────────────────
 
   const horas = await getAvailableHours(d.eventDate)
@@ -216,7 +240,7 @@ export const createReserva = async (data: any) => {
       clienteId:         cliente.id,
       nombreHomenajeado: d.homenajeado || 'Sin especificar',
       tipoEvento:        mapEventType(d.eventType ?? 'OTRO') as any,
-      fechaEvento:       new Date(d.eventDate),
+      fechaEvento:       parseLocalDate(d.eventDate),
       horaInicio:        new Date(`${d.eventDate}T${d.startTime}:00`),
       horaFin:           new Date(`${d.eventDate}T${d.endTime}:00`),
       direccionEvento:   d.location,
@@ -247,9 +271,9 @@ export const createReserva = async (data: any) => {
     data: { cotizacionId: cot.id, totalValor: d.totalAmount, saldoPendiente: d.totalAmount, estado: 'PENDIENTE' }
   })
 
-  // ─── CORREO DE CONFIRMACIÓN AL CLIENTE ───────────────────────────────────
+  // ─── CORREO ───────────────────────────────────────────────────────────────
   const anticipo        = Math.ceil(d.totalAmount / 2)
-  const fechaFormateada = new Date(d.eventDate).toLocaleDateString('es-CO', {
+  const fechaFormateada = parseLocalDate(d.eventDate).toLocaleDateString('es-CO', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
   const base     = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
@@ -261,15 +285,9 @@ export const createReserva = async (data: any) => {
     subject: '¡Reserva creada exitosamente! — Mariachis Texas 🎺',
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:28px;background:#0a0a0a;color:#fff;border-radius:12px;">
-        <div style="text-align:center;margin-bottom:20px;">
-          <h1 style="color:#c0392b;margin:0;">🎺 Mariachis Texas</h1>
-        </div>
-
+        <div style="text-align:center;margin-bottom:20px;"><h1 style="color:#c0392b;margin:0;">🎺 Mariachis Texas</h1></div>
         <h2 style="color:#fff;">¡Hola ${cliente.nombre}! 🎉</h2>
-        <p style="color:#aaa;line-height:1.6;">
-          Tu reserva ha sido creada exitosamente. A continuación los detalles:
-        </p>
-
+        <p style="color:#aaa;line-height:1.6;">Tu reserva ha sido creada exitosamente. A continuación los detalles:</p>
         <div style="background:#1a1a1a;border:1px solid #c0392b;border-radius:10px;padding:16px;margin:20px 0;">
           <p style="color:#aaa;margin:0 0 8px;font-size:13px;">📅 Fecha: <strong style="color:#fff">${fechaFormateada}</strong></p>
           <p style="color:#aaa;margin:0 0 8px;font-size:13px;">⏰ Horario: <strong style="color:#fff">${d.startTime} - ${d.endTime}</strong></p>
@@ -277,37 +295,24 @@ export const createReserva = async (data: any) => {
           <p style="color:#aaa;margin:0 0 8px;font-size:13px;">🎭 Evento: <strong style="color:#fff">${d.eventType ?? 'Serenata'}</strong></p>
           <p style="color:#aaa;margin:0;font-size:13px;">💰 Valor Total: <strong style="color:#fff">$${Number(d.totalAmount).toLocaleString('es-CO')} COP</strong></p>
         </div>
-
         <div style="background:#1a1a1a;border:1px solid #27ae60;border-radius:10px;padding:20px;margin:20px 0;text-align:center;">
           <p style="color:#aaa;margin:0 0 8px;font-size:13px;">💳 Para confirmar tu reserva debes pagar el <strong style="color:#fff">50% de anticipo:</strong></p>
-          <p style="font-size:32px;font-weight:900;color:#27ae60;margin:12px 0;letter-spacing:2px;">
-            $${anticipo.toLocaleString('es-CO')} COP
-          </p>
+          <p style="font-size:32px;font-weight:900;color:#27ae60;margin:12px 0;letter-spacing:2px;">$${anticipo.toLocaleString('es-CO')} COP</p>
           <p style="color:#aaa;margin:0;font-size:12px;">Saldo restante al finalizar el evento: $${(Number(d.totalAmount) - anticipo).toLocaleString('es-CO')} COP</p>
         </div>
-
         <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:16px;margin:20px 0;">
           <p style="color:#fff;font-weight:bold;margin:0 0 8px;font-size:14px;">📞 Comunícate con nosotros para realizar el pago:</p>
-          <p style="color:#c0392b;font-size:24px;font-weight:900;margin:8px 0;text-align:center;letter-spacing:2px;">
-            312 237 3486
-          </p>
-          <p style="color:#aaa;font-size:12px;margin:0;text-align:center;">
-            Aceptamos: Transferencia bancaria, Nequi, Daviplata o Efectivo
-          </p>
+          <p style="color:#c0392b;font-size:24px;font-weight:900;margin:8px 0;text-align:center;letter-spacing:2px;">312 237 3486</p>
+          <p style="color:#aaa;font-size:12px;margin:0;text-align:center;">Aceptamos: Transferencia bancaria, Nequi, Daviplata o Efectivo</p>
         </div>
-
         <p style="color:#aaa;line-height:1.6;font-size:13px;">
-          ⚠️ <strong style="color:#fff">Importante:</strong> Tu reserva quedará en estado 
+          ⚠️ <strong style="color:#fff">Importante:</strong> Tu reserva quedará en estado
           <strong style="color:#f39c12">Pendiente</strong> hasta que registremos tu pago del anticipo.
           Una vez confirmado el pago pasará a estado <strong style="color:#27ae60">Confirmada</strong>.
         </p>
-
         <div style="text-align:center;margin:24px 0;">
-          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
-            Ver mi Reserva →
-          </a>
+          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Ver mi Reserva →</a>
         </div>
-
         <hr style="border:none;border-top:1px solid #222;margin:20px 0;" />
         <p style="color:#555;font-size:11px;text-align:center;">Mariachis Texas • Medellín, Colombia</p>
       </div>
@@ -327,23 +332,23 @@ export const updateReserva = async (id: number, data: any) => {
   const horaInicio = data.startTime ? new Date(`${date}T${data.startTime}:00`) : r.cotizacion.horaInicio
   const horaFin    = data.endTime   ? new Date(`${date}T${data.endTime}:00`)   : r.cotizacion.horaFin
 
-  // ─── VALIDACIÓN DE SOLAPAMIENTO EN UPDATE ─────────────────────────────────
+  // ─── VALIDACIÓN DE SOLAPAMIENTO ───────────────────────────────────────────
   if (data.startTime || data.endTime || data.eventDate) {
+    const bufferInicio = new Date(horaInicio.getTime() - 60 * 60 * 1000)
+    const bufferFin    = new Date(horaFin.getTime()    + 60 * 60 * 1000)
+
     const reservaSolapada = await prisma.reserva.findFirst({
       where: {
-        id:     { not: id },
+        id:     { not: id }, // ✅ excluir la reserva actual
         estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
         cotizacion: {
-          fechaEvento: new Date(date),
-          horaInicio:  { lt: horaFin },
-          horaFin:     { gt: horaInicio },
+          fechaEvento: parseLocalDate(date),
+          horaInicio:  { lt: bufferFin },
+          horaFin:     { gt: bufferInicio },
         }
       }
     })
-
-    if (reservaSolapada) {
-      throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
-    }
+    if (reservaSolapada) throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -352,7 +357,7 @@ export const updateReserva = async (id: number, data: any) => {
     data: {
       nombreHomenajeado: data.homenajeado || undefined,
       tipoEvento:        data.eventType  ? mapEventType(data.eventType) as any : undefined,
-      fechaEvento:       data.eventDate  ? new Date(data.eventDate) : undefined,
+      fechaEvento:       data.eventDate  ? parseLocalDate(data.eventDate) : undefined,
       horaInicio, horaFin,
       direccionEvento:   data.location   || undefined,
       notasAdicionales:  data.notes !== undefined ? (data.notes || null) : undefined,

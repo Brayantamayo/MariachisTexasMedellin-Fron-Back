@@ -1,6 +1,7 @@
 import prisma from '../../config/prisma'
 import { RepertorioCreateSchema, RepertorioUpdateSchema, zodError } from '../schemas'
 
+// ─── MAPPERS ──────────────────────────────────────────────────────────────────
 const mapToSong = (r: any) => ({
   id:         String(r.id),
   title:      r.titulo,
@@ -30,13 +31,21 @@ const mapToPrisma = (data: any) => ({
   activa:     data.isActive   ?? true,
 })
 
+// ─── QUERIES ──────────────────────────────────────────────────────────────────
+
+// Admin/Empleado: todas las canciones (activas e inactivas)
 export const getSongs = async () => {
   const songs = await prisma.repertorio.findMany({ orderBy: { createdAt: 'desc' } })
   return songs.map(mapToSong)
 }
 
+// Cliente / formulario público: solo canciones activas
+// FIX: este es el endpoint que debe usarse en el formulario de cotización/reserva
 export const getSongsPublic = async () => {
-  const songs = await prisma.repertorio.findMany({ where: { activa: true }, orderBy: { titulo: 'asc' } })
+  const songs = await prisma.repertorio.findMany({
+    where:   { activa: true },
+    orderBy: { titulo: 'asc' },
+  })
   return songs.map(mapToSong)
 }
 
@@ -76,33 +85,67 @@ export const updateSong = async (id: number, data: any) => {
   return mapToSong(song)
 }
 
+// ─── TOGGLE ACTIVA/INACTIVA ────────────────────────────────────────────────────
+// FIX: ahora valida también reservas PENDIENTE/CONFIRMADA, no solo cotizaciones
 export const toggleStatus = async (id: number) => {
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new Error('Canción no encontrada')
 
+  // Solo valida restricciones al DESACTIVAR
   if (exists.activa) {
-    const [enCotizacion, enEnsayo] = await Promise.all([
+    const [enCotizacionActiva, enReservaActiva, enEnsayo] = await Promise.all([
+      // Cotizaciones en espera (aún no convertidas)
       prisma.cotizacionRepertorio.findFirst({
-        where: { repertorioId: id, cotizacion: { estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } } }
+        where: {
+          repertorioId: id,
+          cotizacion: { estado: { in: ['EN_ESPERA'] } },
+        },
       }),
-      prisma.ensayoRepertorio.findFirst({ where: { repertorioId: id } })
+      // Reservas activas (PENDIENTE o CONFIRMADA) — la canción ya fue comprometida
+      prisma.cotizacionRepertorio.findFirst({
+        where: {
+          repertorioId: id,
+          cotizacion: {
+            estado:  'CONVERTIDA',
+            reserva: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] } },
+          },
+        },
+      }),
+      // Ensayos programados
+      prisma.ensayoRepertorio.findFirst({
+        where: { repertorioId: id },
+      }),
     ])
-    if (enCotizacion) throw new Error('No se puede desactivar: la canción está en una cotización activa o convertida')
-    if (enEnsayo)     throw new Error('No se puede desactivar: la canción está programada en un ensayo')
+
+    if (enCotizacionActiva)
+      throw new Error('No se puede desactivar: la canción está en una cotización pendiente de revisión.')
+
+    if (enReservaActiva)
+      throw new Error('No se puede desactivar: la canción está incluida en una reserva activa o confirmada.')
+
+    if (enEnsayo)
+      throw new Error('No se puede desactivar: la canción está programada en un ensayo.')
   }
 
-  const song = await prisma.repertorio.update({ where: { id }, data: { activa: !exists.activa } })
+  const song = await prisma.repertorio.update({
+    where: { id },
+    data:  { activa: !exists.activa },
+  })
   return mapToSong(song)
 }
 
+// ─── DELETE ───────────────────────────────────────────────────────────────────
 export const deleteSong = async (id: number) => {
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new Error('Canción no encontrada')
 
   const enUso = await prisma.cotizacionRepertorio.findFirst({
-    where: { repertorioId: id, cotizacion: { estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } } }
+    where: {
+      repertorioId: id,
+      cotizacion:   { estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } },
+    },
   })
-  if (enUso) throw new Error('No se puede eliminar: la canción está asociada a una cotización activa')
+  if (enUso) throw new Error('No se puede eliminar: la canción está asociada a una cotización activa.')
 
   await prisma.repertorio.delete({ where: { id } })
   return { message: 'Canción eliminada correctamente' }

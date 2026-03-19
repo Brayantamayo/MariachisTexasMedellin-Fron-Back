@@ -4,8 +4,8 @@ import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Quotation, UserRole } from '@/types';
 import { cotizacionService } from '../services/cotizacionService';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
-import { CotizacionesTable }    from '../components/CotizacionesTable';
+import { ConfirmationModal }     from '@/shared/components/ConfirmationModal';
+import { CotizacionesTable }     from '../components/CotizacionesTable';
 import { CotizacionCreateModal } from '../components/CotizacionCreateModal';
 import { CotizacionEditModal }   from '../components/CotizacionEditModal';
 import { CotizacionDetailModal } from '../components/CotizacionDetailModal';
@@ -21,16 +21,9 @@ export const CotizacionesPage: React.FC = () => {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [notification,      setNotification]      = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const [confirmConvert, setConfirmConvert] = useState<{ isOpen: boolean; id: string | null; amount: number }>({
-    isOpen: false, id: null, amount: 0
-  });
-  const [cancelModal, setCancelModal] = useState<{ isOpen: boolean; id: string | null }>({
-    isOpen: false, id: null
-  });
-  // ✅ Modal eliminar
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({
-    isOpen: false, id: null
-  });
+  const [confirmConvert, setConfirmConvert] = useState<{ isOpen: boolean; id: string | null; amount: number }>({ isOpen: false, id: null, amount: 0 });
+  const [cancelModal,    setCancelModal]    = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [deleteModal,    setDeleteModal]    = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -100,7 +93,6 @@ export const CotizacionesPage: React.FC = () => {
     }
   };
 
-  // ✅ Eliminar cotización — solo ANULADAS
   const handleDelete = async () => {
     if (!deleteModal.id) return;
     try {
@@ -114,10 +106,15 @@ export const CotizacionesPage: React.FC = () => {
     }
   };
 
+  // ✅ PDF generado en el backend — simple y limpio
   const handleDownload = async (id: string) => {
     showNotification('Generando PDF...');
-    await cotizacionService.downloadPdf(id);
-    showNotification('Descarga iniciada.');
+    try {
+      await cotizacionService.downloadPdf(id);
+      showNotification('PDF descargado correctamente.');
+    } catch {
+      showNotification('Error al generar el PDF.', 'error');
+    }
   };
 
   const filteredQuotations = quotations.filter(q =>
@@ -186,7 +183,7 @@ export const CotizacionesPage: React.FC = () => {
           onConvert={(id, amount) => setConfirmConvert({ isOpen: true, id, amount })}
           onCancel={(id) => setCancelModal({ isOpen: true, id })}
           onDownload={handleDownload}
-          onDelete={(id) => setDeleteModal({ isOpen: true, id })} // ✅
+          onDelete={(id) => setDeleteModal({ isOpen: true, id })}
         />
       </div>
 
@@ -195,31 +192,9 @@ export const CotizacionesPage: React.FC = () => {
       <CotizacionEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdate} quotation={selectedQuotation} />
       <CotizacionDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} quotation={selectedQuotation} />
 
-      <ConfirmationModal
-        isOpen={confirmConvert.isOpen}
-        onClose={() => setConfirmConvert({ ...confirmConvert, isOpen: false })}
-        onConfirm={processConversion}
-        title="¿Confirmar Cotización?"
-        message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`}
-        confirmText="Sí, Convertir"
-      />
-      <ConfirmationModal
-        isOpen={cancelModal.isOpen}
-        onClose={() => setCancelModal({ ...cancelModal, isOpen: false })}
-        onConfirm={processCancellation}
-        title="¿Anular Cotización?"
-        message="Estás a punto de anular esta cotización. Cambiará a 'Anulada' y liberará la fecha del calendario."
-        confirmText="Sí, Anular"
-      />
-      {/* ✅ Modal eliminar */}
-      <ConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
-        onConfirm={handleDelete}
-        title="¿Eliminar Cotización?"
-        message="Estás a punto de eliminar esta cotización permanentemente. Esta acción no se puede deshacer."
-        confirmText="Sí, eliminar"
-      />
+      <ConfirmationModal isOpen={confirmConvert.isOpen} onClose={() => setConfirmConvert({ ...confirmConvert, isOpen: false })} onConfirm={processConversion} title="¿Confirmar Cotización?" message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`} confirmText="Sí, Convertir" />
+      <ConfirmationModal isOpen={cancelModal.isOpen}    onClose={() => setCancelModal({ ...cancelModal, isOpen: false })}       onConfirm={processCancellation} title="¿Anular Cotización?"   message="Estás a punto de anular esta cotización."                                                                                                                      confirmText="Sí, Anular"   />
+      <ConfirmationModal isOpen={deleteModal.isOpen}    onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}       onConfirm={handleDelete}        title="¿Eliminar Cotización?" message="Estás a punto de eliminar esta cotización permanentemente. Esta acción no se puede deshacer."                                                                confirmText="Sí, eliminar" />
     </div>
   );
 };

@@ -5,18 +5,25 @@ import { requireRole } from '../../middlewares/Role.middleware'
 
 const router = Router()
 
-// ─── PÚBLICA ──────────────────────────────────────────────────────────────────
+// ─── PÚBLICAS — sin token ─────────────────────────────────────────────────────
+// Formulario externo de cotización
 router.post('/public', cotizacionController.create)
 
-// ─── PROTEGIDAS — solo ADMIN ──────────────────────────────────────────────────
-router.use(verifyToken)
-router.use(requireRole(['ADMIN']))
+// Solo fecha/hora de cotizaciones EN_ESPERA — para el calendario del cliente
+router.get('/public/disponibilidad', cotizacionController.getDisponibilidad)
 
-router.get('/',                    cotizacionController.getAll)
-router.get('/:id',                 cotizacionController.getById)
-router.put('/:id',                 cotizacionController.update)
-router.patch('/:id/anular',        cotizacionController.anular)
-router.patch('/:id/convertir',     cotizacionController.convertir)
-router.delete('/:id',              cotizacionController.remove)
+// ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
+router.use(verifyToken)
+
+router.get('/',    requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.getAll)
+router.get('/:id', requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.getById)
+
+router.put('/:id',             requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.update)
+router.patch('/:id/anular',    requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.anular)
+router.patch('/:id/convertir', requireRole(['ADMIN']),             cotizacionController.convertir)
+
+router.get('/:id/pdf', requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.downloadPdf)
+
+router.delete('/:id', requireRole(['ADMIN']), cotizacionController.remove)
 
 export default router

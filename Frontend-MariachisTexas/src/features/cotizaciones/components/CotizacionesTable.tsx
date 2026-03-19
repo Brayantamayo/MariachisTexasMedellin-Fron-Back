@@ -13,7 +13,7 @@ interface Props {
   onConvert: (id: string, amount: number) => void;
   onCancel: (id: string) => void;
   onDownload: (id: string) => void;
-  onDelete: (id: string) => void; // ✅ nuevo
+  onDelete: (id: string) => void; 
 }
 
 export const CotizacionesTable: React.FC<Props> = ({

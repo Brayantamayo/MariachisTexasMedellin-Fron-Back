@@ -1,28 +1,23 @@
-import axios from 'axios'
+import api from '@/shared/api/api'
 import { CalendarBlock } from '@/types'
 
-const api = axios.create({ baseURL: 'http://localhost:3000/api' })
-
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token') 
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
 export const blockService = {
+
   getBlocks: async (): Promise<CalendarBlock[]> => {
     const { data } = await api.get('/bloqueos')
     return data
   },
 
+  // ✅ FIX: usaba axios.get() directo con URL hardcodeada
+  // Ahora usa el cliente centralizado igual que el resto
   checkDateStatus: async (dateStr: string): Promise<{
-    isBlocked: boolean
-    reason?: string
-    type?: string
+    isBlocked:        boolean
+    reason?:          string
+    type?:            string
     hasPartialBlocks?: boolean
-    blockedRanges?: { start: string; end: string; reason: string }[]
+    blockedRanges?:   { start: string; end: string; reason: string }[]
   }> => {
-    const { data } = await axios.get(`http://localhost:3000/api/bloqueos/check/${dateStr}`)
+    const { data } = await api.get(`/bloqueos/check/${dateStr}`)
     return data
   },
 
@@ -39,5 +34,5 @@ export const blockService = {
   deleteBlock: async (id: string): Promise<boolean> => {
     await api.delete(`/bloqueos/${id}`)
     return true
-  }
+  },
 }

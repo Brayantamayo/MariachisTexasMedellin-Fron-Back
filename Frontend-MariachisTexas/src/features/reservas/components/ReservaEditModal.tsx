@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Bookmark } from 'lucide-react';
 import { ReservaForm } from './ReservaForm';
-import { User as UserType, Song, UserRole, Reservation } from '@/types';
+import { Song, UserRole, Reservation } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { reservaService } from '../services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
@@ -39,13 +39,16 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
         startTime: reservation.startTime || reservation.eventTime || '',
         endTime:   reservation.endTime   || '',
       })
-      repertoireService.getSongs().then(setSongs)
-      // ✅ No cargar clientes en edición — no se puede cambiar el cliente
+
+      repertoireService.getSongsPublic().then(setSongs)
+
       servicesService.getServices().then(data => {
         setServices(data)
         setServicesLoaded(true)
       })
-      checkBlockAndHours(reservation.eventDate)
+
+      // ✅ Pasar el ID de la reserva para excluirla del cálculo de horas disponibles
+      checkBlockAndHours(reservation.eventDate, reservation.id)
     }
   }, [isOpen, reservation, isAdmin])
 
@@ -94,10 +97,11 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
     servicesLoaded
   ])
 
-  const checkBlockAndHours = async (date: string) => {
+  // ✅ reservaId opcional — cuando se edita, excluye esa reserva del bloqueo de horas
+  const checkBlockAndHours = async (date: string, reservaId?: string) => {
     const status = await blockService.checkDateStatus(date)
     setBlockStatus(status)
-    let hours = await reservaService.getAvailableHours(date)
+    let hours = await reservaService.getAvailableHours(date, reservaId) // ✅ pasa el ID
     if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
       hours = hours.filter(hour =>
         !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
@@ -122,7 +126,10 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
       [name]: value,
       ...(name === 'eventDate' ? { eventTime: '', startTime: '', endTime: '' } : {})
     }))
-    if (name === 'eventDate') checkBlockAndHours(value)
+    // ✅ Al cambiar fecha, pasar el ID solo si la fecha es la misma que la original
+    // Si cambia de fecha, no excluir (la reserva ya no ocupa esa fecha)
+    const sameDate = value === reservation?.eventDate
+    if (name === 'eventDate') checkBlockAndHours(value, sameDate ? reservation?.id : undefined)
   }
 
   const toggleSong = (songId: string) => {
@@ -198,15 +205,15 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
           <ReservaForm
             formData={formData}
             isAdmin={isAdmin}
-            isEditing={true}          // ✅ oculta buscador y bloquea campos cliente
-            clients={[]}              // no se necesitan en edición
+            isEditing={true}
+            clients={[]}
             availableHours={availableHours}
             songs={songs}
             services={services}
             blockStatus={blockStatus}
             onChange={handleChange}
             onDateChange={handleDateChange}
-            onClientSelect={() => {}} // no se usa en edición
+            onClientSelect={() => {}}
             onToggleSong={toggleSong}
             onServiceChange={handleServiceChange}
             onSubmit={handleSubmit}

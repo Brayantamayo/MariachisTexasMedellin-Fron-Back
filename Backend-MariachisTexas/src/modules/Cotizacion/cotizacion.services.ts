@@ -4,7 +4,11 @@ import { TipoEvento } from '../../generated/prisma'
 import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../schemas'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-const buildDateTime = (date: string, time: string) => new Date(`${date}T${time}:00`)
+const parseLocalDate = (dateStr: string): Date => new Date(`${dateStr}T00:00:00`)
+const buildDateTime  = (date: string, time: string) => new Date(`${date}T${time}:00`)
+
+const toLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+const toLocalTime = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 
 const mapEventType = (tipo: string): TipoEvento => {
   const map: Record<string, TipoEvento> = {
@@ -25,16 +29,13 @@ const mapToQuotation = (c: any) => {
   return {
     id:                  String(c.id),
     clientId:            c.clienteId ? String(c.clienteId) : undefined,
-    clientName,
-    clientPhone,
-    secondaryPhone,
-    clientEmail,
+    clientName, clientPhone, secondaryPhone, clientEmail,
     homenajeado:         c.nombreHomenajeado ?? '',
-    eventDate:           c.fechaEvento?.toISOString().split('T')[0]            ?? '',
-    eventType:           c.tipoEvento                                           ?? '',
-    startTime:           c.horaInicio?.toISOString().split('T')[1]?.slice(0,5) ?? '',
-    endTime:             c.horaFin?.toISOString().split('T')[1]?.slice(0,5)    ?? '',
-    location:            c.direccionEvento                                      ?? '',
+    eventDate:           c.fechaEvento ? toLocalDate(c.fechaEvento) : '',
+    eventType:           c.tipoEvento  ?? '',
+    startTime:           c.horaInicio  ? toLocalTime(c.horaInicio)  : '',
+    endTime:             c.horaFin     ? toLocalTime(c.horaFin)     : '',
+    location:            c.direccionEvento  ?? '',
     notes:               c.notasAdicionales ?? '',
     totalAmount:         Number(c.totalEstimado ?? 0),
     isDirectReservation: c.esReservaDirecta,
@@ -48,6 +49,70 @@ const mapToQuotation = (c: any) => {
 }
 
 const cotizacionInclude = { cliente: true, servicios: true, repertorios: true, reserva: true }
+
+// ─── VALIDACIÓN COMPLETA DE DISPONIBILIDAD ────────────────────────────────────
+// Valida contra: cotizaciones, reservas, ensayos y bloqueos
+const validarDisponibilidad = async (
+  eventDate: string,
+  horaInicio: Date,
+  horaFin: Date,
+  excludeCotizacionId?: number
+) => {
+  const dayStart = parseLocalDate(eventDate)
+  const dayEnd   = new Date(`${eventDate}T23:59:59`)
+
+  // 1. Bloqueos manuales
+  const bloqueo = await prisma.bloqueoCalendario.findFirst({
+    where: { fechaInicio: { lte: horaFin }, fechaFin: { gte: horaInicio } }
+  })
+  if (bloqueo) throw new Error(`Fecha bloqueada: ${bloqueo.motivo?.replace(/^[A-Z_]+:/, '').split('|')[0] || 'No disponible'}`)
+
+  // 2. Otras cotizaciones activas que se solapen
+  const cotActivas = await prisma.cotizacion.findMany({
+    where: {
+      fechaEvento: { gte: dayStart, lte: dayEnd },
+      estado: { in: ['EN_ESPERA', 'CONVERTIDA'] },
+      ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {})
+    }
+  })
+  for (const cot of cotActivas) {
+    if (horaInicio < cot.horaFin && horaFin > cot.horaInicio)
+      throw new Error(
+        `Conflicto con cotización existente (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`
+      )
+  }
+
+  // ✅ 3. Reservas activas que se solapen (con buffer de 1 hora)
+  const bufferInicio = new Date(horaInicio.getTime() - 60 * 60 * 1000)
+  const bufferFin    = new Date(horaFin.getTime()    + 60 * 60 * 1000)
+
+  const reservaSolapada = await prisma.reserva.findFirst({
+    where: {
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      cotizacion: {
+        fechaEvento: parseLocalDate(eventDate),
+        horaInicio:  { lt: bufferFin },
+        horaFin:     { gt: bufferInicio },
+      }
+    }
+  })
+  if (reservaSolapada) throw new Error(`Conflicto con una reserva existente en ese horario.`)
+
+  // ✅ 4. Ensayos programados que se solapen
+  const ensayos = await prisma.ensayo.findMany({
+    where: { fechaHora: { gte: dayStart, lte: dayEnd } }
+  })
+  for (const e of ensayos) {
+    const ensayoTime = e.fechaHora
+    const ensayoBefore = new Date(ensayoTime.getTime() - 60 * 60 * 1000)
+    const ensayoAfter  = new Date(ensayoTime.getTime() + 60 * 60 * 1000)
+    if (horaInicio < ensayoAfter && horaFin > ensayoBefore) {
+      throw new Error(
+        `Conflicto con ensayo programado a las ${toLocalTime(ensayoTime)}`
+      )
+    }
+  }
+}
 
 // ─── VINCULAR ─────────────────────────────────────────────────────────────────
 export const vincularCotizacionesPorEmail = async (email: string, clienteId: number) => {
@@ -84,38 +149,25 @@ export const createCotizacion = async (data: any) => {
   const horaInicio = buildDateTime(d.eventDate, d.startTime)
   const horaFin    = buildDateTime(d.eventDate, d.endTime)
 
-  const bloqueo = await prisma.bloqueoCalendario.findFirst({
-    where: { fechaInicio: { lte: horaFin }, fechaFin: { gte: horaInicio } }
-  })
-  if (bloqueo) throw new Error(`Fecha bloqueada: ${bloqueo.motivo || 'No disponible'}`)
-
-  const cotActivas = await prisma.cotizacion.findMany({
-    where: {
-      fechaEvento: { gte: new Date(d.eventDate), lt: new Date(new Date(d.eventDate).getTime() + 86400000) },
-      estado: { in: ['EN_ESPERA', 'CONVERTIDA'] }
-    }
-  })
-  for (const cot of cotActivas) {
-    if (horaInicio < cot.horaFin && horaFin > cot.horaInicio)
-      throw new Error(`Conflicto de horario: ya hay un evento de ${cot.horaInicio.toISOString().split('T')[1].slice(0,5)} a ${cot.horaFin.toISOString().split('T')[1].slice(0,5)}`)
-  }
+  // ✅ Validación completa: cotizaciones + reservas + ensayos + bloqueos
+  await validarDisponibilidad(d.eventDate, horaInicio, horaFin)
 
   const cot = await prisma.cotizacion.create({
     data: {
       clienteId:         d.clientId ? Number(d.clientId) : null,
       nombreHomenajeado: d.homenajeado || d.clientName || 'Sin especificar',
       tipoEvento:        mapEventType(d.eventType),
-      fechaEvento:       new Date(d.eventDate),
+      fechaEvento:       parseLocalDate(d.eventDate),
       horaInicio, horaFin,
       direccionEvento:   d.location,
       notasAdicionales:  d.notes || d.repertoireNotes || null,
       totalEstimado:     d.totalAmount || 0,
       esReservaDirecta:  false,
       estado:            'EN_ESPERA',
-      contactoNombre:    d.clientId ? null : (d.clientName   || null),
-      contactoTelefono:  d.clientId ? null : (d.clientPhone  || null),
+      contactoNombre:    d.clientId ? null : (d.clientName    || null),
+      contactoTelefono:  d.clientId ? null : (d.clientPhone   || null),
       contactoTelefono2: d.clientId ? null : (d.secondaryPhone || null),
-      contactoEmail:     d.clientId ? null : (d.clientEmail  || null),
+      contactoEmail:     d.clientId ? null : (d.clientEmail   || null),
     }
   })
 
@@ -142,9 +194,14 @@ export const updateCotizacion = async (id: number, data: any) => {
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
   const d          = parsed.data
-  const date       = d.eventDate ?? exists.fechaEvento.toISOString().split('T')[0]
+  const date       = d.eventDate ?? toLocalDate(exists.fechaEvento)
   const horaInicio = d.startTime ? buildDateTime(date, d.startTime) : exists.horaInicio
   const horaFin    = d.endTime   ? buildDateTime(date, d.endTime)   : exists.horaFin
+
+  // ✅ Validar disponibilidad al editar, excluyendo la cotización actual
+  if (d.startTime || d.endTime || d.eventDate) {
+    await validarDisponibilidad(date, horaInicio, horaFin, id)
+  }
 
   await prisma.cotizacion.update({
     where: { id },
@@ -152,7 +209,7 @@ export const updateCotizacion = async (id: number, data: any) => {
       clienteId:         d.clientId ? Number(d.clientId) : undefined,
       nombreHomenajeado: d.homenajeado || d.clientName   || undefined,
       tipoEvento:        d.eventType  ? mapEventType(d.eventType) : undefined,
-      fechaEvento:       d.eventDate  ? new Date(d.eventDate)     : undefined,
+      fechaEvento:       d.eventDate  ? parseLocalDate(d.eventDate) : undefined,
       horaInicio, horaFin,
       direccionEvento:   d.location   || undefined,
       notasAdicionales:  d.notes !== undefined ? (d.notes || null) : undefined,
@@ -210,11 +267,16 @@ export const convertirCotizacion = async (id: number) => {
 
   await prisma.cotizacion.update({ where: { id }, data: { estado: 'CONVERTIDA' } })
   const reserva = await prisma.reserva.create({
-    data: { cotizacionId: id, totalValor: cotizacion.totalEstimado!, saldoPendiente: cotizacion.totalEstimado!, estado: 'PENDIENTE' }
+    data: {
+      cotizacionId:   id,
+      totalValor:     cotizacion.totalEstimado!,
+      saldoPendiente: cotizacion.totalEstimado!,
+      estado:         'PENDIENTE'
+    }
   })
 
-  const emailDestino  = cotizacion.cliente?.email    || cotizacion.contactoEmail    || ''
-  const nombreCliente = cotizacion.cliente?.nombre   || cotizacion.contactoNombre   || 'Cliente'
+  const emailDestino  = cotizacion.cliente?.email          || cotizacion.contactoEmail    || ''
+  const nombreCliente = cotizacion.cliente?.nombre         || cotizacion.contactoNombre   || 'Cliente'
   const telefono      = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
   const telefono2     = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
 
@@ -223,6 +285,12 @@ export const convertirCotizacion = async (id: number) => {
     const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
     const registerUrl = `${base}/registro?${params.toString()}`
     const loginUrl    = `${base}/login`
+
+    const horaInicioStr = toLocalTime(cotizacion.horaInicio)
+    const horaFinStr    = toLocalTime(cotizacion.horaFin)
+    const fechaStr      = cotizacion.fechaEvento.toLocaleDateString('es-CO', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    })
 
     await transporter.sendMail({
       from:    process.env.MAIL_FROM,
@@ -234,8 +302,8 @@ export const convertirCotizacion = async (id: number) => {
           <h2 style="color:#fff;">¡Buenas noticias, ${nombreCliente}! 🎉</h2>
           <p style="color:#aaa;line-height:1.6;">Tu cotización ha sido <strong style="color:#fff">aprobada</strong> y convertida en una reserva oficial.</p>
           <div style="background:#1a1a1a;border:1px solid #c0392b;border-radius:10px;padding:16px;margin:20px 0;">
-            <p style="color:#aaa;margin:0 0 6px;font-size:13px;">📅 Fecha: <strong style="color:#fff">${cotizacion.fechaEvento.toLocaleDateString('es-CO')}</strong></p>
-            <p style="color:#aaa;margin:0 0 6px;font-size:13px;">⏰ Horario: <strong style="color:#fff">${cotizacion.horaInicio.toISOString().split('T')[1].slice(0,5)} - ${cotizacion.horaFin.toISOString().split('T')[1].slice(0,5)}</strong></p>
+            <p style="color:#aaa;margin:0 0 6px;font-size:13px;">📅 Fecha: <strong style="color:#fff">${fechaStr}</strong></p>
+            <p style="color:#aaa;margin:0 0 6px;font-size:13px;">⏰ Horario: <strong style="color:#fff">${horaInicioStr} - ${horaFinStr}</strong></p>
             <p style="color:#aaa;margin:0;font-size:13px;">💰 Valor: <strong style="color:#fff">$${Number(cotizacion.totalEstimado).toLocaleString('es-CO')} COP</strong></p>
           </div>
           <p style="color:#aaa;line-height:1.6;">Para ver tu reserva y hacer seguimiento, crea tu cuenta con este mismo correo:</p>

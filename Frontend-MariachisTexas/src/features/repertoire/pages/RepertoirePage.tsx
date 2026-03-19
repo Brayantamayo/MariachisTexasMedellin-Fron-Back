@@ -35,6 +35,8 @@ export const RepertoirePage: React.FC = () => {
 
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
+
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
@@ -43,7 +45,11 @@ export const RepertoirePage: React.FC = () => {
   const fetchSongs = async () => {
     setLoading(true);
     try {
-      const data = await repertoireService.getSongs();
+      // ✅ FIX: Admin y Empleado ven todas (activas + inactivas) para gestionar
+      //         Cliente solo ve las activas — canciones inactivas no deben aparecer
+      const data = canManage
+        ? await repertoireService.getSongs()
+        : await repertoireService.getSongsPublic()
       setSongs(data);
     } catch {
       showNotification('Error cargando el repertorio.', 'error');
@@ -55,10 +61,9 @@ export const RepertoirePage: React.FC = () => {
   useEffect(() => {
     fetchSongs();
     return () => { audioRef.current?.pause(); };
-  }, []);
+  }, [user]); // ✅ re-ejecutar si cambia el usuario/rol
 
   // ─── Audio ────────────────────────────────────────────────────────────────────
-  // Escuchar: reproduce el audio demo de la canción
   const togglePlay = (song: Song) => {
     audioRef.current?.pause();
     audioRef.current = null;
@@ -91,8 +96,6 @@ export const RepertoirePage: React.FC = () => {
   };
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────────
-
-  // Crear: agrega nueva canción al repertorio
   const handleCreateSong = async (songData: any) => {
     const newSong = await repertoireService.createSong({ ...songData, isActive: true });
     setSongs(prev => [newSong, ...prev]);
@@ -100,7 +103,6 @@ export const RepertoirePage: React.FC = () => {
     setIsCreateOpen(false);
   };
 
-  // Editar: actualiza datos de la canción seleccionada
   const handleUpdateSong = async (songData: any) => {
     if (!selectedSong) return;
     const updated = await repertoireService.updateSong(selectedSong.id, songData);
@@ -109,7 +111,6 @@ export const RepertoirePage: React.FC = () => {
     setIsEditOpen(false);
   };
 
-  // Eliminar: borra permanentemente la canción del repertorio
   const confirmDelete = async () => {
     if (!deleteModal.songId) return;
     try {
@@ -128,16 +129,21 @@ export const RepertoirePage: React.FC = () => {
     }
   };
 
-  // Activar/Desactivar: controla si la canción aparece en la landing pública
   const handleToggleStatus = async (song: Song) => {
     try {
       const updated = await repertoireService.toggleStatus(song.id);
       setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
       showNotification(
-        updated.isActive ? 'Canción activada y visible en el catálogo.' : 'Canción desactivada del catálogo público.'
+        updated.isActive
+          ? 'Canción activada y visible en el catálogo.'
+          : 'Canción desactivada del catálogo público.'
       );
-    } catch {
-      showNotification('Error al cambiar el estado.', 'error');
+    } catch (error: any) {
+      // ✅ Mostrar el mensaje exacto del backend (ej: "está en una reserva activa")
+      showNotification(
+        error?.response?.data?.message || error?.message || 'Error al cambiar el estado.',
+        'error'
+      );
     }
   };
 
@@ -145,8 +151,6 @@ export const RepertoirePage: React.FC = () => {
     s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.artist.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
@@ -181,8 +185,14 @@ export const RepertoirePage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">GESTIÓN DE REPERTORIO</h1>
-          <p className="text-slate-500 mt-2 text-sm">Administra el cancionero y controla las piezas musicales del grupo.</p>
+          <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">
+            {canManage ? 'GESTIÓN DE REPERTORIO' : 'REPERTORIO'}
+          </h1>
+          <p className="text-slate-500 mt-2 text-sm">
+            {canManage
+              ? 'Administra el cancionero y controla las piezas musicales del grupo.'
+              : 'Explora el catálogo de canciones disponibles para tu evento.'}
+          </p>
         </div>
         {canManage && (
           <button onClick={() => setIsCreateOpen(true)}
@@ -212,12 +222,12 @@ export const RepertoirePage: React.FC = () => {
           loading={loading}
           playingId={playingId}
           userRole={user?.role}
-          onPlay={togglePlay}          // 🎵 Escuchar demo de audio
-          onView={(song) => { setSelectedSong(song); setIsDetailOpen(true); }}    // 👁 Ver detalle completo
-          onViewLyrics={(song) => { setSelectedSong(song); setIsLyricsOpen(true); }} // 📄 Ver letra
-          onEdit={(song) => { setSelectedSong(song); setIsEditOpen(true); }}      // ✏️ Editar canción
-          onDelete={(id) => setDeleteModal({ isOpen: true, songId: id })}         // 🗑 Eliminar canción
-          onToggleStatus={handleToggleStatus} // 🔄 Activar/desactivar en catálogo
+          onPlay={togglePlay}
+          onView={(song) => { setSelectedSong(song); setIsDetailOpen(true); }}
+          onViewLyrics={(song) => { setSelectedSong(song); setIsLyricsOpen(true); }}
+          onEdit={(song) => { setSelectedSong(song); setIsEditOpen(true); }}
+          onDelete={(id) => setDeleteModal({ isOpen: true, songId: id })}
+          onToggleStatus={handleToggleStatus}
         />
       </div>
 

@@ -54,14 +54,16 @@ export interface Song {
 
 // ─── ENSAYO ───────────────────────────────────────────────────────────────────
 export interface Rehearsal {
-  id:           string
-  title:        string
-  location:     string
-  date:         string   // YYYY-MM-DD
-  time:         string   // HH:MM
-  notes:        string
+  id:            string
+  title:         string
+  location:      string
+  date:          string    // YYYY-MM-DD — admin
+  time:          string    // HH:MM — admin
+  notes:         string
+  hora?:         string    // HH:MM — cliente (ruta pública)
+  fecha?:        string    // YYYY-MM-DD — cliente (ruta pública)
   repertoireIds: string[]
-  status:       'Programado' | 'Completado'
+  status:        'Programado' | 'Completado'
 }
 
 // ─── PAGOS ────────────────────────────────────────────────────────────────────

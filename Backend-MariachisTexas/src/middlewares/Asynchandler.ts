@@ -15,7 +15,7 @@ const inferStatus = (message: string): number => {
     msg.includes('ya exist') ||
     msg.includes('ya está registrad') ||
     msg.includes('ya está anulad') ||
-    msg.includes('ya está confirmd') ||
+    msg.includes('ya está confirmada') || // ✅ FIX: typo 'confirmd' → 'confirmada'
     msg.includes('el correo ya') ||
     msg.includes('el número de documento ya')
   ) return 409
@@ -35,8 +35,11 @@ const inferStatus = (message: string): number => {
   ) return 422
 
   // 401 — no autorizado
-  if (msg.includes('credenciales') || msg.includes('token') || msg.includes('no autorizado'))
-    return 401
+  if (
+    msg.includes('credenciales') ||
+    msg.includes('token') ||
+    msg.includes('no autorizado')
+  ) return 401
 
   // 403 — prohibido (reglas de negocio que bloquean la acción)
   if (
@@ -44,12 +47,17 @@ const inferStatus = (message: string): number => {
     msg.includes('no se puede') ||
     msg.includes('no se puede eliminar') ||
     msg.includes('no se puede anular') ||
-    msg.includes('no se puede desactivar')
+    msg.includes('no se puede desactivar') ||
+    msg.includes('no tienes permiso')  // ✅ NUEVO: cubre mensajes de autorización
   ) return 403
 
   // 409 — conflicto de calendario
-  if (msg.includes('bloqueada') || msg.includes('conflicto de horario') || msg.includes('no está disponible'))
-    return 409
+  if (
+    msg.includes('bloqueada') ||
+    msg.includes('conflicto de horario') ||
+    msg.includes('no está disponible') ||
+    msg.includes('ya existe una reserva') // ✅ NUEVO: cubre solapamiento de horario
+  ) return 409
 
   // 400 — error genérico de cliente
   return 400
@@ -91,8 +99,17 @@ export const asyncHandler = (fn: AsyncFn) =>
           case 'P2000':
             return res.status(400).json({ message: 'El valor proporcionado es demasiado largo' })
           default:
+            // ✅ En desarrollo loguear el error completo de Prisma para debug
+            console.error('[Prisma Error]', e.code, e.message)
             return res.status(500).json({ message: 'Error en la base de datos' })
         }
+      }
+
+      // ─── Errores inesperados del servidor ─────────────────────────────────
+      // Si no es un Error lanzado intencionalmente, loguear y retornar 500
+      if (!(e instanceof Error)) {
+        console.error('[Unexpected Error]', e)
+        return res.status(500).json({ message: 'Error interno del servidor' })
       }
 
       // ─── Errores normales del negocio ─────────────────────────────────────

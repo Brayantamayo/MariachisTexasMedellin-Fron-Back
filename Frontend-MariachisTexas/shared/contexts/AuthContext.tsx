@@ -13,22 +13,24 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-// Centralizar acceso a sessionStorage evita errores de typo y facilita cambios
+// ✅ FIX: sessionStorage → localStorage
+// sessionStorage se borra al cerrar/recargar la pestaña — el token se perdía
+// al navegar entre módulos, causando "Token no proporcionado" en las requests
 const SESSION_KEYS = { TOKEN: 'token', USER: 'user' } as const
 
 const getSession = () => ({
-  token:    sessionStorage.getItem(SESSION_KEYS.TOKEN),
-  userData: sessionStorage.getItem(SESSION_KEYS.USER),
+  token:    localStorage.getItem(SESSION_KEYS.TOKEN),
+  userData: localStorage.getItem(SESSION_KEYS.USER),
 })
 
 const setSession = (token: string, user: User) => {
-  sessionStorage.setItem(SESSION_KEYS.TOKEN, token)
-  sessionStorage.setItem(SESSION_KEYS.USER, JSON.stringify(user))
+  localStorage.setItem(SESSION_KEYS.TOKEN, token)
+  localStorage.setItem(SESSION_KEYS.USER, JSON.stringify(user))
 }
 
 const clearSession = () => {
-  sessionStorage.removeItem(SESSION_KEYS.TOKEN)
-  sessionStorage.removeItem(SESSION_KEYS.USER)
+  localStorage.removeItem(SESSION_KEYS.TOKEN)
+  localStorage.removeItem(SESSION_KEYS.USER)
 }
 
 const ROL_MAP: Record<string, UserRole> = {
@@ -42,10 +44,10 @@ const ROL_MAP: Record<string, UserRole> = {
 
 // ─── PROVIDER ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser]         = useState<User | null>(null);
+  const [user, setUser]           = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Recuperar sesión al montar — solo existe si la pestaña sigue abierta
+  // Recuperar sesión al montar — persiste entre pestañas y recargas
   useEffect(() => {
     const { token, userData } = getSession()
 
@@ -71,19 +73,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const usuario: User = {
         id:             String(data.usuario.id),
         name:           data.usuario.nombre,
-        lastName:       data.usuario.apellido        || '',
+        lastName:       data.usuario.apellido            || '',
         email:          data.usuario.email,
-        role:           ROL_MAP[data.usuario.rol]    ?? UserRole.CLIENTE,
+        role:           ROL_MAP[data.usuario.rol]        ?? UserRole.CLIENTE,
         isActive:       true,
         documentType:   'CC',
-        documentNumber: data.usuario.numeroDocumento || '',
+        documentNumber: data.usuario.numeroDocumento     || '',
         gender:         'M',
-        birthDate:      data.usuario.fechaNacimiento || '',
-        phone:          data.usuario.telefonoPrincipal    || '',
-        secondaryPhone: data.usuario.telefonoAlternativo  || '',
-        city:           data.usuario.ciudad    || '',
-        neighborhood:   data.usuario.barrio    || '',
-        address:        data.usuario.direccion || '',
+        birthDate:      data.usuario.fechaNacimiento     || '',
+        phone:          data.usuario.telefonoPrincipal   || '',
+        secondaryPhone: data.usuario.telefonoAlternativo || '',
+        city:           data.usuario.ciudad              || '',
+        neighborhood:   data.usuario.barrio              || '',
+        address:        data.usuario.direccion           || '',
       }
 
       setSession(data.token, usuario)

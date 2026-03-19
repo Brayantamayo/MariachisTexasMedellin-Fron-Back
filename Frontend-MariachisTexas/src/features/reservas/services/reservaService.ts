@@ -1,31 +1,23 @@
-import axios from 'axios'
+import api from '@/shared/api/api'
 import { Reservation } from '@/types'
-
-const api = axios.create({ baseURL: 'http://localhost:3000/api' })
-api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token') // ✅ era localStorage
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
 
 export const reservaService = {
 
-  // Lista propia del cliente / todas para admin-empleado (con datos privados)
   getReservations: async (): Promise<Reservation[]> => {
     const { data } = await api.get('/reservas')
     return data
   },
 
-  // Todas las reservas activas SIN datos privados — para pintar el calendario
-  // El cliente usa esto para saber qué fechas/horas están ocupadas
   getReservationsForCalendar: async (): Promise<Reservation[]> => {
     const { data } = await api.get('/reservas/calendario')
     return data
   },
-
-  // Pública — no necesita token
-  getAvailableHours: async (date: string): Promise<string[]> => {
-    const { data } = await axios.get(`http://localhost:3000/api/reservas/available-hours/${date}`)
+  
+/////posible error 
+  // excludeReservaId — excluye la reserva actual al editar para liberar sus horas
+  getAvailableHours: async (date: string, excludeReservaId?: string): Promise<string[]> => {
+    const params = excludeReservaId ? { excludeId: excludeReservaId } : {}
+    const { data } = await api.get(`/reservas/available-hours/${date}`, { params })
     return data
   },
 
@@ -55,14 +47,13 @@ export const reservaService = {
   },
 
   deleteReservation: async (id: string): Promise<void> => {
-  await api.delete(`/reservas/${id}`)
-},
-
-  // Compatibilidad
-  checkAndProcessPastEvents: async (): Promise<void> => Promise.resolve(),
+    await api.delete(`/reservas/${id}`)
+  },
 
   finalizeReservation: async (id: string): Promise<Reservation> => {
     const { data } = await api.patch(`/reservas/${id}/confirmar`)
     return data
   },
+
+  checkAndProcessPastEvents: async (): Promise<void> => Promise.resolve(),
 }
