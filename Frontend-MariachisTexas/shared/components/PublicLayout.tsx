@@ -7,6 +7,7 @@ interface Props {
   onNavigate: (path: string) => void;
   currentPath: string;
 }
+//////NAV
 
 export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPath }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -76,7 +77,7 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
               </div>
             </div>
 
-            {/* Desktop Navigation - Centered & Clean */}
+            
             <div className="hidden md:flex items-center bg-white/5 backdrop-blur-sm rounded-full px-2 py-1 border border-white/5">
               {navLinks.map((item) => (
                 <button 
@@ -95,14 +96,14 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
                 onClick={() => onNavigate('/login')}
                 className="text-xs font-bold tracking-widest transition-colors text-white hover:text-red-400"
               >
-                LOGIN
+                INICIAR SESIÓN
               </button>
               
               <button 
                 onClick={() => onNavigate('/register')}
                 className="relative group px-8 py-3 rounded-full font-bold text-xs tracking-[0.2em] transition-all bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white shadow-[0_0_20px_rgba(206,17,38,0.5)] hover:shadow-[0_0_30px_rgba(206,17,38,0.8)] hover:-translate-y-0.5 border border-[#f1bf00]/30 overflow-hidden"
               >
-                <span className="relative z-10">RESERVAR</span>
+                <span className="relative z-10">REGISTRARSE</span>
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent z-0" />
               </button>
             </div>

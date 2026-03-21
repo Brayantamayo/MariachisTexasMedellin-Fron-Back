@@ -32,13 +32,12 @@ import { Toaster } from 'react-hot-toast';
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  const [currentPath, setCurrentPath] = useState<string>('/');
+  // ✅ Todos los hooks ANTES de cualquier return condicional
+  const [currentPath,      setCurrentPath]      = useState<string>('/');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
-
-  // ✅ Estado compartido entre los 3 pasos de recuperación (sin token en URL)
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetOtp, setResetOtp] = useState('');
+  const [isPanelOpen,      setIsPanelOpen]      = useState(true);
+  const [resetEmail,       setResetEmail]       = useState('');
+  const [resetOtp,         setResetOtp]         = useState('');
 
   // Redirigir al dashboard o home tras login
   useEffect(() => {
@@ -57,6 +56,9 @@ const MainLayout: React.FC = () => {
       }
     }
   }, [isAuthenticated, currentPath, user]);
+
+  // ✅ Ahora sí el return condicional — DESPUÉS de todos los hooks
+  if (isLoading) return <LoadingScreen />;
 
   const publicRoutes = ['/cotizacion'];
   const isPublicRoute = publicRoutes.includes(currentPath);
@@ -116,14 +118,15 @@ const MainLayout: React.FC = () => {
   const renderAppContent = () => {
     const module = currentPath.substring(1) as ModuleName;
     switch (module) {
-      case 'home':         return <HomePage />;
+      // ✅ HomePage recibe onNavigate para que los botones redirijan
+      case 'home':         return <HomePage onNavigate={setCurrentPath} />;
       case 'dashboard':    return <DashboardPage />;
       case 'clientes':     return <ClientsPage />;
       case 'usuarios':     return <UsersPage />;
       case 'roles':        return <RolesPage />;
       case 'empleados':    return <EmployeesPage />;
       case 'repertorio':   return <RepertoirePage />;
-      case 'servicios':    return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage />;
+      case 'servicios':    return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
       case 'ensayos':      return <EnsayosPage />;
       case 'reservas':     return <ReservasPage />;
       case 'abonos':       return <AbonosPage />;
@@ -131,34 +134,49 @@ const MainLayout: React.FC = () => {
       case 'cotizaciones': return <CotizacionesPage />;
       case 'perfil':       return <ProfilePage />;
       default:
-        return user?.role === UserRole.ADMIN ? <DashboardPage /> : <HomePage />;
+        return user?.role === UserRole.ADMIN
+          ? <DashboardPage />
+          : <HomePage onNavigate={setCurrentPath} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-40 shadow-sm">
         <div className="font-bold text-lg text-slate-800">Mariachis Texas</div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
           <Menu size={24} />
         </button>
       </div>
 
+      {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden transition-transform duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar currentPath={currentPath}
+        <Sidebar
+          currentPath={currentPath}
           onNavigate={(path) => { setCurrentPath(path); setIsMobileMenuOpen(false); }}
-          isPanelOpen={isPanelOpen} setIsPanelOpen={setIsPanelOpen} />
+          isPanelOpen={isPanelOpen}
+          setIsPanelOpen={setIsPanelOpen}
+        />
       </div>
 
+      {/* Desktop sidebar */}
       <div className="hidden lg:block">
-        <Sidebar currentPath={currentPath} onNavigate={setCurrentPath}
-          isPanelOpen={isPanelOpen} setIsPanelOpen={setIsPanelOpen} />
+        <Sidebar
+          currentPath={currentPath}
+          onNavigate={setCurrentPath}
+          isPanelOpen={isPanelOpen}
+          setIsPanelOpen={setIsPanelOpen}
+        />
       </div>
 
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
       <main className={`flex-1 p-4 pt-20 lg:p-8 lg:pt-8 transition-all duration-300 bg-slate-50 text-slate-800 w-full min-w-0 ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>

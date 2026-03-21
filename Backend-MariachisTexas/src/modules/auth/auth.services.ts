@@ -5,6 +5,7 @@ import transporter from '../../config/mailer'
 import { TipoDocumento, ZonaServicio } from '../../generated/prisma'
 import { RegistroSchema, ResetPasswordSchema, zodError } from '../schemas'
 import { vincularCotizacionesPorEmail } from '../Cotizacion/cotizacion.services'
+import { emailBienvenida, emailOtp } from '../../utils/email.templates'
 
 // ─── REGISTRO CLIENTE ─────────────────────────────────────────────────────────
 export const registrarCliente = async (data: any) => {
@@ -29,7 +30,7 @@ export const registrarCliente = async (data: any) => {
     data: {
       nombre:              datosCliente.nombre,
       apellido:            datosCliente.apellido,
-      tipoDocumento:       datosCliente.tipoDocumento as TipoDocumento,  // ✅ cast correcto
+      tipoDocumento:       datosCliente.tipoDocumento as TipoDocumento,
       numeroDocumento:     datosCliente.numeroDocumento,
       fechaNacimiento:     new Date(datosCliente.fechaNacimiento),
       email:               datosCliente.email,
@@ -38,7 +39,7 @@ export const registrarCliente = async (data: any) => {
       ciudad:              datosCliente.ciudad,
       barrio:              datosCliente.barrio,
       direccion:           datosCliente.direccion,
-      zonaServicio:        datosCliente.zonaServicio as ZonaServicio,    // ✅ cast correcto
+      zonaServicio:        datosCliente.zonaServicio as ZonaServicio,
       password:            passwordHash,
       foto:                datosCliente.foto || null,
     }
@@ -46,10 +47,10 @@ export const registrarCliente = async (data: any) => {
 
   await prisma.usuario.create({
     data: {
-      nombre:  cliente.nombre,
-      email:   cliente.email,
+      nombre:   cliente.nombre,
+      email:    cliente.email,
       password: passwordHash,
-      rolId:   rolCliente.id
+      rolId:    rolCliente.id
     }
   })
 
@@ -57,38 +58,14 @@ export const registrarCliente = async (data: any) => {
     .catch(err => { console.error('Error vinculando cotizaciones:', err); return 0 })
 
   const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-  const loginUrl    = `${base}/login`
-  const reservasUrl = `${base}/reservas`
-
-  await transporter.sendMail({
-    from:    process.env.MAIL_FROM,
-    to:      cliente.email,
-    subject: '¡Bienvenido a Mariachis Texas! 🎺',
-    html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:28px;background:#0a0a0a;color:#fff;border-radius:12px;">
-        <div style="text-align:center;margin-bottom:24px;">
-          <h1 style="color:#c0392b;font-size:28px;margin:0;">🎺 Mariachis Texas</h1>
-        </div>
-        <h2 style="color:#fff;margin-bottom:8px;">¡Hola ${cliente.nombre}! 👋</h2>
-        <p style="color:#aaa;line-height:1.6;">Tu registro fue exitoso. Ya puedes iniciar sesión y disfrutar de todos los beneficios de tener una cuenta.</p>
-        ${cotizacionesVinculadas > 0 ? `
-        <div style="background:#1a1a1a;border:1px solid #c0392b;border-radius:10px;padding:16px;margin:20px 0;">
-          <p style="color:#fff;font-weight:bold;margin:0 0 8px;">🎉 ¡Buenas noticias!</p>
-          <p style="color:#aaa;margin:0;font-size:14px;">Encontramos <strong style="color:#fff">${cotizacionesVinculadas} reserva(s)</strong> asociadas a tu correo. Ya están disponibles en tu cuenta.</p>
-        </div>
-        <div style="text-align:center;margin:20px 0;">
-          <a href="${reservasUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Ver mis Reservas</a>
-        </div>
-        ` : `
-        <div style="text-align:center;margin:24px 0;">
-          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Iniciar Sesión</a>
-        </div>
-        `}
-        <hr style="border:none;border-top:1px solid #222;margin:24px 0;" />
-        <p style="color:#555;font-size:12px;text-align:center;">¡Gracias por confiar en Mariachis Texas! • Medellín, Colombia</p>
-      </div>
-    `
+  const mail        = emailBienvenida({
+    nombre:                 cliente.nombre,
+    loginUrl:               `${base}/login`,
+    reservasUrl:            `${base}/reservas`,
+    cotizacionesVinculadas,
   })
+
+  await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
 
   return {
     message: 'Registro exitoso. Inicia sesión para continuar',
@@ -108,7 +85,6 @@ export const login = async (email: string, password: string) => {
   const passwordValido = await bcrypt.compare(password, usuario.password)
   if (!passwordValido) throw new Error('Credenciales inválidas')
 
-  // ✅ Buscar datos completos del cliente para pre-llenar formularios
   let datosCliente = null
   if (usuario.rol.nombre === 'CLIENTE') {
     const cliente = await prisma.cliente.findUnique({ where: { email } })
@@ -150,22 +126,8 @@ export const recuperarPassword = async (email: string) => {
   await prisma.passwordResetOtp.updateMany({ where: { email, usado: false }, data: { usado: true } })
   await prisma.passwordResetOtp.create({ data: { email, otp, expiresAt } })
 
-  await transporter.sendMail({
-    from:    process.env.MAIL_FROM,
-    to:      usuario.email,
-    subject: 'Código de recuperación - Mariachis Texas 🎺',
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0a0a0a;color:#fff;border-radius:12px;">
-        <h2 style="color:#c0392b;">Recuperar contraseña</h2>
-        <p style="color:#aaa;">Hola <strong style="color:#fff">${usuario.nombre}</strong>, recibimos una solicitud para restablecer tu contraseña.</p>
-        <div style="background:#1a1a1a;border:2px solid #c0392b;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
-          <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#fff;">${otp}</span>
-        </div>
-        <p style="color:#aaa;font-size:13px;">Este código expira en <strong style="color:#fff">15 minutos</strong>.</p>
-        <p style="color:#aaa;font-size:13px;">Si no solicitaste esto, ignora este correo.</p>
-      </div>
-    `
-  })
+  const mail = emailOtp({ nombre: usuario.nombre, otp })
+  await transporter.sendMail({ from: process.env.MAIL_FROM, to: usuario.email, ...mail })
 
   return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
 }

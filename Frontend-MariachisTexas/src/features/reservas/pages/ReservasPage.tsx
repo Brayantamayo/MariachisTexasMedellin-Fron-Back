@@ -349,7 +349,7 @@ export const ReservasPage: React.FC = () => {
             <div className="p-8 pb-4">
               <div className="relative max-w-sm">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" placeholder="Buscar por cliente, evento o ID..."
+                <input type="text" placeholder="Buscar Reserva"
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all placeholder:text-slate-400 text-sm" />
               </div>

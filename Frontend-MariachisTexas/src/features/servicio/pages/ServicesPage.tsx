@@ -82,7 +82,7 @@ export const ServicesPage: React.FC = () => {
       showNotification('Servicio eliminado.');
       setDeleteModal({ isOpen: false, serviceId: null });
     } catch (error) {
-      showNotification("Error al eliminar servicio.", "error");
+      showNotification("Este servicio no se puede eliminar esta vinculado a una reserva.", "error");
     }
   };
 

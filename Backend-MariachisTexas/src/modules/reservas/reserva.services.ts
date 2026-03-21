@@ -1,48 +1,13 @@
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
-import { ReservaCreateSchema, zodError } from '../schemas'
+import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
+import { toLocalDate, toLocalTime, parseLocalDate, bloquearRango, dayRange } from '../../utils/date.helpers'
+import { mapEventType } from '../../utils/event.helpers'
+import { emailReservaCreada } from '../../utils/email.templates'
+import type { ReservaCreateInput, ReservaUpdateInput, ServicioSeleccionado, ReservationResponse } from '../../types/interfaces'
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-const toLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-const toLocalTime = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-
-// ✅ FIX ZONA HORARIA: parsear fecha como local, no UTC
-const parseLocalDate = (dateStr: string): Date => new Date(`${dateStr}T00:00:00`)
-
-const mapEventType = (tipo: string): string => {
-  const map: Record<string, string> = {
-    'Serenata':'OTRO','Boda':'BODA','Cumpleaños':'CUMPLEANOS','Empresarial':'OTRO',
-    'Fúnebre':'FUNERAL','Otro':'OTRO','BODA':'BODA','CUMPLEANOS':'CUMPLEANOS',
-    'QUINCEANIOS':'QUINCEANIOS','FUNERAL':'FUNERAL','RECONCILIACION':'RECONCILIACION',
-    'DIA_DE_MADRE':'DIA_DE_MADRE','OTRO':'OTRO',
-  }
-  return map[tipo] ?? 'OTRO'
-}
-
-// ✅ Helper para bloquear un rango de horas + buffers usando comparación numérica
-const bloquearRango = (
-  allHours: string[],
-  blocked: Set<string>,
-  startTime: string,
-  endTime: string
-) => {
-  const [sh] = startTime.split(':').map(Number)
-  const [eh] = endTime.split(':').map(Number)
-
-  // Buffer ANTES
-  blocked.add(`${((sh - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
-
-  // Todo el rango de inicio a fin inclusive (comparación numérica)
-  allHours.forEach(h => {
-    const [hh] = h.split(':').map(Number)
-    if (hh >= sh && hh <= eh) blocked.add(h)
-  })
-
-  // Buffer DESPUÉS
-  blocked.add(`${((eh + 1) % 24).toString().padStart(2,'0')}:00`)
-}
-
-const mapToReservation = (r: any) => {
+// ─── MAPEO ────────────────────────────────────────────────────────────────────
+const mapToReservation = (r: any): ReservationResponse => {
   const cot            = r.cotizacion
   const clientName     = cot?.cliente ? `${cot.cliente.nombre} ${cot.cliente.apellido}`.trim() : cot?.contactoNombre || cot?.nombreHomenajeado || ''
   const clientPhone    = cot?.cliente?.telefonoPrincipal   || cot?.contactoTelefono  || ''
@@ -50,26 +15,26 @@ const mapToReservation = (r: any) => {
   const clientEmail    = cot?.cliente?.email               || cot?.contactoEmail     || ''
 
   return {
-    id:             String(r.id),
-    cotizacionId:   String(r.cotizacionId),
-    clientId:       String(cot?.clienteId ?? ''),
+    id:               String(r.id),
+    cotizacionId:     String(r.cotizacionId),
+    clientId:         String(cot?.clienteId ?? ''),
     clientName, clientPhone, secondaryPhone, clientEmail,
-    homenajeado:    cot?.nombreHomenajeado ?? '',
-    eventType:      cot?.tipoEvento        ?? '',
-    eventDate:      cot?.fechaEvento  ? toLocalDate(cot.fechaEvento) : '',
-    eventTime:      cot?.horaInicio   ? toLocalTime(cot.horaInicio)  : '',
-    startTime:      cot?.horaInicio   ? toLocalTime(cot.horaInicio)  : '',
-    endTime:        cot?.horaFin      ? toLocalTime(cot.horaFin)     : '',
-    location:       cot?.direccionEvento ?? '',
-    address:        cot?.direccionEvento ?? '',
-    notes:          cot?.notasAdicionales ?? '',
-    repertoireIds:  cot?.repertorios?.map((rep: any) => String(rep.repertorioId)) ?? [],
+    homenajeado:      cot?.nombreHomenajeado ?? '',
+    eventType:        cot?.tipoEvento        ?? '',
+    eventDate:        cot?.fechaEvento  ? toLocalDate(cot.fechaEvento)  : '',
+    eventTime:        cot?.horaInicio   ? toLocalTime(cot.horaInicio)   : '',
+    startTime:        cot?.horaInicio   ? toLocalTime(cot.horaInicio)   : '',
+    endTime:          cot?.horaFin      ? toLocalTime(cot.horaFin)      : '',
+    location:         cot?.direccionEvento ?? '',
+    address:          cot?.direccionEvento ?? '',
+    notes:            cot?.notasAdicionales ?? '',
+    repertoireIds:    cot?.repertorios?.map((rep: any) => String(rep.repertorioId)) ?? [],
     selectedServices: cot?.servicios?.map((s: any) => ({ serviceId: String(s.servicioId), quantity: s.cantidad })) ?? [],
-    totalAmount:    Number(r.totalValor      ?? 0),
-    paidAmount:     Number(r.totalValor ?? 0) - Number(r.saldoPendiente ?? 0),
-    pendingBalance: Number(r.saldoPendiente  ?? 0),
-    status:         r.estado,
-    payments:       r.abonos?.map((a: any) => ({
+    totalAmount:      Number(r.totalValor     ?? 0),
+    paidAmount:       Number(r.totalValor     ?? 0) - Number(r.saldoPendiente ?? 0),
+    pendingBalance:   Number(r.saldoPendiente ?? 0),
+    status:           r.estado,
+    payments:         r.abonos?.map((a: any) => ({
       id:     String(a.id),
       amount: Number(a.monto),
       date:   a.fechaPago?.toISOString() ?? '',
@@ -97,8 +62,8 @@ const reservaInclude = {
   abonos: true,
 }
 
-export const getReservas = async (usuarioId?: number) => {
-  let where: any = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] } }
+// ─── GET ALL ──────────────────────────────────────────────────────────────────
+export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {let where: any = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] } }
   if (usuarioId) {
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } })
     if (usuario) {
@@ -110,8 +75,7 @@ export const getReservas = async (usuarioId?: number) => {
   return reservas.map(mapToReservation)
 }
 
-export const getReservasCalendario = async () => {
-  const reservas = await prisma.reserva.findMany({
+export const getReservasCalendario = async () => {const reservas = await prisma.reserva.findMany({
     where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as any } },
     include: {
       cotizacion: {
@@ -130,18 +94,14 @@ export const getReservasCalendario = async () => {
   }))
 }
 
-// ✅ excludeId — excluye una reserva específica del cálculo (para edición)
-export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {
-  const allHours: string[] = []
-  for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2,'0')}:00`)
-  allHours.push('00:00')
+// ─── GET HORAS DISPONIBLES ────────────────────────────────────────────────────
+export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {const allHours: string[] = []
+for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
+allHours.push('00:00')
+const { dayStart, dayEnd } = dayRange(dateStr)
+const blocked = new Set<string>()
 
-  const dayStart = new Date(`${dateStr}T00:00:00`)
-  const dayEnd   = new Date(`${dateStr}T23:59:59`)
-  const blocked  = new Set<string>()
-
-  // ─── Bloqueos manuales ────────────────────────────────────────────────────
-  const bloqueos = await prisma.bloqueoCalendario.findMany({
+const bloqueos = await prisma.bloqueoCalendario.findMany({
     where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } }
   })
   for (const b of bloqueos) {
@@ -151,49 +111,43 @@ export const getAvailableHours = async (dateStr: string, excludeId?: number): Pr
     allHours.forEach(h => { if (h >= start && h < end) blocked.add(h) })
   }
 
-  // ─── Cotizaciones activas ─────────────────────────────────────────────────
   const cotizaciones = await prisma.cotizacion.findMany({
     where: { fechaEvento: { gte: dayStart, lte: dayEnd }, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } }
   })
-  for (const c of cotizaciones) {
+  for (const c of cotizaciones)
     bloquearRango(allHours, blocked, toLocalTime(c.horaInicio), toLocalTime(c.horaFin))
-  }
 
-  // ─── Reservas — ✅ excluir la que se está editando ────────────────────────
   const reservas = await prisma.reserva.findMany({
     where: {
       estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
       cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } },
-      ...(excludeId ? { id: { not: excludeId } } : {}), // ✅ excluir reserva actual
+      ...(excludeId ? { id: { not: excludeId } } : {}),
     },
     include: { cotizacion: true }
   })
-  for (const r of reservas) {
+  for (const r of reservas)
     bloquearRango(allHours, blocked, toLocalTime(r.cotizacion.horaInicio), toLocalTime(r.cotizacion.horaFin))
-  }
 
-  // ─── Ensayos ──────────────────────────────────────────────────────────────
   const ensayos = await prisma.ensayo.findMany({ where: { fechaHora: { gte: dayStart, lte: dayEnd } } })
   for (const e of ensayos) {
     const time = toLocalTime(e.fechaHora)
     const [h]  = time.split(':').map(Number)
     blocked.add(time)
-    blocked.add(`${((h - 1 + 24) % 24).toString().padStart(2,'0')}:00`)
-    blocked.add(`${((h + 1) % 24).toString().padStart(2,'0')}:00`)
+    blocked.add(`${((h - 1 + 24) % 24).toString().padStart(2, '0')}:00`)
+    blocked.add(`${((h + 1) % 24).toString().padStart(2, '0')}:00`)
   }
 
   return allHours.filter(h => !blocked.has(h))
 }
 
-export const getReservaById = async (id: number) => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
-  if (!r) throw new Error('Reserva no encontrada')
-  return mapToReservation(r)
+// ─── GET BY ID ────────────────────────────────────────────────────────────────
+export const getReservaById = async (id: number): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
+if (!r) throw new Error('Reserva no encontrada')
+return mapToReservation(r)
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
-export const createReserva = async (data: any) => {
-  const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
+export const createReserva = async (data: ReservaCreateInput): Promise<ReservationResponse> => {const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
   const d       = parsed.data
@@ -203,7 +157,6 @@ export const createReserva = async (data: any) => {
   const cliente = await prisma.cliente.findUnique({ where: { email: usuario.email } })
   if (!cliente) throw new Error('Cliente no encontrado. Asegúrate de completar tu perfil.')
 
-  // ─── VALIDACIÓN DE SOLAPAMIENTO ───────────────────────────────────────────
   const nuevaInicio  = new Date(`${d.eventDate}T${d.startTime}:00`)
   const nuevaFin     = new Date(`${d.eventDate}T${d.endTime}:00`)
   const bufferInicio = new Date(nuevaInicio.getTime() - 60 * 60 * 1000)
@@ -212,14 +165,10 @@ export const createReserva = async (data: any) => {
   const reservaSolapada = await prisma.reserva.findFirst({
     where: {
       estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
-      cotizacion: {
-        fechaEvento: parseLocalDate(d.eventDate),
-        horaInicio:  { lt: bufferFin },
-        horaFin:     { gt: bufferInicio },
-      }
+      cotizacion: { fechaEvento: parseLocalDate(d.eventDate), horaInicio: { lt: bufferFin }, horaFin: { gt: bufferInicio } }
     }
   })
-  if (reservaSolapada) throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
+  if (reservaSolapada) throw new Error('Ya existe una reserva en ese horario. Por favor elige otro horario.')
 
   const cotizacionSolapada = await prisma.cotizacion.findFirst({
     where: {
@@ -229,8 +178,7 @@ export const createReserva = async (data: any) => {
       horaFin:     { gt: bufferInicio },
     }
   })
-  if (cotizacionSolapada) throw new Error(`Ya hay una solicitud pendiente en ese horario. Por favor elige otro horario.`)
-  // ─────────────────────────────────────────────────────────────────────────
+  if (cotizacionSolapada) throw new Error('Ya hay una solicitud pendiente en ese horario. Por favor elige otro horario.')
 
   const horas = await getAvailableHours(d.eventDate)
   if (!horas.includes(d.startTime)) throw new Error(`La hora ${d.startTime} no está disponible`)
@@ -239,10 +187,10 @@ export const createReserva = async (data: any) => {
     data: {
       clienteId:         cliente.id,
       nombreHomenajeado: d.homenajeado || 'Sin especificar',
-      tipoEvento:        mapEventType(d.eventType ?? 'OTRO') as any,
+      tipoEvento:        mapEventType(d.eventType ?? 'OTRO'),
       fechaEvento:       parseLocalDate(d.eventDate),
-      horaInicio:        new Date(`${d.eventDate}T${d.startTime}:00`),
-      horaFin:           new Date(`${d.eventDate}T${d.endTime}:00`),
+      horaInicio:        nuevaInicio,
+      horaFin:           nuevaFin,
       direccionEvento:   d.location,
       notasAdicionales:  d.notes ?? null,
       totalEstimado:     d.totalAmount,
@@ -255,23 +203,18 @@ export const createReserva = async (data: any) => {
 
   if (d.selectedServices?.length)
     await prisma.cotizacionServicio.createMany({
-      data: d.selectedServices.map(s => ({
-        cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity
-      }))
+      data: d.selectedServices.map((s: ServicioSeleccionado) => ({cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity}))
     })
 
   if (d.repertoireIds?.length)
     await prisma.cotizacionRepertorio.createMany({
-      data: d.repertoireIds.map((rid, i) => ({
-        cotizacionId: cot.id, repertorioId: Number(rid), orden: i
-      }))
+      data: d.repertoireIds.map((rid: string | number, i: number) => ({cotizacionId: cot.id, repertorioId: Number(rid), orden: i}))
     })
 
   const reserva = await prisma.reserva.create({
     data: { cotizacionId: cot.id, totalValor: d.totalAmount, saldoPendiente: d.totalAmount, estado: 'PENDIENTE' }
   })
 
-  // ─── CORREO ───────────────────────────────────────────────────────────────
   const anticipo        = Math.ceil(d.totalAmount / 2)
   const fechaFormateada = parseLocalDate(d.eventDate).toLocaleDateString('es-CO', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -279,118 +222,87 @@ export const createReserva = async (data: any) => {
   const base     = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
   const loginUrl = `${base}/login`
 
-  await transporter.sendMail({
-    from:    process.env.MAIL_FROM,
-    to:      cliente.email,
-    subject: '¡Reserva creada exitosamente! — Mariachis Texas 🎺',
-    html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:28px;background:#0a0a0a;color:#fff;border-radius:12px;">
-        <div style="text-align:center;margin-bottom:20px;"><h1 style="color:#c0392b;margin:0;">🎺 Mariachis Texas</h1></div>
-        <h2 style="color:#fff;">¡Hola ${cliente.nombre}! 🎉</h2>
-        <p style="color:#aaa;line-height:1.6;">Tu reserva ha sido creada exitosamente. A continuación los detalles:</p>
-        <div style="background:#1a1a1a;border:1px solid #c0392b;border-radius:10px;padding:16px;margin:20px 0;">
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;">📅 Fecha: <strong style="color:#fff">${fechaFormateada}</strong></p>
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;">⏰ Horario: <strong style="color:#fff">${d.startTime} - ${d.endTime}</strong></p>
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;">📍 Lugar: <strong style="color:#fff">${d.location}</strong></p>
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;">🎭 Evento: <strong style="color:#fff">${d.eventType ?? 'Serenata'}</strong></p>
-          <p style="color:#aaa;margin:0;font-size:13px;">💰 Valor Total: <strong style="color:#fff">$${Number(d.totalAmount).toLocaleString('es-CO')} COP</strong></p>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #27ae60;border-radius:10px;padding:20px;margin:20px 0;text-align:center;">
-          <p style="color:#aaa;margin:0 0 8px;font-size:13px;">💳 Para confirmar tu reserva debes pagar el <strong style="color:#fff">50% de anticipo:</strong></p>
-          <p style="font-size:32px;font-weight:900;color:#27ae60;margin:12px 0;letter-spacing:2px;">$${anticipo.toLocaleString('es-CO')} COP</p>
-          <p style="color:#aaa;margin:0;font-size:12px;">Saldo restante al finalizar el evento: $${(Number(d.totalAmount) - anticipo).toLocaleString('es-CO')} COP</p>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:16px;margin:20px 0;">
-          <p style="color:#fff;font-weight:bold;margin:0 0 8px;font-size:14px;">📞 Comunícate con nosotros para realizar el pago:</p>
-          <p style="color:#c0392b;font-size:24px;font-weight:900;margin:8px 0;text-align:center;letter-spacing:2px;">312 237 3486</p>
-          <p style="color:#aaa;font-size:12px;margin:0;text-align:center;">Aceptamos: Transferencia bancaria, Nequi, Daviplata o Efectivo</p>
-        </div>
-        <p style="color:#aaa;line-height:1.6;font-size:13px;">
-          ⚠️ <strong style="color:#fff">Importante:</strong> Tu reserva quedará en estado
-          <strong style="color:#f39c12">Pendiente</strong> hasta que registremos tu pago del anticipo.
-          Una vez confirmado el pago pasará a estado <strong style="color:#27ae60">Confirmada</strong>.
-        </p>
-        <div style="text-align:center;margin:24px 0;">
-          <a href="${loginUrl}" style="background:#c0392b;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">Ver mi Reserva →</a>
-        </div>
-        <hr style="border:none;border-top:1px solid #222;margin:20px 0;" />
-        <p style="color:#555;font-size:11px;text-align:center;">Mariachis Texas • Medellín, Colombia</p>
-      </div>
-    `
-  }).catch(err => console.error('Error enviando correo de reserva:', err))
+  const mail = emailReservaCreada({
+    nombreCliente:   cliente.nombre,
+    fechaFormateada,
+    startTime:       d.startTime,
+    endTime:         d.endTime,
+    location:        d.location,
+    eventType:       d.eventType ?? 'Serenata',
+    totalAmount:     d.totalAmount,
+    anticipo,
+    loginUrl,
+  })
+  await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
+    .catch(err => console.error('Error enviando correo de reserva:', err))
 
   return getReservaById(reserva.id)
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
-export const updateReserva = async (id: number, data: any) => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
+export const updateReserva = async (id: number, data: ReservaUpdateInput): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado === 'ANULADA') throw new Error('No se puede editar una reserva anulada')
 
-  const date       = data.eventDate ?? toLocalDate(r.cotizacion.fechaEvento)
-  const horaInicio = data.startTime ? new Date(`${date}T${data.startTime}:00`) : r.cotizacion.horaInicio
-  const horaFin    = data.endTime   ? new Date(`${date}T${data.endTime}:00`)   : r.cotizacion.horaFin
+  // ✅ Validación Zod — formato de fechas, horas, rangos y límites
+  const parsed = ReservaUpdateSchema.safeParse(data)
+  if (!parsed.success) throw new Error(zodError(parsed.error))
+  const d = parsed.data
 
-  // ─── VALIDACIÓN DE SOLAPAMIENTO ───────────────────────────────────────────
-  if (data.startTime || data.endTime || data.eventDate) {
+  const date       = d.eventDate ?? toLocalDate(r.cotizacion.fechaEvento)
+  const horaInicio = d.startTime ? new Date(`${date}T${d.startTime}:00`) : r.cotizacion.horaInicio
+  const horaFin    = d.endTime   ? new Date(`${date}T${d.endTime}:00`)   : r.cotizacion.horaFin
+
+  if (d.startTime || d.endTime || d.eventDate) {
     const bufferInicio = new Date(horaInicio.getTime() - 60 * 60 * 1000)
     const bufferFin    = new Date(horaFin.getTime()    + 60 * 60 * 1000)
 
     const reservaSolapada = await prisma.reserva.findFirst({
       where: {
-        id:     { not: id }, // ✅ excluir la reserva actual
+        id:     { not: id },
         estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
-        cotizacion: {
-          fechaEvento: parseLocalDate(date),
-          horaInicio:  { lt: bufferFin },
-          horaFin:     { gt: bufferInicio },
-        }
+        cotizacion: { fechaEvento: parseLocalDate(date), horaInicio: { lt: bufferFin }, horaFin: { gt: bufferInicio } }
       }
     })
-    if (reservaSolapada) throw new Error(`Ya existe una reserva en ese horario. Por favor elige otro horario.`)
+    if (reservaSolapada) throw new Error('Ya existe una reserva en ese horario. Por favor elige otro horario.')
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   await prisma.cotizacion.update({
     where: { id: r.cotizacionId },
     data: {
-      nombreHomenajeado: data.homenajeado || undefined,
-      tipoEvento:        data.eventType  ? mapEventType(data.eventType) as any : undefined,
-      fechaEvento:       data.eventDate  ? parseLocalDate(data.eventDate) : undefined,
+      nombreHomenajeado: d.homenajeado || undefined,
+      tipoEvento:        d.eventType  ? mapEventType(d.eventType) : undefined,
+      fechaEvento:       d.eventDate  ? parseLocalDate(d.eventDate) : undefined,
       horaInicio, horaFin,
-      direccionEvento:   data.location   || undefined,
-      notasAdicionales:  data.notes !== undefined ? (data.notes || null) : undefined,
+      direccionEvento:   d.location   || undefined,
+      notasAdicionales:  d.notes !== undefined ? (d.notes || null) : undefined,
     }
   })
 
-  if (data.totalAmount !== undefined) {
-    const nuevoTotal = Number(data.totalAmount)
+  if (d.totalAmount !== undefined) {
+    const nuevoTotal = Number(d.totalAmount)
     if (!isNaN(nuevoTotal) && nuevoTotal > 0) {
       const pagado     = Number(r.totalValor) - Number(r.saldoPendiente)
       const nuevoSaldo = Math.max(0, nuevoTotal - pagado)
-      await prisma.reserva.update({
-        where: { id },
-        data: { totalValor: nuevoTotal, saldoPendiente: nuevoSaldo }
-      })
+      await prisma.reserva.update({ where: { id }, data: { totalValor: nuevoTotal, saldoPendiente: nuevoSaldo } })
     }
   }
 
-  if (data.selectedServices) {
+  if (d.selectedServices) {
     await prisma.cotizacionServicio.deleteMany({ where: { cotizacionId: r.cotizacionId } })
-    if (data.selectedServices.length)
+    if (d.selectedServices.length)
       await prisma.cotizacionServicio.createMany({
-        data: data.selectedServices.map((s: any) => ({
+        data: d.selectedServices.map((s: ServicioSeleccionado) => ({
           cotizacionId: r.cotizacionId, servicioId: Number(s.serviceId), cantidad: s.quantity
         }))
       })
   }
 
-  if (data.repertoireIds) {
+  if (d.repertoireIds) {
     await prisma.cotizacionRepertorio.deleteMany({ where: { cotizacionId: r.cotizacionId } })
-    if (data.repertoireIds.length)
+    if (d.repertoireIds.length)
       await prisma.cotizacionRepertorio.createMany({
-        data: data.repertoireIds.map((rid: string, i: number) => ({
+        data: d.repertoireIds.map((rid: string | number, i: number) => ({
           cotizacionId: r.cotizacionId, repertorioId: Number(rid), orden: i
         }))
       })
@@ -400,8 +312,7 @@ export const updateReserva = async (id: number, data: any) => {
 }
 
 // ─── ANULAR ───────────────────────────────────────────────────────────────────
-export const anularReserva = async (id: number, motivo?: string) => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
+export const anularReserva = async (id: number, motivo?: string): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado === 'ANULADA') throw new Error('La reserva ya está anulada')
 
@@ -421,16 +332,14 @@ export const anularReserva = async (id: number, motivo?: string) => {
 }
 
 // ─── CONFIRMAR ────────────────────────────────────────────────────────────────
-export const confirmarReserva = async (id: number) => {
-  const r = await prisma.reserva.findUnique({ where: { id } })
+export const confirmarReserva = async (id: number): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id } })
   if (!r) throw new Error('Reserva no encontrada')
   await prisma.reserva.update({ where: { id }, data: { estado: 'CONFIRMADA' } })
   return getReservaById(id)
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
-export const deleteReserva = async (id: number) => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
+export const deleteReserva = async (id: number) => {const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado !== 'ANULADA')  throw new Error('Solo se pueden eliminar reservas anuladas')
   if (r.abonos.length > 0)     throw new Error('No se puede eliminar una reserva con abonos registrados')

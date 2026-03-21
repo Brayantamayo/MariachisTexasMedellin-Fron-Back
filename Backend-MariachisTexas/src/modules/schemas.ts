@@ -79,10 +79,10 @@ export const RegistroSchema = z.object({
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede superar 50 caracteres')
     .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El apellido solo puede contener letras'),
-    tipoDocumento: z.string().refine(
+  tipoDocumento: z.string().refine(
     v => ['CEDULA', 'PASAPORTE', 'CEDULA_EXTRANJERIA'].includes(v),
     'Tipo de documento inválido. Opciones: CEDULA, PASAPORTE, CEDULA_EXTRANJERIA'
-),
+  ),
   numeroDocumento:      z.string()
     .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos'),
   fechaNacimiento:      z.string()
@@ -100,9 +100,9 @@ export const RegistroSchema = z.object({
   barrio:               z.string().min(2, 'El barrio es requerido').max(80, 'Barrio demasiado largo'),
   direccion:            z.string().min(5, 'La dirección es requerida').max(150, 'Dirección demasiado larga'),
   zonaServicio: z.string().refine(
-  v => ['URBANA', 'RURAL'].includes(v),
-  'La zona de servicio debe ser URBANA o RURAL'
-),
+    v => ['URBANA', 'RURAL'].includes(v),
+    'La zona de servicio debe ser URBANA o RURAL'
+  ),
   password,
   passwordConfirmation: z.string().min(1, 'La confirmación de contraseña es requerida'),
   foto:                 z.string().url('URL de foto inválida').optional().or(z.literal('')),
@@ -196,6 +196,28 @@ export const ReservaCreateSchema = z.object({
   path:    ['endTime']
 })
 
+// ✅ NUEVO — valida el body del PUT /reservas/:id
+export const ReservaUpdateSchema = z.object({
+  eventDate:        fechaFutura.optional(),
+  startTime:        hora.optional(),
+  endTime:          hora.optional(),
+  location:         z.string().min(5, 'La dirección debe tener al menos 5 caracteres').max(200).optional(),
+  homenajeado:      z.string().max(100).optional(),
+  eventType:        z.string().max(50).optional(),
+  notes:            z.string().max(1000).optional().nullable(),
+  totalAmount:      z.number().positive('El valor total debe ser mayor a 0').max(10_000_000).optional(),
+  selectedServices: z.array(servicioSeleccionado).min(1, 'Debes seleccionar al menos un servicio').max(10).optional(),
+  repertoireIds:    z.array(repertorioId).max(20).optional(),
+})
+.refine(d => {
+  if (d.startTime && d.endTime)
+    return d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime)
+  return true
+}, {
+  message: 'La hora de fin debe ser posterior a la hora de inicio',
+  path:    ['endTime']
+})
+
 // ─── SERVICIO ─────────────────────────────────────────────────────────────────
 export const ServicioCreateSchema = z.object({
   nombre:      z.string()
@@ -211,9 +233,25 @@ export const ServicioCreateSchema = z.object({
 
 export const ServicioUpdateSchema = ServicioCreateSchema.partial()
 
+// ─── ENSAYO ───────────────────────────────────────────────────────────────────
+export const EnsayoCreateSchema = z.object({
+  title:         z.string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres'),
+  location:      z.string()
+    .min(2, 'El lugar es requerido')
+    .max(200, 'El lugar no puede superar 200 caracteres'),
+  address:       z.string().max(200).optional().nullable(),
+  date:          fechaFutura,
+  time:          hora,
+  repertoireIds: z.array(repertorioId).max(20, 'No puedes seleccionar más de 20 canciones').optional(),
+})
+
+export const EnsayoUpdateSchema = EnsayoCreateSchema.partial()
+
 // ─── REPERTORIO ───────────────────────────────────────────────────────────────
-const GENEROS     = ['Ranchera', 'Bolero', 'Son', 'Corrido', 'Huapango', 'Balada'] as const
-const CATEGORIAS  = ['Serenata', 'Boda', 'Cumpleaños', 'Fúnebre', 'Show', 'Clásicos'] as const
+const GENEROS      = ['Ranchera', 'Bolero', 'Son', 'Corrido', 'Huapango', 'Balada'] as const
+const CATEGORIAS   = ['Serenata', 'Boda', 'Cumpleaños', 'Fúnebre', 'Show', 'Clásicos'] as const
 const DIFICULTADES = ['Baja', 'Media', 'Alta'] as const
 
 export const RepertorioCreateSchema = z.object({

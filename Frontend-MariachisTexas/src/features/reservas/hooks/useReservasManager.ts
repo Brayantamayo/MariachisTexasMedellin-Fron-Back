@@ -13,7 +13,8 @@ export const useReservasManager = () => {
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
   const isClient  = user?.role === UserRole.CLIENTE;
 
-  const [view,        setView]        = useState<'list' | 'calendar'>('list');
+  
+  const [view, setView] = useState<'list' | 'calendar'>('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [reservations,         setReservations]         = useState<Reservation[]>([]);

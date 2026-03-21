@@ -123,7 +123,7 @@ export const RepertoirePage: React.FC = () => {
       }
       showNotification('Canción eliminada del repertorio.');
     } catch {
-      showNotification('Error al eliminar la canción.', 'error');
+      showNotification('esta cancion no se puede eliminar esta vinculada a una reserva.', 'error');
     } finally {
       setDeleteModal({ isOpen: false, songId: null });
     }

@@ -23,6 +23,13 @@ const timeToMinutes = (t: string): number => {
   return h * 60 + m
 }
 
+// Suma 1 hora a un string HH:MM
+const addOneHour = (t: string): string => {
+  const [h, m] = t.split(':').map(Number)
+  const newH = (h + 1) % 24
+  return `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+}
+
 export const DateDetailsModal: React.FC<Props> = ({
   isOpen, onClose, date,
   reservations, blocks = [], rehearsals = [], quotations = [],
@@ -55,7 +62,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     const reservation = reservations.find(r => r.startTime === time || r.eventTime === time)
     if (reservation) return { status: 'reserved', data: reservation }
 
-    // 2. Horas intermedias de una reserva (entre startTime y endTime)
+    // 2. Horas intermedias de una reserva
     const reservaEnRango = reservations.find(r => {
       const start = timeToMinutes(r.startTime || r.eventTime || '00:00')
       const end   = timeToMinutes(r.endTime   || '00:00')
@@ -63,14 +70,14 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Buffer DESPUÉS de una reserva (hora siguiente al endTime)
+    // 3. Buffer DESPUÉS de una reserva
     const bufferPostReserva = reservations.find(r => {
       const end = timeToMinutes(r.endTime || '00:00')
       return hMin === end
     })
     if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
-    // 4. Buffer ANTES de una reserva (hora previa al startTime)
+    // 4. Buffer ANTES de una reserva
     const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime)
     if (prevReservation) return { status: 'buffer', data: prevReservation }
 
@@ -82,7 +89,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (quote) return { status: 'quote', data: quote }
 
-    // ✅ 6. Buffer DESPUÉS de cotización (1 hora después del endTime)
+    // 6. Buffer DESPUÉS de cotización
     const bufferPostCotizacion = quotations.find(q => {
       const end = timeToMinutes(q.endTime)
       return hMin === end
@@ -93,7 +100,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     const rehearsal = rehearsals.find(r => (r.time ?? r.hora) === time)
     if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
-    // 8. Buffer ensayo (1 hora después)
+    // 8. Buffer ensayo
     const prevRehearsal = rehearsals.find(r => (r.time ?? r.hora) === prevTime)
     if (prevRehearsal) return { status: 'buffer_rehearsal', data: prevRehearsal }
 
@@ -127,8 +134,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     } else if (slotData.status === 'reserved' || slotData.status === 'reserved_range') {
       const res = slotData.data as Reservation;
       if (isClient) {
-        const isMyReservation = user?.email === res.clientEmail
-        if (!isMyReservation) return
+        if (user?.email !== res.clientEmail) return
       }
       onViewReservation(slotData.data);
     }
@@ -166,6 +172,8 @@ export const DateDetailsModal: React.FC<Props> = ({
               if (status === 'reserved' || status === 'reserved_range') {
                 const res = data as Reservation;
                 const isMyReservation = !isClient || user?.email === res.clientEmail;
+                const rangeLabel = `${res.startTime || res.eventTime} - ${res.endTime}`
+
                 if (isMyReservation) {
                   if (status === 'reserved') {
                     containerClass = "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
@@ -173,12 +181,17 @@ export const DateDetailsModal: React.FC<Props> = ({
                       <div className="flex items-center justify-between w-full">
                         <div>
                           <p className="text-xs font-bold text-emerald-800">{res.eventType}</p>
-                          <p className="text-[10px] text-emerald-600 flex items-center gap-1"><User size={10}/> {res.clientName}</p>
+                          <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                            <User size={10}/> {res.clientName}
+                          </p>
+                          {/* ✅ Rango de horas */}
+                          <p className="text-[10px] text-emerald-500 font-mono mt-0.5">{rangeLabel}</p>
                         </div>
                         <ArrowRight size={14} className="text-emerald-400" />
                       </div>
                     );
                   } else {
+                    // Horas intermedias — compacto
                     containerClass = "border-emerald-100 bg-emerald-50/40 cursor-pointer";
                     content = (
                       <div className="flex items-center gap-2 w-full text-emerald-600 opacity-70">
@@ -190,57 +203,97 @@ export const DateDetailsModal: React.FC<Props> = ({
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                        <Lock size={10} /> No disponible
+                      </span>
                     </div>
                   );
                 }
 
               } else if (status === 'quote') {
                 const q = data as Quotation;
-                const isMyQuote = !isClient || user?.id === q.clientId || user?.email === q.clientEmail;
-                if (isMyQuote && !isClient) {
+                const rangeLabel = `${q.startTime} - ${q.endTime}`
+
+                if (!isClient) {
+                  // Admin/Empleado — ve datos completos
                   containerClass = "border-amber-100 bg-amber-50 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-between w-full text-amber-800">
                       <div>
-                        <p className="text-xs font-bold flex items-center gap-2"><FileText size={12}/> Cotización en Espera</p>
+                        <p className="text-xs font-bold flex items-center gap-2">
+                          <FileText size={12}/> Cotización en Espera
+                        </p>
                         <p className="text-[10px] opacity-70">{q.clientName}</p>
+                        {/* ✅ Rango de horas */}
+                        <p className="text-[10px] font-mono opacity-60 mt-0.5">{rangeLabel}</p>
                       </div>
                       <span className="text-[9px] font-bold border border-amber-200 px-2 py-0.5 rounded-full bg-white/50 uppercase">Bloqueado</span>
                     </div>
                   );
                 } else {
-                  // Cliente ve "No disponible"
+                  // Cliente — solo "No disponible"
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2">
+                        <Lock size={10}/> No disponible
+                      </span>
                     </div>
                   );
                 }
 
               } else if (status === 'rehearsal') {
+                const reh = data as Rehearsal;
+                const rehTime  = reh.time ?? reh.hora ?? ''
+                const rangeLabel = `${rehTime} - ${addOneHour(rehTime)}`
+
                 containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
+                      <Lock size={10}/> No disponible
+                    </span>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center w-full text-blue-500">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Music size={12}/> Ensayo Programado</span>
+                  <div className="flex items-center justify-between w-full text-blue-500">
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
+                      <Music size={12}/> Ensayo Programado
+                    </span>
+                    {/* ✅ Rango de horas */}
+                    <span className="text-[10px] font-mono opacity-60">{rangeLabel}</span>
                   </div>
                 );
 
               } else if (status === 'buffer' || status === 'buffer_rehearsal') {
+                // ✅ Calcular rango del buffer según la fuente
+                let bufferRange = ''
+                if (data) {
+                  const d = data as any
+                  if (d.endTime) {
+                    // buffer post-reserva o post-cotización: endTime → endTime+1h
+                    bufferRange = `${d.endTime} - ${addOneHour(d.endTime)}`
+                  } else if (d.time ?? d.hora) {
+                    // buffer post-ensayo
+                    const t = d.time ?? d.hora
+                    bufferRange = `${addOneHour(t)} - ${addOneHour(addOneHour(t))}`
+                  }
+                }
+
                 containerClass = "border-slate-100 bg-slate-50 cursor-not-allowed border-dashed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
+                      <Lock size={10}/> No disponible
+                    </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-slate-400 w-full opacity-70">
-                    <AlertTriangle size={12} />
-                    <span className="text-[10px] font-bold uppercase">Cierre / Transporte</span>
+                  <div className="flex items-center justify-between w-full text-slate-400 opacity-70">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={12} />
+                      <span className="text-[10px] font-bold uppercase">Cierre / Transporte</span>
+                    </div>
+                    {/* ✅ Rango del buffer */}
+                    {bufferRange && <span className="text-[10px] font-mono">{bufferRange}</span>}
                   </div>
                 );
 
@@ -249,7 +302,9 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const block = data as CalendarBlock;
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-red-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
+                      <Lock size={10}/> No disponible
+                    </span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-800 w-full">
