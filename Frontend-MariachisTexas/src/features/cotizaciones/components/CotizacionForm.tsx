@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles } from 'lucide-react';
-import { User as UserType, Song, Service } from '@/types';
+import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
 interface Props {
@@ -37,7 +37,6 @@ export const CotizacionForm: React.FC<Props> = ({
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
 }) => {
   const [searchTerm,      setSearchTerm]      = useState('');
-  // ✅ Paso 1 = detalles del evento, Paso 2 = datos del cliente (solo en público)
   const [showClientStep,  setShowClientStep]  = useState(false);
   const clientSectionRef = useRef<HTMLDivElement>(null);
 
@@ -112,7 +111,6 @@ export const CotizacionForm: React.FC<Props> = ({
     onToggleSong(id)
   }
 
-  // ✅ Cuando el cliente hace click en "Continuar" — mostrar paso 2 y subir
   const handleContinueToClient = () => {
     setShowClientStep(true)
     setTimeout(() => {
@@ -139,11 +137,9 @@ export const CotizacionForm: React.FC<Props> = ({
       {/* ── COLUMNA IZQUIERDA ─────────────────────────────────────────────── */}
       <div className={`w-full lg:w-7/12 p-8 lg:p-10 space-y-10 ${isPublic ? 'bg-white' : 'bg-white border-r border-slate-100'}`}>
 
-        {/* ✅ PASO 2 — Datos del Cliente (solo visible en público después de continuar) */}
         {(!isPublic || showClientStep) && (
           <div ref={clientSectionRef} className={isPublic ? "" : "bg-white p-5 rounded-xl border border-slate-100 shadow-sm"}>
 
-            {/* ✅ Banner motivador solo en público */}
             {isPublic && showClientStep && (
               <div className="mb-6 p-5 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-2xl">
                 <div className="flex items-start gap-3">
@@ -177,7 +173,7 @@ export const CotizacionForm: React.FC<Props> = ({
                     className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
                     <option value="">-- Buscar en base de datos --</option>
                     {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre} {c.apellido} - {c.telefonoPrincipal}</option>
+                      <option key={c.id} value={c.id}>{c.name} {c.lastName} - {c.phone}</option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
@@ -285,14 +281,12 @@ export const CotizacionForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
+                {/* ✅ Tipos de evento desde constante centralizada en @/types */}
                 <select name="eventType" value={formData.eventType} onChange={onChange}
                   className={`${inputClass} appearance-none cursor-pointer`}>
-                  <option value="Serenata">Serenata</option>
-                  <option value="Boda">Boda</option>
-                  <option value="Cumpleaños">Cumpleaños</option>
-                  <option value="Empresarial">Empresarial</option>
-                  <option value="Fúnebre">Fúnebre</option>
-                  <option value="Otro">Otro</option>
+                  {TIPOS_EVENTO.map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
               </div>
@@ -546,7 +540,6 @@ export const CotizacionForm: React.FC<Props> = ({
               Cancelar
             </button>
 
-            {/* ✅ En público: Paso 1 → botón "Continuar", Paso 2 → botón "Enviar" */}
             {isPublic && !showClientStep ? (
               <button
                 type="button"

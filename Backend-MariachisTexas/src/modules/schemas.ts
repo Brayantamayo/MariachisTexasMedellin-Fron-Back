@@ -1,286 +1,510 @@
 import { z, ZodError } from 'zod'
 
-// ─── HELPERS REUTILIZABLES ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── HELPER: DETECCIÓN DE TEXTO GIBBERISH ─────────────────────────────────────
+// Detecta texto como "wkssnjsnkks", "aaaaaabbb", "xzxzxzxzxz"
+// ══════════════════════════════════════════════════════════════════════════════
+const esGibberish = (texto: string): boolean => {
+  const lower = texto.toLowerCase().replace(/[\s.,;:!?()-]/g, '')
+  if (lower.length < 6) return false               // textos cortos no se evalúan
+  if (/[bcdfghjklmnpqrstvwxyz]{5,}/i.test(lower)) return true  // 5+ consonantes seguidas
+  if (/(.)\1{4,}/.test(lower))                     return true  // 5+ caracteres iguales
+  if (lower.length > 8) {
+    const vocales = (lower.match(/[aeiouáéíóú]/g) || []).length
+    if (vocales / lower.length < 0.08)             return true  // menos del 8% de vocales
+  }
+  return false
+}
+
+// ─── Valida que una nota/texto libre tenga sentido ────────────────────────────
+const textoLibre = (campo: string, max: number) =>
+  z.string()
+    .trim()
+    .max(max, `El campo "${campo}" no puede superar ${max} caracteres`)
+    .refine(t => !/^\s+$/.test(t),                   `El campo "${campo}" no puede ser solo espacios`)
+    .refine(t => !/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9]+$/.test(t), `El campo "${campo}" no puede contener solo caracteres especiales`)
+    .refine(t => !esGibberish(t),                    `El campo "${campo}" parece contener texto sin sentido. Por favor escribe algo coherente`)
+    .refine(t => !/[<>{}[\]\\|^`]/.test(t),          `El campo "${campo}" contiene caracteres no permitidos`)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── PRIMITIVOS REUTILIZABLES ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TELEFONOS_INVALIDOS = /^3(000000000|111111111|222222222|333333333|444444444|555555555|666666666|777777777|888888888|999999999|123456789|987654321)$/
+const PREFIJOS_VALIDOS    = /^3(0[0-9]|1[0-9]|2[0-9]|3[0-9]|5[0-9])\d{7}$/
+
 const telefono = z.string()
-  .regex(/^3\d{9}$/, 'El teléfono debe iniciar con 3 y tener 10 dígitos')
+  .trim()
+  .regex(/^3\d{9}$/, 'El teléfono debe iniciar con 3 y tener exactamente 10 dígitos')
+  .refine(t => !TELEFONOS_INVALIDOS.test(t), 'Número de teléfono no válido')
+  .refine(t => PREFIJOS_VALIDOS.test(t),     'El prefijo no corresponde a un operador colombiano válido')
+  .refine(t => !/^(\d)\1{9}$/.test(t),       'El teléfono no puede ser un dígito repetido')
 
 const hora = z.string()
+  .trim()
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Formato de hora inválido (HH:MM)')
 
 const fecha = z.string()
+  .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')
   .refine(d => !isNaN(Date.parse(d)), 'La fecha no es válida')
+  .refine(d => {
+    const [y, m, day] = d.split('-').map(Number)
+    const date = new Date(y, m - 1, day)
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === day
+  }, 'La fecha no existe en el calendario (ej: 31 de febrero)')
 
 const fechaFutura = fecha
   .refine(d => new Date(d) >= new Date(new Date().toDateString()), 'La fecha no puede ser en el pasado')
+  .refine(d => {
+    const limite = new Date()
+    limite.setFullYear(limite.getFullYear() + 2)
+    return new Date(d) <= limite
+  }, 'No se pueden agendar eventos con más de 2 años de anticipación')
 
 const duracion = z.string()
-  .regex(/^\d{1,2}:[0-5]\d$/, 'Formato de duración inválido (M:SS)')
+  .trim()
+  .regex(/^\d{1,2}:[0-5]\d$/, 'Formato de duración inválido (M:SS o MM:SS)')
+
+const DOMINIOS_TEMPORALES = [
+  'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'yopmail.com',
+  'sharklasers.com', 'spam4.me', 'trashmail.com', 'dispostable.com', 'fakeinbox.com',
+]
 
 const email = z.string()
-  .email('El correo no es válido')
+  .trim()
+  .toLowerCase()
+  .min(5,   'El correo es demasiado corto')
   .max(100, 'El correo no puede superar 100 caracteres')
+  .email('El correo no es válido')
+  .refine(e => !e.includes('..'),                      'El correo no puede contener puntos consecutivos')
+  .refine(e => !e.startsWith('.') && !e.endsWith('.'), 'El correo no puede empezar ni terminar con un punto')
+  .refine(e => !e.includes('+'),                       'No se permiten alias de correo con +')
+  .refine(e => !DOMINIOS_TEMPORALES.includes(e.split('@')[1] ?? ''), 'No se permiten correos temporales')
+  .refine(e => {
+    const local = e.split('@')[0]
+    return !/^[._-]/.test(local) && !/[._-]$/.test(local)
+  }, 'La parte local del correo no puede empezar ni terminar con puntos o guiones')
   .transform(e => e.toLowerCase().trim())
 
+const DOMINIOS_PERMITIDOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'protonmail.com']
+
 const emailRegistro = email.refine(e => {
-  const dominios = ['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','protonmail.com']
-  const dominio  = e.split('@')[1]
-  return dominios.includes(dominio)
-}, 'El dominio del correo no es válido. Usa Gmail, Hotmail, Outlook, Yahoo, iCloud, Live o Protonmail')
+  const dominio = e.split('@')[1]
+  return DOMINIOS_PERMITIDOS.includes(dominio)
+}, `Dominio no válido. Usa: ${DOMINIOS_PERMITIDOS.join(', ')}`)
 
-const passwordRgx = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_])[A-Za-z\d@$!%*?&\-_]{6,}$/
-const password    = z.string()
-  .min(6, 'La contraseña debe tener mínimo 6 caracteres')
+const PASSWORDS_COMUNES   = ['123456', 'password', 'qwerty', 'abc123', '111111', 'contraseña', '123456789', 'iloveyou', 'admin', 'letmein', 'master']
+const PATRONES_TECLADO    = ['qwerty', 'asdfgh', 'zxcvbn', 'qwertyuiop', 'asdfghjkl', '123456', 'abcdef']
+const passwordRgx         = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_])[A-Za-z\d@$!%*?&\-_]{6,}$/
+
+const password = z.string()
+  .trim()
+  .min(6,  'La contraseña debe tener mínimo 6 caracteres')
+  .max(64, 'La contraseña no puede superar 64 caracteres')
   .regex(passwordRgx, 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&-_)')
+  .refine(p => !/\s/.test(p),       'La contraseña no puede contener espacios')
+  .refine(p => !/^(.)\1+$/.test(p), 'La contraseña no puede ser un solo carácter repetido')
+  .refine(p => !PASSWORDS_COMUNES.includes(p.toLowerCase()), 'La contraseña es demasiado común')
+  .refine(p => !PATRONES_TECLADO.some(pat => p.toLowerCase().includes(pat)), 'La contraseña contiene un patrón de teclado común')
+  .refine(p => /[a-zA-Z]/.test(p) && /\d/.test(p), 'La contraseña debe mezclar letras y números')
 
-const CLOUDINARY  = 'res.cloudinary.com'
-const IMG_EXTS    = ['.jpg', '.jpeg', '.png', '.webp']
-const AUDIO_EXTS  = ['.mp3', '.wav', '.ogg', '.mp4', '.mpeg']
+const CLOUDINARY = 'res.cloudinary.com'
+const IMG_EXTS   = ['.jpg', '.jpeg', '.png', '.webp']
+const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.mp4', '.mpeg']
 
 const urlImagen = z.union([
-  z.string()
+  z.string().trim()
     .url('URL de imagen inválida')
-    .refine(
-      u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)),
-      'La URL debe ser de Cloudinary o una imagen válida (JPG, PNG, WEBP)'
-    ),
-  z.literal(''),
-  z.null(),
-  z.undefined(),
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'),
+  z.literal(''), z.null(), z.undefined(),
 ])
 
 const urlAudio = z.union([
-  z.string()
+  z.string().trim()
     .url('URL de audio inválida')
-    .refine(
-      u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)),
-      'La URL debe ser de Cloudinary o un audio válido (MP3, WAV, OGG)'
-    ),
-  z.literal(''),
-  z.null(),
-  z.undefined(),
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'),
+  z.literal(''), z.null(), z.undefined(),
 ])
 
-// ─── Servicio seleccionado (reutilizable) ────────────────────────────────────
 const servicioSeleccionado = z.object({
-  serviceId: z.union([z.string(), z.number()]),
-  quantity:  z.number().int('La cantidad debe ser un número entero').min(1, 'La cantidad mínima es 1').max(10, 'La cantidad máxima es 10'),
+  serviceId: z.union([
+    z.string().min(1, 'El ID del servicio no puede estar vacío'),
+    z.number().int().positive('El ID debe ser un número positivo')
+  ]),
+  quantity: z.number()
+    .int('La cantidad debe ser un número entero')
+    .min(1,  'La cantidad mínima es 1')
+    .max(10, 'La cantidad máxima es 10'),
 })
 
-const repertorioId = z.union([z.string(), z.number()])
+const repertorioId = z.union([z.string().min(1), z.number().int().positive()])
 
+// ══════════════════════════════════════════════════════════════════════════════
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
 export const RegistroSchema = z.object({
-  nombre:               z.string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
+
+  nombre: z.string()
+    .trim()
+    .min(2,  'El nombre debe tener al menos 2 caracteres')
     .max(50, 'El nombre no puede superar 50 caracteres')
-    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras'),
-  apellido:             z.string()
-    .min(2, 'El apellido debe tener al menos 2 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
+    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
+    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
+    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
+    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido'),
+
+  apellido: z.string()
+    .trim()
+    .min(2,  'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede superar 50 caracteres')
-    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El apellido solo puede contener letras'),
-  tipoDocumento: z.string().refine(
-    v => ['CEDULA', 'PASAPORTE', 'CEDULA_EXTRANJERIA'].includes(v),
-    'Tipo de documento inválido. Opciones: CEDULA, PASAPORTE, CEDULA_EXTRANJERIA'
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El apellido solo puede contener letras')
+    .refine(a => a.trim().length > 0,       'El apellido no puede ser solo espacios')
+    .refine(a => !/\s{2,}/.test(a),         'El apellido no puede tener espacios consecutivos')
+    .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
+    .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
+    .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido'),
+
+  tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'PAS'].includes(v),
+    'Tipo de documento inválido. Opciones: CC, CE, PAS'
   ),
-  numeroDocumento:      z.string()
-    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos'),
-  fechaNacimiento:      z.string()
+
+  numeroDocumento: z.string()
+    .trim()
+    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
+    .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
+    .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .refine(n => n !== '123456789',        'El documento no puede ser una secuencia obvia')
+    .refine(n => !['000000', '00000000', '000000000', '0000000000'].includes(n), 'Número de documento no válido'),
+
+  fechaNacimiento: z.string()
+    .trim()
     .min(1, 'La fecha de nacimiento es requerida')
+    .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
+    .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
+    .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
     .refine(d => {
-      const nacimiento = new Date(d)
-      const hoy        = new Date()
-      const edad       = hoy.getFullYear() - nacimiento.getFullYear()
-      return edad >= 18
-    }, 'Debes ser mayor de 18 años para registrarte'),
-  email:                emailRegistro,
-  telefonoPrincipal:    telefono,
-  telefonoAlternativo:  z.union([telefono, z.literal(''), z.undefined()]).optional(),
-  ciudad:               z.string().min(2, 'La ciudad es requerida').max(60, 'Ciudad demasiado larga'),
-  barrio:               z.string().min(2, 'El barrio es requerido').max(80, 'Barrio demasiado largo'),
-  direccion:            z.string().min(5, 'La dirección es requerida').max(150, 'Dirección demasiado larga'),
-  zonaServicio: z.string().refine(
+      const nac  = new Date(d)
+      const hoy  = new Date()
+      const edad = hoy.getFullYear() - nac.getFullYear()
+      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+      return (hoy >= cumple ? edad : edad - 1) >= 18
+    }, 'Debes ser mayor de 18 años para registrarte')
+    .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años'),
+
+  email:               emailRegistro,
+  telefonoPrincipal:   telefono,
+  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+
+  ciudad: z.string()
+    .trim()
+    .min(2,  'La ciudad es requerida')
+    .max(60, 'Ciudad demasiado larga')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-\.]+$/, 'La ciudad solo puede contener letras')
+    .refine(c => c.trim().length > 0, 'La ciudad no puede ser solo espacios'),
+
+  barrio: z.string()
+    .trim()
+    .min(2,  'El barrio es requerido')
+    .max(80, 'Barrio demasiado largo')
+    .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
+    .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números'),
+
+  direccion: z.string()
+    .trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(150, 'Dirección demasiado larga')
+    .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
+    .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
+    .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .refine(d => !/^\d+$/.test(d.trim()),   'La dirección no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos'),
+
+  zonaServicio: z.string().trim().refine(
     v => ['URBANA', 'RURAL'].includes(v),
     'La zona de servicio debe ser URBANA o RURAL'
   ),
+
   password,
-  passwordConfirmation: z.string().min(1, 'La confirmación de contraseña es requerida'),
-  foto:                 z.string().url('URL de foto inválida').optional().or(z.literal('')),
-}).refine(d => d.password === d.passwordConfirmation, {
-  message: 'Las contraseñas no coinciden',
-  path:    ['passwordConfirmation']
-}).refine(d => d.telefonoPrincipal !== d.telefonoAlternativo, {
-  message: 'El teléfono alternativo no puede ser igual al principal',
-  path:    ['telefonoAlternativo']
+  passwordConfirmation: z.string().trim().min(1, 'La confirmación de contraseña es requerida'),
+  foto: z.string().trim().url('URL de foto inválida').optional().or(z.literal('')),
+
+})
+.refine(d => d.password === d.passwordConfirmation, {
+  message: 'Las contraseñas no coinciden', path: ['passwordConfirmation']
+})
+.refine(d => !d.telefonoAlternativo || d.telefonoPrincipal !== d.telefonoAlternativo, {
+  message: 'El teléfono alternativo no puede ser igual al principal', path: ['telefonoAlternativo']
+})
+.refine(d => d.nombre.trim().toLowerCase() !== d.apellido.trim().toLowerCase(), {
+  message: 'El nombre y el apellido no pueden ser iguales', path: ['apellido']
+})
+.refine(d => !d.password.toLowerCase().includes(d.nombre.toLowerCase()), {
+  message: 'La contraseña no puede contener tu nombre', path: ['password']
+})
+.refine(d => !d.password.toLowerCase().includes(d.apellido.toLowerCase()), {
+  message: 'La contraseña no puede contener tu apellido', path: ['password']
+})
+.refine(d => !d.password.includes(d.numeroDocumento), {
+  message: 'La contraseña no puede contener tu número de documento', path: ['password']
+})
+.refine(d => !d.password.toLowerCase().includes(d.email.split('@')[0].toLowerCase()), {
+  message: 'La contraseña no puede contener tu correo electrónico', path: ['password']
 })
 
 export const ResetPasswordSchema = z.object({
   email,
-  otp:               z.string()
-    .min(6, 'El código debe tener 6 dígitos')
-    .max(6, 'El código debe tener 6 dígitos')
-    .regex(/^\d{6}$/, 'El código solo puede contener números'),
+  otp: z.string()
+    .trim()
+    .length(6,        'El código debe tener exactamente 6 dígitos')
+    .regex(/^\d{6}$/, 'El código solo puede contener números')
+    .refine(o => !/^(\d)\1+$/.test(o), 'El código no puede ser un dígito repetido')
+    .refine(o => !['123456', '000000', '111111', '222222', '999999', '654321'].includes(o), 'Código no válido'),
   nuevaPassword:     password,
-  confirmarPassword: z.string().min(1, 'La confirmación es requerida'),
+  confirmarPassword: z.string().trim().min(1, 'La confirmación es requerida'),
 }).refine(d => d.nuevaPassword === d.confirmarPassword, {
-  message: 'Las contraseñas no coinciden',
-  path:    ['confirmarPassword']
+  message: 'Las contraseñas no coinciden', path: ['confirmarPassword']
 })
 
+// ══════════════════════════════════════════════════════════════════════════════
 // ─── COTIZACIÓN ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
 export const CotizacionCreateSchema = z.object({
-  clientId:         z.string().optional().nullable(),
-  clientName:       z.string().max(100, 'El nombre no puede superar 100 caracteres').optional(),
-  clientPhone:      telefono,
-  secondaryPhone:   z.union([telefono, z.literal(''), z.null()]).optional(),
-  clientEmail:      email,
-  homenajeado:      z.string().max(100, 'El nombre del homenajeado no puede superar 100 caracteres').optional(),
-  eventDate:        fechaFutura,
-  eventType:        z.string().min(1, 'El tipo de evento es requerido').max(50),
-  startTime:        hora,
-  endTime:          hora,
-  location:         z.string().min(5, 'La dirección debe tener al menos 5 caracteres').max(200, 'Dirección demasiado larga'),
-  notes:            z.string().max(1000, 'Las notas no pueden superar 1000 caracteres').optional().nullable(),
-  repertoireNotes:  z.string().max(1000).optional().nullable(),
-  totalAmount:      z.number().min(0).optional(),
-  selectedServices: z.array(servicioSeleccionado)
-    .min(1, 'Debes seleccionar al menos un servicio')
-    .max(10, 'No puedes seleccionar más de 10 servicios'),
-  repertoireIds:    z.array(repertorioId).max(20, 'No puedes seleccionar más de 20 canciones').optional(),
+  clientId:    z.string().optional().nullable(),
+  clientName:  z.string().trim().max(100)
+    .refine(n => !n || !esGibberish(n), 'El nombre del cliente parece contener texto sin sentido')
+    .optional(),
+  clientPhone:    telefono,
+  secondaryPhone: z.union([telefono, z.literal(''), z.null()]).optional(),
+  clientEmail:    email,
+  homenajeado: z.string().trim().max(100)
+    .refine(h => !h || !esGibberish(h), 'El nombre del homenajeado parece contener texto sin sentido')
+    .optional(),
+  eventDate:   fechaFutura,
+  eventType:   z.string().trim().min(1, 'El tipo de evento es requerido').max(50),
+  startTime:   hora,
+  endTime:     hora,
+  location:    z.string().trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(200, 'Dirección demasiado larga')
+    .refine(l => /\d/.test(l),        'La dirección del evento debe incluir un número')
+    .refine(l => /[a-zA-Z]/.test(l),  'La dirección del evento debe incluir letras')
+    .refine(l => !esGibberish(l),     'La dirección parece contener texto sin sentido'),
+
+  // ✅ Notas con validación anti-gibberish y anti-caracteres peligrosos
+  notes:           textoLibre('notas', 1000).optional().nullable(),
+  repertoireNotes: textoLibre('notas de repertorio', 1000).optional().nullable(),
+
+  totalAmount:     z.number().min(0).max(100_000_000).optional(),
+  selectedServices: z.array(servicioSeleccionado).min(1).max(10),
+  repertoireIds:   z.array(repertorioId).max(20).optional(),
 })
 .refine(d => d.clientId || d.clientName?.trim(), {
-  message: 'El nombre del cliente es requerido',
-  path:    ['clientName']
+  message: 'El nombre del cliente es requerido', path: ['clientName']
 })
 .refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-  message: 'La hora de fin debe ser posterior a la hora de inicio',
-  path:    ['endTime']
+  message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
 })
+.refine(d => {
+  const [sh, sm] = d.startTime.split(':').map(Number)
+  const [eh, em] = d.endTime.split(':').map(Number)
+  const diffMin  = (eh * 60 + em) - (sh * 60 + sm)
+  return diffMin >= 60 || diffMin < 0
+}, { message: 'El evento debe durar al menos 1 hora', path: ['endTime'] })
+.refine(d => {
+  const ids = d.selectedServices.map(s => String(s.serviceId))
+  return ids.length === new Set(ids).size
+}, { message: 'No puedes seleccionar el mismo servicio más de una vez', path: ['selectedServices'] })
 
 export const CotizacionUpdateSchema = z.object({
-  clientId:         z.string().optional().nullable(),
-  clientName:       z.string().max(100).optional(),
-  clientPhone:      telefono.optional(),
-  secondaryPhone:   z.union([telefono, z.literal(''), z.null()]).optional(),
-  clientEmail:      email.optional(),
-  homenajeado:      z.string().max(100).optional(),
-  eventDate:        fechaFutura.optional(),
-  eventType:        z.string().max(50).optional(),
-  startTime:        hora.optional(),
-  endTime:          hora.optional(),
-  location:         z.string().min(5).max(200).optional(),
-  notes:            z.string().max(1000).optional().nullable(),
-  totalAmount:      z.number().min(0).optional(),
-  selectedServices: z.array(servicioSeleccionado)
-    .min(1, 'Debes seleccionar al menos un servicio')
-    .max(10).optional(),
-  repertoireIds:    z.array(repertorioId).max(20).optional(),
+  clientId:        z.string().optional().nullable(),
+  clientName:      z.string().trim().max(100).optional(),
+  clientPhone:     telefono.optional(),
+  secondaryPhone:  z.union([telefono, z.literal(''), z.null()]).optional(),
+  clientEmail:     email.optional(),
+  homenajeado:     z.string().trim().max(100).optional(),
+  eventDate:       fechaFutura.optional(),
+  eventType:       z.string().trim().max(50).optional(),
+  startTime:       hora.optional(),
+  endTime:         hora.optional(),
+  location:        z.string().trim().min(5).max(200).optional(),
+  notes:           textoLibre('notas', 1000).optional().nullable(),
+  totalAmount:     z.number().min(0).max(100_000_000).optional(),
+  selectedServices: z.array(servicioSeleccionado).min(1).max(10).optional(),
+  repertoireIds:   z.array(repertorioId).max(20).optional(),
 })
 
-// ─── RESERVA ──────────────────────────────────────────────────────────────────
+
+// ─── RESERVA ──────────────════════════════════════════════════════════════════
+
+
 export const ReservaCreateSchema = z.object({
-  clienteId:        z.union([z.string(), z.number()]),
-  eventDate:        fechaFutura,
-  startTime:        hora,
-  endTime:          hora,
-  location:         z.string().min(5, 'La dirección debe tener al menos 5 caracteres').max(200),
-  totalAmount:      z.number().positive('El valor total debe ser mayor a 0').max(10_000_000, 'El valor parece demasiado alto'),
-  homenajeado:      z.string().max(100).optional(),
-  eventType:        z.string().max(50).optional(),
-  notes:            z.string().max(1000).optional().nullable(),
+  clienteId:   z.union([z.string(), z.number()]),
+  eventDate:   fechaFutura,
+  startTime:   hora,
+  endTime:     hora,
+  location:    z.string().trim()
+    .min(5).max(200)
+    .refine(l => /\d/.test(l),       'La dirección debe incluir un número')
+    .refine(l => /[a-zA-Z]/.test(l), 'La dirección debe incluir letras')
+    .refine(l => !esGibberish(l),    'La dirección parece contener texto sin sentido'),
+  totalAmount: z.number()
+    .positive('El valor total debe ser mayor a 0')
+    .max(10_000_000, 'El valor parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El valor debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El valor no puede tener más de 2 decimales'),
+  homenajeado:     z.string().trim().max(100).refine(h => !esGibberish(h), 'El nombre parece contener texto sin sentido').optional(),
+  eventType:       z.string().trim().max(50).optional(),
+  notes:           textoLibre('notas', 1000).optional().nullable(),
   selectedServices: z.array(servicioSeleccionado).max(10).optional(),
-  repertoireIds:    z.array(repertorioId).max(20).optional(),
+  repertoireIds:   z.array(repertorioId).max(20).optional(),
 })
 .refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-  message: 'La hora de fin debe ser posterior a la hora de inicio',
-  path:    ['endTime']
+  message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
 })
+.refine(d => {
+  const [sh, sm] = d.startTime.split(':').map(Number)
+  const [eh, em] = d.endTime.split(':').map(Number)
+  const diffMin  = (eh * 60 + em) - (sh * 60 + sm)
+  return diffMin >= 60 || diffMin < 0
+}, { message: 'La reserva debe durar al menos 1 hora', path: ['endTime'] })
 
-// ✅ NUEVO — valida el body del PUT /reservas/:id
 export const ReservaUpdateSchema = z.object({
-  eventDate:        fechaFutura.optional(),
-  startTime:        hora.optional(),
-  endTime:          hora.optional(),
-  location:         z.string().min(5, 'La dirección debe tener al menos 5 caracteres').max(200).optional(),
-  homenajeado:      z.string().max(100).optional(),
-  eventType:        z.string().max(50).optional(),
-  notes:            z.string().max(1000).optional().nullable(),
-  totalAmount:      z.number().positive('El valor total debe ser mayor a 0').max(10_000_000).optional(),
-  selectedServices: z.array(servicioSeleccionado).min(1, 'Debes seleccionar al menos un servicio').max(10).optional(),
-  repertoireIds:    z.array(repertorioId).max(20).optional(),
+  eventDate:       fechaFutura.optional(),
+  startTime:       hora.optional(),
+  endTime:         hora.optional(),
+  location:        z.string().trim().min(5).max(200).optional(),
+  homenajeado:     z.string().trim().max(100).optional(),
+  eventType:       z.string().trim().max(50).optional(),
+  notes:           textoLibre('notas', 1000).optional().nullable(),
+  totalAmount:     z.number().positive().max(10_000_000).optional(),
+  selectedServices: z.array(servicioSeleccionado).min(1).max(10).optional(),
+  repertoireIds:   z.array(repertorioId).max(20).optional(),
 })
 .refine(d => {
   if (d.startTime && d.endTime)
     return d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime)
   return true
-}, {
-  message: 'La hora de fin debe ser posterior a la hora de inicio',
-  path:    ['endTime']
-})
+}, { message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime'] })
+
 
 // ─── SERVICIO ─────────────────────────────────────────────────────────────────
+
+
+const precioServicio = z.union([z.string(), z.number()])
+  .transform(v => Number(v))
+  .pipe(
+    z.number()
+      .positive('El precio debe ser mayor a 0')
+      .max(5_000_000, 'El precio parece demasiado alto')
+      .refine(p => Number.isFinite(p),  'El precio debe ser un número válido')
+      .refine(p => (p * 100) % 1 === 0, 'El precio no puede tener más de 2 decimales')
+      .refine(p => p >= 1000,           'El precio mínimo es $1.000 COP')
+  )
+
 export const ServicioCreateSchema = z.object({
-  nombre:      z.string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
-    .max(100, 'El nombre no puede superar 100 caracteres'),
+  nombre: z.string()
+    .trim()
+    .min(2,   'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres')
+    .refine(n => n.trim().length > 0,      'El nombre no puede ser solo espacios')
+    .refine(n => !/^\d+$/.test(n.trim()),  'El nombre no puede ser solo números')
+    .refine(n => !/[<>{}[\]\\]/.test(n),   'El nombre contiene caracteres no permitidos')
+    .refine(n => !esGibberish(n),          'El nombre parece contener texto sin sentido'),
   descripcion: z.string()
-    .min(10, 'La descripción debe tener al menos 10 caracteres')
-    .max(500, 'La descripción no puede superar 500 caracteres'),
-  precio:      z.number()
-    .positive('El precio debe ser mayor a 0')
-    .max(5_000_000, 'El precio parece demasiado alto'),
+    .trim()
+    .min(10,  'La descripción debe tener al menos 10 caracteres')
+    .max(500, 'La descripción no puede superar 500 caracteres')
+    .refine(d => d.trim().length > 0,      'La descripción no puede ser solo espacios')
+    .refine(d => !/^\d+$/.test(d.trim()),  'La descripción no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\]/.test(d),   'La descripción contiene caracteres no permitidos')
+    .refine(d => !esGibberish(d),          'La descripción parece contener texto sin sentido'),
+  precio: precioServicio,
 })
 
-export const ServicioUpdateSchema = ServicioCreateSchema.partial()
+export const ServicioUpdateSchema = z.object({
+  nombre: z.string()
+    .trim().min(2).max(100)
+    .refine(n => n.trim().length > 0,     'El nombre no puede ser solo espacios')
+    .refine(n => !/^\d+$/.test(n.trim()), 'El nombre no puede ser solo números')
+    .refine(n => !esGibberish(n),         'El nombre parece contener texto sin sentido')
+    .optional(),
+  descripcion: z.string()
+    .trim().min(10).max(500)
+    .refine(d => d.trim().length > 0,     'La descripción no puede ser solo espacios')
+    .refine(d => !esGibberish(d),         'La descripción parece contener texto sin sentido')
+    .optional(),
+  precio: precioServicio.optional(),
+})
+
 
 // ─── ENSAYO ───────────────────────────────────────────────────────────────────
+
+
 export const EnsayoCreateSchema = z.object({
-  title:         z.string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
-    .max(100, 'El nombre no puede superar 100 caracteres'),
-  location:      z.string()
-    .min(2, 'El lugar es requerido')
-    .max(200, 'El lugar no puede superar 200 caracteres'),
-  address:       z.string().max(200).optional().nullable(),
+  title: z.string()
+    .trim().min(2).max(100)
+    .refine(t => t.trim().length > 0,     'El título no puede ser solo espacios')
+    .refine(t => !/^\d+$/.test(t.trim()), 'El título no puede ser solo números')
+    .refine(t => !/[<>{}[\]\\]/.test(t),  'El título contiene caracteres no permitidos')
+    .refine(t => !esGibberish(t),         'El título parece contener texto sin sentido'),
+  location: z.string()
+    .trim().min(2).max(200)
+    .refine(l => l.trim().length > 0,    'El lugar no puede ser solo espacios')
+    .refine(l => !/[<>{}[\]\\]/.test(l), 'El lugar contiene caracteres no permitidos')
+    .refine(l => !esGibberish(l),        'El lugar parece contener texto sin sentido'),
+  address:       z.string().trim().max(200).optional().nullable(),
   date:          fechaFutura,
   time:          hora,
-  repertoireIds: z.array(repertorioId).max(20, 'No puedes seleccionar más de 20 canciones').optional(),
+  repertoireIds: z.array(repertorioId).max(20).optional(),
 })
 
 export const EnsayoUpdateSchema = EnsayoCreateSchema.partial()
 
+
+
+
 // ─── REPERTORIO ───────────────────────────────────────────────────────────────
+
 const GENEROS      = ['Ranchera', 'Bolero', 'Son', 'Corrido', 'Huapango', 'Balada'] as const
 const CATEGORIAS   = ['Serenata', 'Boda', 'Cumpleaños', 'Fúnebre', 'Show', 'Clásicos'] as const
 const DIFICULTADES = ['Baja', 'Media', 'Alta'] as const
 
 export const RepertorioCreateSchema = z.object({
-  title:      z.string()
-    .min(2, 'El título debe tener al menos 2 caracteres')
-    .max(100, 'El título no puede superar 100 caracteres')
-    .refine(t => !/^\d+$/.test(t), 'El título no puede ser solo números'),
-  artist:     z.string()
-    .min(2, 'El artista debe tener al menos 2 caracteres')
-    .max(80, 'El artista no puede superar 80 caracteres')
-    .refine(a => !/^\d+$/.test(a), 'El artista no puede ser solo números'),
-  genre:      z.string().refine(
-    g => (GENEROS as readonly string[]).includes(g),
-    `Género inválido. Opciones: ${GENEROS.join(', ')}`
-  ),
-  category:   z.string().refine(
-    c => (CATEGORIAS as readonly string[]).includes(c),
-    `Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`
-  ),
+  title: z.string()
+    .trim().min(2).max(100)
+    .refine(t => !/^\d+$/.test(t),    'El título no puede ser solo números')
+    .refine(t => t.trim().length > 0, 'El título no puede ser solo espacios')
+    .refine(t => !esGibberish(t),     'El título parece contener texto sin sentido'),
+  artist: z.string()
+    .trim().min(2).max(80)
+    .refine(a => !/^\d+$/.test(a),    'El artista no puede ser solo números')
+    .refine(a => a.trim().length > 0, 'El artista no puede ser solo espacios')
+    .refine(a => !esGibberish(a),     'El artista parece contener texto sin sentido'),
+  genre: z.string().trim().min(2, 'El género es requerido').max(50, 'El género no puede superar 50 caracteres'),
+  category:   z.string().trim().refine(c => (CATEGORIAS   as readonly string[]).includes(c), `Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`),
   duration:   duracion,
-  difficulty: z.string().refine(
-    d => (DIFICULTADES as readonly string[]).includes(d),
-    `Dificultad inválida. Opciones: ${DIFICULTADES.join(', ')}`
-  ).optional(),
-  lyrics:     z.string()
+  difficulty: z.string().trim().refine(d => (DIFICULTADES as readonly string[]).includes(d), `Dificultad inválida. Opciones: ${DIFICULTADES.join(', ')}`).optional(),
+
+  // ✅ Letra con validación anti-gibberish — textos reales de canciones tienen vocales
+  lyrics: z.string()
+    .trim()
     .max(5000, 'La letra no puede superar 5000 caracteres')
-    .refine(l => !/^\d+$/.test(l), 'La letra no puede ser solo números')
+    .refine(l => !/^\d+$/.test(l),   'La letra no puede ser solo números')
+    .refine(l => !esGibberish(l),    'La letra parece contener texto sin sentido')
+    .refine(l => !/[<>{}[\]\\]/.test(l), 'La letra contiene caracteres no permitidos')
     .optional()
     .nullable(),
+
   coverImage: urlImagen,
   audioUrl:   urlAudio,
   isActive:   z.boolean().optional(),
@@ -288,7 +512,10 @@ export const RepertorioCreateSchema = z.object({
 
 export const RepertorioUpdateSchema = RepertorioCreateSchema.partial()
 
-// ─── HELPER: parsear errores Zod en string legible ────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── HELPER ───────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
 export const zodError = (e: ZodError): string =>
   e.issues.map(issue => {
     const path = issue.path.length ? `${issue.path.join('.')}: ` : ''

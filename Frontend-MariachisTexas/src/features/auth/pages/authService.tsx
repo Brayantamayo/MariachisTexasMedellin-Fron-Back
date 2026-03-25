@@ -10,6 +10,8 @@ export const authService = {
     }
   },
 
+  // ✅ nombre va al backend y se guarda en Usuario
+  // ✅ sin password en los datos de cliente — el backend lo maneja solo en Usuario
   registro: async (data: {
     nombre:               string
     apellido:             string
@@ -40,13 +42,11 @@ export const authService = {
     return data
   },
 
-  // Verifica el OTP ingresado por el usuario
   verificarOtp: async (email: string, otp: string) => {
     const { data } = await api.post('/auth/verificar-otp', { email, otp })
     return data
   },
 
-  // Resetea la contraseña usando email + otp (sin token en URL)
   resetearPassword: async (email: string, otp: string, nuevaPassword: string, confirmarPassword: string) => {
     const { data } = await api.post('/auth/reset-password', { email, otp, nuevaPassword, confirmarPassword })
     return data

@@ -1,13 +1,17 @@
 import { Router } from 'express'
 import { crear, listar, detalle, editar, cambiarEstado, eliminar } from './servicios.controller'
+import { verifyToken } from '../../middlewares/Auth.middleware'
 
 const router = Router()
 
-router.get('/',             listar)
-router.get('/:id',          detalle)
-router.post('/',            crear)
-router.put('/:id',          editar)
-router.patch('/:id/estado', cambiarEstado)
-router.delete('/:id',       eliminar)
+// ─── PÚBLICAS (sin token) ─────────────────────────────────────────────────────
+router.get('/',    listar)   // el formulario de cotización necesita ver servicios
+router.get('/:id', detalle)
+
+// ─── PROTEGIDAS (requieren token) ────────────────────────────────────────────
+router.post('/',            verifyToken, crear)
+router.put('/:id',          verifyToken, editar)
+router.patch('/:id/estado', verifyToken, cambiarEstado)
+router.delete('/:id',       verifyToken, eliminar)
 
 export default router

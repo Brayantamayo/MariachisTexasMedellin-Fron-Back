@@ -9,7 +9,9 @@ import type { ReservaCreateInput, ReservaUpdateInput, ServicioSeleccionado, Rese
 // ─── MAPEO ────────────────────────────────────────────────────────────────────
 const mapToReservation = (r: any): ReservationResponse => {
   const cot            = r.cotizacion
-  const clientName     = cot?.cliente ? `${cot.cliente.nombre} ${cot.cliente.apellido}`.trim() : cot?.contactoNombre || cot?.nombreHomenajeado || ''
+  const clientName     = cot?.cliente
+    ? `${cot.cliente.usuario?.nombre ?? ''} ${cot.cliente.apellido}`.trim()
+    : cot?.contactoNombre || cot?.nombreHomenajeado || ''
   const clientPhone    = cot?.cliente?.telefonoPrincipal   || cot?.contactoTelefono  || ''
   const secondaryPhone = cot?.cliente?.telefonoAlternativo || cot?.contactoTelefono2 || ''
   const clientEmail    = cot?.cliente?.email               || cot?.contactoEmail     || ''
@@ -58,12 +60,19 @@ const mapToPublicReservation = (r: any) => ({
 })
 
 const reservaInclude = {
-  cotizacion: { include: { cliente: true, servicios: true, repertorios: true } },
+  cotizacion: {
+    include: {
+      cliente: { include: { usuario: true } },
+      servicios: true,
+      repertorios: true,
+    }
+  },
   abonos: true,
 }
 
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
-export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {let where: any = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] } }
+export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
+  let where: any = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] } }
   if (usuarioId) {
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } })
     if (usuario) {
@@ -75,7 +84,8 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(mapToReservation)
 }
 
-export const getReservasCalendario = async () => {const reservas = await prisma.reserva.findMany({
+export const getReservasCalendario = async () => {
+  const reservas = await prisma.reserva.findMany({
     where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as any } },
     include: {
       cotizacion: {
@@ -95,13 +105,14 @@ export const getReservasCalendario = async () => {const reservas = await prisma.
 }
 
 // ─── GET HORAS DISPONIBLES ────────────────────────────────────────────────────
-export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {const allHours: string[] = []
-for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
-allHours.push('00:00')
-const { dayStart, dayEnd } = dayRange(dateStr)
-const blocked = new Set<string>()
+export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {
+  const allHours: string[] = []
+  for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
+  allHours.push('00:00')
+  const { dayStart, dayEnd } = dayRange(dateStr)
+  const blocked = new Set<string>()
 
-const bloqueos = await prisma.bloqueoCalendario.findMany({
+  const bloqueos = await prisma.bloqueoCalendario.findMany({
     where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } }
   })
   for (const b of bloqueos) {
@@ -141,13 +152,15 @@ const bloqueos = await prisma.bloqueoCalendario.findMany({
 }
 
 // ─── GET BY ID ────────────────────────────────────────────────────────────────
-export const getReservaById = async (id: number): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
-if (!r) throw new Error('Reserva no encontrada')
-return mapToReservation(r)
+export const getReservaById = async (id: number): Promise<ReservationResponse> => {
+  const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
+  if (!r) throw new Error('Reserva no encontrada')
+  return mapToReservation(r)
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
-export const createReserva = async (data: ReservaCreateInput): Promise<ReservationResponse> => {const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
+export const createReserva = async (data: ReservaCreateInput): Promise<ReservationResponse> => {
+  const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
   const d       = parsed.data
@@ -203,12 +216,12 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
 
   if (d.selectedServices?.length)
     await prisma.cotizacionServicio.createMany({
-      data: d.selectedServices.map((s: ServicioSeleccionado) => ({cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity}))
+      data: d.selectedServices.map((s: ServicioSeleccionado) => ({ cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity }))
     })
 
   if (d.repertoireIds?.length)
     await prisma.cotizacionRepertorio.createMany({
-      data: d.repertoireIds.map((rid: string | number, i: number) => ({cotizacionId: cot.id, repertorioId: Number(rid), orden: i}))
+      data: d.repertoireIds.map((rid: string | number, i: number) => ({ cotizacionId: cot.id, repertorioId: Number(rid), orden: i }))
     })
 
   const reserva = await prisma.reserva.create({
@@ -222,14 +235,16 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   const base     = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
   const loginUrl = `${base}/login`
 
+  const nombreCliente = `${usuario.nombre} ${cliente.apellido}`.trim()
+
   const mail = emailReservaCreada({
-    nombreCliente:   cliente.nombre,
+    nombreCliente,
     fechaFormateada,
-    startTime:       d.startTime,
-    endTime:         d.endTime,
-    location:        d.location,
-    eventType:       d.eventType ?? 'Serenata',
-    totalAmount:     d.totalAmount,
+    startTime:   d.startTime,
+    endTime:     d.endTime,
+    location:    d.location,
+    eventType:   d.eventType ?? 'Serenata',
+    totalAmount: d.totalAmount,
     anticipo,
     loginUrl,
   })
@@ -240,11 +255,11 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
-export const updateReserva = async (id: number, data: ReservaUpdateInput): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
+export const updateReserva = async (id: number, data: ReservaUpdateInput): Promise<ReservationResponse> => {
+  const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado === 'ANULADA') throw new Error('No se puede editar una reserva anulada')
 
-  // ✅ Validación Zod — formato de fechas, horas, rangos y límites
   const parsed = ReservaUpdateSchema.safeParse(data)
   if (!parsed.success) throw new Error(zodError(parsed.error))
   const d = parsed.data
@@ -312,7 +327,8 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput): Promi
 }
 
 // ─── ANULAR ───────────────────────────────────────────────────────────────────
-export const anularReserva = async (id: number, motivo?: string): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
+export const anularReserva = async (id: number, motivo?: string): Promise<ReservationResponse> => {
+  const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado === 'ANULADA') throw new Error('La reserva ya está anulada')
 
@@ -332,14 +348,16 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
 }
 
 // ─── CONFIRMAR ────────────────────────────────────────────────────────────────
-export const confirmarReserva = async (id: number): Promise<ReservationResponse> => {const r = await prisma.reserva.findUnique({ where: { id } })
+export const confirmarReserva = async (id: number): Promise<ReservationResponse> => {
+  const r = await prisma.reserva.findUnique({ where: { id } })
   if (!r) throw new Error('Reserva no encontrada')
   await prisma.reserva.update({ where: { id }, data: { estado: 'CONFIRMADA' } })
   return getReservaById(id)
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
-export const deleteReserva = async (id: number) => {const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
+export const deleteReserva = async (id: number) => {
+  const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
   if (!r) throw new Error('Reserva no encontrada')
   if (r.estado !== 'ANULADA')  throw new Error('Solo se pueden eliminar reservas anuladas')
   if (r.abonos.length > 0)     throw new Error('No se puede eliminar una reserva con abonos registrados')

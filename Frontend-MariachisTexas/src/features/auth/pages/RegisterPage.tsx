@@ -16,25 +16,24 @@ const PlusIcon = ({ size, className }: { size: number; className: string }) => (
 export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
   // ─── Leer datos desde URL (vienen del correo de aprobación de cotización) ────
-  const urlParams    = new URLSearchParams(window.location.search)
-  const emailFromUrl  = urlParams.get('email')    || ''
-  const nombreFromUrl = urlParams.get('nombre')   || ''
-  const telFromUrl    = urlParams.get('telefono') || ''
-  const tel2FromUrl   = urlParams.get('telefono2')|| ''
+  const urlParams     = new URLSearchParams(window.location.search)
+  const emailFromUrl  = urlParams.get('email')     || ''
+  const nombreFromUrl = urlParams.get('nombre')    || ''
+  const telFromUrl    = urlParams.get('telefono')  || ''
+  const tel2FromUrl   = urlParams.get('telefono2') || ''
 
-  // Separar nombre y apellido si vienen juntos
-  const nombreParts   = nombreFromUrl.trim().split(' ')
-  const nombrePre     = nombreParts[0] || ''
-  const apellidoPre   = nombreParts.slice(1).join(' ') || ''
+  const nombreParts = nombreFromUrl.trim().split(' ')
+  const nombrePre   = nombreParts[0] || ''
+  const apellidoPre = nombreParts.slice(1).join(' ') || ''
 
   const [formData, setFormData] = useState({
-    nombre:              nombrePre,       // ← pre-llenado
-    apellido:            apellidoPre,     // ← pre-llenado
-    tipoDocumento:       'CC',
+    nombre:              nombrePre,
+    apellido:            apellidoPre,
+    tipoDocumento:       'CC',      // ✅ ya es el valor correcto para el backend
     numeroDocumento:     '',
-    email:               emailFromUrl,    // ← pre-llenado y bloqueado
-    telefono:            telFromUrl,      // ← pre-llenado
-    telefonoAlternativo: tel2FromUrl,     // ← pre-llenado
+    email:               emailFromUrl,
+    telefono:            telFromUrl,
+    telefonoAlternativo: tel2FromUrl,
     fechaNacimiento:     '',
     ciudad:              'Medellín',
     direccion:           '',
@@ -56,14 +55,6 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const tipoDocumentoMap: Record<string, string> = {
-    'CC':  'CEDULA',
-    'CE':  'CEDULA_EXTRANJERIA',
-    'TI':  'CEDULA',
-    'PAS': 'PASAPORTE',
-    'NIT': 'CEDULA',
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,10 +67,11 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
     setIsLoading(true);
     try {
+      // ✅ tipoDocumento se envía directo: 'CC', 'CE' o 'PAS' — sin conversión
       await authService.registro({
         nombre:               formData.nombre,
         apellido:             formData.apellido,
-        tipoDocumento:        tipoDocumentoMap[formData.tipoDocumento] || 'CEDULA',
+        tipoDocumento:        formData.tipoDocumento,
         numeroDocumento:      formData.numeroDocumento,
         fechaNacimiento:      formData.fechaNacimiento,
         email:                formData.email,
@@ -148,7 +140,6 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
         <div className="p-8 md:p-10">
           <div className="text-center mb-8">
             <h3 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">ÚNETE A LA FAMILIA</h3>
-            {/* Mostrar aviso si viene con email pre-llenado */}
             {emailFromUrl ? (
               <div className="mt-3 flex flex-col items-center gap-2">
                 <div className="inline-flex items-center gap-2 bg-emerald-900/30 border border-emerald-500/30 text-emerald-400 px-4 py-2 rounded-full text-xs font-bold">
@@ -223,7 +214,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Número Documento <span className="text-primary-500">*</span></label>
                 <div className="relative">
                   <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                  <input type="number" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleChange} required
+                  <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleChange} required
                     placeholder="1234567890"
                     className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-white/20 outline-none transition-all text-sm font-medium" />
                 </div>
@@ -235,11 +226,14 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                 <div className="relative">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                   <input type="date" name="fechaNacimiento" value={formData.fechaNacimiento} onChange={handleChange} required
+                    min="1940-01-01"
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
                     className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-white/20 outline-none transition-all text-sm font-medium [color-scheme:dark]" />
                 </div>
+                <p className="text-[10px] text-gray-500 mt-1 ml-1">Debes ser mayor de 18 años</p>
               </div>
 
-              {/* Email — deshabilitado si viene pre-llenado del correo */}
+              {/* Email */}
               <div>
                 <label className="block text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2 ml-1">
                   Correo Electrónico <span className="text-primary-500">*</span>
@@ -337,7 +331,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     placeholder="Mínimo 6 caracteres"
                     className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm font-medium" />
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1 ml-1">Debe tener mayúscula, minúscula, número y carácter especial</p>
+                <p className="text-[10px] text-gray-500 mt-1 ml-1">Debe tener mayúscula, minúscula, número y carácter especial (@$!%*?&-_)</p>
               </div>
 
               {/* Confirmar Contraseña */}

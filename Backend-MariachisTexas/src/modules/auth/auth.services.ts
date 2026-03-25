@@ -15,7 +15,7 @@ export const registrarCliente = async (data: any) => {
   const { passwordConfirmation, ...datosCliente } = parsed.data
 
   const [correoExiste, cedulaExiste] = await Promise.all([
-    prisma.cliente.findUnique({ where: { email: datosCliente.email } }),
+    prisma.usuario.findUnique({ where: { email: datosCliente.email } }),
     prisma.cliente.findUnique({ where: { numeroDocumento: datosCliente.numeroDocumento } })
   ])
   if (correoExiste) throw new Error('El correo ya está registrado')
@@ -26,50 +26,50 @@ export const registrarCliente = async (data: any) => {
   const rolCliente = await prisma.rol.findUnique({ where: { nombre: 'CLIENTE' } })
   if (!rolCliente) throw new Error('Rol CLIENTE no encontrado, ejecuta el seed')
 
+  // ✅ Usuario: nombre, email, password
+  const usuario = await prisma.usuario.create({
+    data: {
+      nombre:   datosCliente.nombre,
+      email:    datosCliente.email,
+      password: passwordHash,
+      rolId:    rolCliente.id
+    }
+  })
+
+  // ✅ Cliente: email, apellido y datos personales — sin nombre, sin password
   const cliente = await prisma.cliente.create({
     data: {
-      nombre:              datosCliente.nombre,
+      email:               datosCliente.email,
       apellido:            datosCliente.apellido,
       tipoDocumento:       datosCliente.tipoDocumento as TipoDocumento,
       numeroDocumento:     datosCliente.numeroDocumento,
       fechaNacimiento:     new Date(datosCliente.fechaNacimiento),
-      email:               datosCliente.email,
       telefonoPrincipal:   datosCliente.telefonoPrincipal,
       telefonoAlternativo: datosCliente.telefonoAlternativo || null,
       ciudad:              datosCliente.ciudad,
       barrio:              datosCliente.barrio,
       direccion:           datosCliente.direccion,
       zonaServicio:        datosCliente.zonaServicio as ZonaServicio,
-      password:            passwordHash,
       foto:                datosCliente.foto || null,
     }
   })
 
-  await prisma.usuario.create({
-    data: {
-      nombre:   cliente.nombre,
-      email:    cliente.email,
-      password: passwordHash,
-      rolId:    rolCliente.id
-    }
-  })
+  await vincularCotizacionesPorEmail(cliente.email, cliente.id)
+    .catch(err => console.error('Error vinculando cotizaciones:', err))
 
-  const cotizacionesVinculadas = await vincularCotizacionesPorEmail(cliente.email, cliente.id)
-    .catch(err => { console.error('Error vinculando cotizaciones:', err); return 0 })
-
-  const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-  const mail        = emailBienvenida({
-    nombre:                 cliente.nombre,
+  const base = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
+  const mail = emailBienvenida({
+    nombre:                 usuario.nombre,
     loginUrl:               `${base}/login`,
     reservasUrl:            `${base}/reservas`,
-    cotizacionesVinculadas,
+    cotizacionesVinculadas: 0,
   })
 
-  await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
+  await transporter.sendMail({ from: process.env.MAIL_FROM, to: usuario.email, ...mail })
 
   return {
     message: 'Registro exitoso. Inicia sesión para continuar',
-    cliente: { id: cliente.id, nombre: cliente.nombre, email: cliente.email }
+    usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email }
   }
 }
 
@@ -85,6 +85,7 @@ export const login = async (email: string, password: string) => {
   const passwordValido = await bcrypt.compare(password, usuario.password)
   if (!passwordValido) throw new Error('Credenciales inválidas')
 
+  // ✅ Si es CLIENTE, buscar datos extra en tabla Cliente
   let datosCliente = null
   if (usuario.rol.nombre === 'CLIENTE') {
     const cliente = await prisma.cliente.findUnique({ where: { email } })
@@ -99,6 +100,7 @@ export const login = async (email: string, password: string) => {
     { expiresIn: '8h' }
   )
 
+  // ✅ Siempre devuelve "usuario" — el frontend accede a data.usuario
   return {
     token,
     usuario: {
@@ -107,6 +109,8 @@ export const login = async (email: string, password: string) => {
       apellido:            datosCliente?.apellido            || '',
       telefonoPrincipal:   datosCliente?.telefonoPrincipal   || '',
       telefonoAlternativo: datosCliente?.telefonoAlternativo || '',
+      ciudad:              datosCliente?.ciudad              || '',
+      barrio:              datosCliente?.barrio              || '',
       direccion:           datosCliente?.direccion           || '',
       email:               usuario.email,
       rol:                 usuario.rol.nombre,
@@ -162,11 +166,9 @@ export const resetearPassword = async (
 
   const passwordHash = await bcrypt.hash(nuevaPassword, 10)
 
+  // ✅ Solo se actualiza en Usuario — Cliente ya no tiene password
   await Promise.all([
     prisma.usuario.update({ where: { email }, data: { password: passwordHash } }),
-    prisma.cliente.findUnique({ where: { email } }).then(c =>
-      c ? prisma.cliente.update({ where: { email }, data: { password: passwordHash } }) : null
-    ),
     prisma.passwordResetOtp.update({ where: { id: registro.id }, data: { usado: true } })
   ])
 

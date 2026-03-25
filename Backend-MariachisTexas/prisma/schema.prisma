@@ -5,15 +5,14 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
-  
 }
-/// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
 
 enum TipoDocumento {
-  CEDULA
-  PASAPORTE
-  CEDULA_EXTRANJERIA
+  CC
+  CE
+  PAS
 }
 
 enum ZonaServicio {
@@ -59,6 +58,10 @@ enum TipoEvento {
   FUNERAL
   RECONCILIACION
   DIA_DE_MADRE
+  AMOR
+  ANIVERSARIO
+  PADRES
+  FIESTA
   OTRO
 }
 
@@ -74,6 +77,7 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  cliente Cliente? 
   rol       Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
 
   @@map("usuario")
@@ -122,27 +126,26 @@ model Permiso {
 
 model Cliente {
   id                  Int           @id @default(autoincrement())
+  email               String        @unique
   foto                String?
-  nombre              String
   apellido            String
-  tipoDocumento       TipoDocumento @default(CEDULA)
+  tipoDocumento       TipoDocumento @default(CC)
   numeroDocumento     String        @unique
   fechaNacimiento     DateTime
-  email               String        @unique
   telefonoPrincipal   String
   telefonoAlternativo String?
   ciudad              String        @default("Medellín")
   barrio              String
   direccion           String
   zonaServicio        ZonaServicio  @default(URBANA)
-  password            String
   activo              Boolean       @default(true)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  cotizaciones        Cotizacion[]
-  abonos              Abono[]
-  ventas              Venta[]
+  usuario      Usuario?     @relation(fields: [email], references: [email]) 
+  cotizaciones Cotizacion[]
+  abonos       Abono[]
+  ventas       Venta[]
 
   @@map("cliente")
 }
@@ -173,8 +176,8 @@ model Repertorio {
   categoria  String
   letra      String?
   audioUrl   String?
-  duracion   String   // "3:45"
-  dificultad String   // Baja | Media | Alta
+  duracion   String
+  dificultad String
   portada    String?
   activa     Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -187,36 +190,31 @@ model Repertorio {
 }
 
 // ─── COTIZACIÓN ──────────────────────────────────────────────────────────────
-// Bloquea el calendario cuando estado = EN_ESPERA o CONVERTIDA
-// Al pasar a ANULADA libera la fecha automáticamente
 
 model Cotizacion {
-  id                  Int              @id @default(autoincrement())
-  clienteId           Int?
-  nombreHomenajeado   String
-  tipoEvento          TipoEvento
-  fechaEvento         DateTime
-  horaInicio          DateTime
-  horaFin             DateTime
-  direccionEvento     String
-  notasAdicionales    String?
-  totalEstimado       Decimal?         @db.Decimal(10, 2)
-  esReservaDirecta    Boolean          @default(false)
-  estado              EstadoCotizacion @default(EN_ESPERA)
+  id                Int              @id @default(autoincrement())
+  clienteId         Int?
+  nombreHomenajeado String
+  tipoEvento        TipoEvento
+  fechaEvento       DateTime
+  horaInicio        DateTime
+  horaFin           DateTime
+  direccionEvento   String
+  notasAdicionales  String?
+  totalEstimado     Decimal?         @db.Decimal(10, 2)
+  esReservaDirecta  Boolean          @default(false)
+  estado            EstadoCotizacion @default(EN_ESPERA)
+  contactoNombre    String?
+  contactoTelefono  String?
+  contactoTelefono2 String?
+  contactoEmail     String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  // ✅ Campos nuevos para cliente externo (antes vivían en notasAdicionales)
-  contactoNombre      String?
-  contactoTelefono    String?
-  contactoTelefono2   String?
-  contactoEmail       String?
-
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-
-  cliente   Cliente?             @relation(fields: [clienteId], references: [id])
-  servicios CotizacionServicio[]
+  cliente     Cliente?              @relation(fields: [clienteId], references: [id])
+  servicios   CotizacionServicio[]
   repertorios CotizacionRepertorio[]
-  reserva   Reserva?
+  reserva     Reserva?
 
   @@map("cotizacion")
 }
@@ -248,10 +246,6 @@ model CotizacionRepertorio {
 }
 
 // ─── RESERVA ─────────────────────────────────────────────────────────────────
-// Se crea al convertir una cotización (estado CONVERTIDA)
-// PENDIENTE → esperando 50% de abono
-// Al registrar primer abono → se crea Venta automáticamente
-// ANULADA → libera el calendario
 
 model Reserva {
   id             Int           @id @default(autoincrement())
@@ -289,7 +283,6 @@ model Abono {
 }
 
 // ─── VENTA ───────────────────────────────────────────────────────────────────
-// Se crea automáticamente al registrar el primer abono en la Reserva
 
 model Venta {
   id          Int         @id @default(autoincrement())
@@ -311,7 +304,6 @@ model Venta {
 }
 
 // ─── ENSAYO ──────────────────────────────────────────────────────────────────
-// Bloquea el calendario igual que una cotización activa
 
 model Ensayo {
   id        Int      @id @default(autoincrement())
@@ -328,11 +320,11 @@ model Ensayo {
 }
 
 model EnsayoRepertorio {
-  id          Int @id @default(autoincrement())
-  ensayoId    Int
+  id           Int @id @default(autoincrement())
+  ensayoId     Int
   repertorioId Int
 
-  ensayo  Ensayo  @relation(fields: [ensayoId],  references: [id], onDelete: Cascade)
+  ensayo     Ensayo     @relation(fields: [ensayoId],     references: [id], onDelete: Cascade)
   repertorio Repertorio @relation(fields: [repertorioId], references: [id])
 
   @@unique([ensayoId, repertorioId])

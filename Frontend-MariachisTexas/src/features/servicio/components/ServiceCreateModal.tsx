@@ -13,6 +13,7 @@ interface Props {
 export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ nombre?: string; descripcion?: string; precio?: string }>({});
   const [formData, setFormData] = useState<Omit<Service, 'id' | 'estado'>>({
     nombre:      '',
     descripcion: '',
@@ -28,25 +29,39 @@ export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave })
   };
 
   const handleSave = async () => {
-    if (!formData.nombre.trim() || !formData.descripcion.trim() || formData.precio <= 0) {
-      setError('Por favor complete todos los campos obligatorios.');
-      return;
-    }
+  const newErrors: { nombre?: string; descripcion?: string; precio?: string } = {};
 
-    setLoading(true);
-    setError(null);
-    
-    try {
-      await onSave(formData);
-      onClose();
-      setFormData({ nombre: '', descripcion: '', precio: 0 })
-    } catch (error) {
-      console.error(error);
-      setError('Error al guardar el servicio.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!formData.nombre.trim())
+    newErrors.nombre = 'El nombre es obligatorio.';
+
+  if (!formData.descripcion.trim())
+    newErrors.descripcion = 'La descripción es obligatoria.';
+  else if (formData.descripcion.trim().length < 10)
+    newErrors.descripcion = 'La descripción debe tener al menos 10 caracteres.';
+
+  if (formData.precio <= 0)
+    newErrors.precio = 'El precio debe ser mayor a 0.';
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+
+  setErrors({});
+  setLoading(true);
+  try {
+    await onSave({
+      ...formData,
+      descripcion: formData.descripcion.trim(), // ✅ elimina espacios al guardar
+      nombre: formData.nombre.trim(),
+    });
+    onClose();
+  } catch (error: any) {
+    setError(error.message || 'Error al guardar los cambios.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (!isOpen) return null;
 
@@ -79,7 +94,7 @@ export const ServiceCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave })
                     {error}
                 </div>
             )}
-            <ServiceForm formData={formData} onChange={handleChange} />
+            <ServiceForm formData={formData} onChange={handleChange} errors={errors} />
         </div>
 
         {/* Footer */}

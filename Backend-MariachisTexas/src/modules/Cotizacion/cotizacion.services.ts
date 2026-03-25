@@ -33,7 +33,9 @@ interface QuotationResponse {
 
 // ─── MAPEO ────────────────────────────────────────────────────────────────────
 const mapToQuotation = (c: any): QuotationResponse => {
-  const clientName     = c.clienteId ? `${c.cliente?.nombre ?? ''} ${c.cliente?.apellido ?? ''}`.trim() : c.contactoNombre || c.nombreHomenajeado || ''
+  const clientName     = c.clienteId
+    ? `${c.cliente?.usuario?.nombre ?? ''} ${c.cliente?.apellido ?? ''}`.trim()
+    : c.contactoNombre || c.nombreHomenajeado || ''
   const clientPhone    = c.cliente?.telefonoPrincipal   || c.contactoTelefono  || ''
   const secondaryPhone = c.cliente?.telefonoAlternativo || c.contactoTelefono2 || ''
   const clientEmail    = c.cliente?.email               || c.contactoEmail     || ''
@@ -60,7 +62,12 @@ const mapToQuotation = (c: any): QuotationResponse => {
   }
 }
 
-const cotizacionInclude = { cliente: true, servicios: true, repertorios: true, reserva: true }
+const cotizacionInclude = {
+  cliente: { include: { usuario: true } },
+  servicios: true,
+  repertorios: true,
+  reserva: true,
+}
 
 // ─── VALIDACIÓN COMPLETA DE DISPONIBILIDAD ────────────────────────────────────
 const validarDisponibilidad = async (
@@ -199,8 +206,8 @@ export const updateCotizacion = async (id: number, data: CotizacionUpdateInput):
   await prisma.cotizacion.update({
     where: { id },
     data: {
-      clienteId:         d.clientId      ? Number(d.clientId)   : undefined,
-      nombreHomenajeado: d.homenajeado   || d.clientName        || undefined,
+      clienteId:         d.clientId      ? Number(d.clientId)       : undefined,
+      nombreHomenajeado: d.homenajeado   || d.clientName            || undefined,
       tipoEvento:        d.eventType     ? mapEventType(d.eventType) : undefined,
       fechaEvento:       d.eventDate     ? parseLocalDate(d.eventDate) : undefined,
       horaInicio, horaFin,
@@ -273,8 +280,10 @@ export const convertirCotizacion = async (id: number) => {
     }
   })
 
-  const emailDestino  = cotizacion.cliente?.email               || cotizacion.contactoEmail    || ''
-  const nombreCliente = cotizacion.cliente?.nombre              || cotizacion.contactoNombre   || 'Cliente'
+  const emailDestino  = cotizacion.cliente?.email                                 || cotizacion.contactoEmail    || ''
+  const nombreCliente = cotizacion.cliente
+    ? `${cotizacion.cliente.usuario?.nombre ?? ''} ${cotizacion.cliente.apellido}`.trim()
+    : cotizacion.contactoNombre || 'Cliente'
   const telefono      = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
   const telefono2     = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
 

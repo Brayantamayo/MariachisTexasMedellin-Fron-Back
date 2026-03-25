@@ -6,6 +6,26 @@ export enum UserRole {
   GUEST    = 'GUEST'
 }
 
+
+// ─── TIPOS DE EVENTO (sincronizado con enum TipoEvento de Prisma) ─────────────
+export const TIPOS_EVENTO = [
+  'Boda',
+  'Cumpleaños',
+  'Quinceaños',
+  'Funeral',
+  'Reconciliación',
+  'Día de la Madre',
+  'Amor',
+  'Aniversario',
+  'Padres',
+  'Fiesta',
+  'Otro',
+] as const
+
+export type TipoEvento = typeof TIPOS_EVENTO[number]
+
+
+
 // ─── USUARIO ──────────────────────────────────────────────────────────────────
 export interface User {
   id:             string
@@ -218,3 +238,4 @@ export interface Role {
   isActive:    boolean
   createdAt:   string
 }
+

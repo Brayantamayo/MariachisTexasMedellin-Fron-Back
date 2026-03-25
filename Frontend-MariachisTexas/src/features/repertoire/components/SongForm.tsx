@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { uploadImage, uploadAudio } from '@/shared/services/uploadService';
 import { repertoireService, SpotifySong } from '@/src/features/repertoire/services/repertoireService';
+import { TIPOS_EVENTO } from '@/types';
 
 export interface SongFormErrors {
   title?:    string;
@@ -21,6 +22,8 @@ interface Props {
   onFieldChange: (field: string, value: any) => void;
   onSubmit:      (e: React.FormEvent) => void;
   errors?:       SongFormErrors;
+  
+  
 }
 
 export const SongForm: React.FC<Props> = ({
@@ -30,6 +33,7 @@ export const SongForm: React.FC<Props> = ({
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef      = useRef<HTMLAudioElement | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const genreInputRef = useRef<HTMLInputElement>(null); // ← ref para foco automático
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -103,9 +107,11 @@ export const SongForm: React.FC<Props> = ({
     onFieldChange('duration',   song.duration)
     onFieldChange('coverImage', song.coverImage  ?? '')
     onFieldChange('audioUrl',   song.previewUrl  ?? '')
+    onFieldChange('genre',      '')              // ← limpiar género (Spotify no lo devuelve)
     setSpotifyQuery('')
     setSpotifyResults([])
     setShowResults(false)
+    setTimeout(() => genreInputRef.current?.focus(), 100) // ← foco automático al campo género
   }
 
   // ─── Subir imagen ─────────────────────────────────────────────────────────
@@ -229,20 +235,15 @@ export const SongForm: React.FC<Props> = ({
                     className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
                     onClick={() => handleSelectSpotify(song)}
                   >
-                    {/* Portada */}
                     {song.coverImage
                       ? <img src={song.coverImage} alt={song.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                       : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Music size={16} className="text-slate-400" /></div>
                     }
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{song.title}</p>
                       <p className="text-xs text-slate-500 truncate">{song.artist}</p>
                       <p className="text-[10px] text-slate-400 truncate">{song.album} · {song.duration}</p>
                     </div>
-
-                    {/* Acciones */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       {song.previewUrl ? (
                         <button type="button" onClick={() => togglePreview(song)}
@@ -259,13 +260,11 @@ export const SongForm: React.FC<Props> = ({
                           <Music size={14} className="text-slate-300" />
                         </div>
                       )}
-
                       <a href={song.externalUrl} target="_blank" rel="noreferrer"
                         className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
                         title="Abrir en Spotify">
                         <ExternalLink size={13} />
                       </a>
-
                       <button type="button" onClick={() => handleSelectSpotify(song)}
                         className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
                         Usar
@@ -308,20 +307,22 @@ export const SongForm: React.FC<Props> = ({
             </div>
             {errors.artist && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.artist}</p>}
           </div>
+
+          {/* Género — input libre con foco automático al traer canción de Spotify */}
           <div>
             <label className="label-form">GÉNERO MUSICAL <span className="text-red-500">*</span></label>
             <div className="relative group">
               <List className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-400 transition-colors pointer-events-none" size={18} />
-              <select name="genre" value={formData.genre} onChange={onChange}
-                className={`input-form appearance-none cursor-pointer ${errors.genre ? 'border-red-400' : ''}`}>
-                <option value="">-- Seleccionar --</option>
-                <option value="Ranchera">Ranchera</option>
-                <option value="Bolero">Bolero</option>
-                <option value="Son">Son</option>
-                <option value="Corrido">Corrido</option>
-                <option value="Huapango">Huapango</option>
-                <option value="Balada">Balada</option>
-              </select>
+              <input
+                ref={genreInputRef}
+                type="text"
+                name="genre"
+                value={formData.genre}
+                onChange={onChange}
+                maxLength={50}
+                placeholder="Ej: Ranchera, Bolero, Pop..."
+                className={`input-form ${errors.genre ? 'border-red-400' : ''}`}
+              />
             </div>
             {errors.genre && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.genre}</p>}
           </div>
@@ -335,12 +336,9 @@ export const SongForm: React.FC<Props> = ({
             <select name="category" value={formData.category} onChange={onChange}
               className={`input-form appearance-none cursor-pointer ${errors.category ? 'border-red-400' : ''}`}>
               <option value="">-- Seleccionar --</option>
-              <option value="Serenata">Serenata</option>
-              <option value="Boda">Boda</option>
-              <option value="Cumpleaños">Cumpleaños</option>
-              <option value="Fúnebre">Fúnebre</option>
-              <option value="Show">Show General</option>
-              <option value="Clásicos">Clásicos</option>
+              {TIPOS_EVENTO.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
           {errors.category && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.category}</p>}

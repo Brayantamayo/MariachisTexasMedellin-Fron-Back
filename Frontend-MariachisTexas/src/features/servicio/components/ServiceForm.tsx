@@ -5,9 +5,12 @@ import { Service } from '@/types';
 interface Props {
     formData: Omit<Service, 'id' | 'estado'>;
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+    errors?: { nombre?: string; descripcion?: string; precio?: string };
+    
 }
-
-export const ServiceForm: React.FC<Props> = ({ formData, onChange }) => {
+////errors para resaltar los campos con errores se puede reutilizar en los demas formularios
+export const ServiceForm: React.FC<Props> = ({ formData, onChange, errors }) => {
+    
 return (
     <form className="space-y-6">
 <div className="space-y-4">
@@ -26,6 +29,7 @@ return (
             autoFocus
             />
         </div>
+        {errors?.nombre && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.nombre}</p>}      
         </div>
 
         {/* Descripción */}
@@ -41,6 +45,7 @@ return (
             placeholder="Detalle del servicio..."
             />
         </div>
+        {errors?.descripcion && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.descripcion}</p>}
         </div>
 
         {/* Precio */}
@@ -58,6 +63,7 @@ return (
             min="0"
             />
         </div>
+        {errors?.precio && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.precio}</p>}
         </div>
     </div>
 

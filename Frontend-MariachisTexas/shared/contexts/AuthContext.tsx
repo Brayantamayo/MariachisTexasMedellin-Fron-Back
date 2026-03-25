@@ -13,9 +13,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-// ✅ FIX: sessionStorage → localStorage
-// sessionStorage se borra al cerrar/recargar la pestaña — el token se perdía
-// al navegar entre módulos, causando "Token no proporcionado" en las requests
 const SESSION_KEYS = { TOKEN: 'token', USER: 'user' } as const
 
 const getSession = () => ({
@@ -47,7 +44,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser]           = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Recuperar sesión al montar — persiste entre pestañas y recargas
   useEffect(() => {
     const { token, userData } = getSession()
 
@@ -57,7 +53,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(parsed)
         authService.setAuthToken(token)
       } catch {
-        // JSON corrupto — limpiar y forzar login
         clearSession()
       }
     }
@@ -70,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const data = await authService.login(email, password)
 
+      // ✅ nombre viene de Usuario, datos extra vienen de Cliente (solo si es CLIENTE)
       const usuario: User = {
         id:             String(data.usuario.id),
         name:           data.usuario.nombre,
@@ -78,9 +74,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role:           ROL_MAP[data.usuario.rol]        ?? UserRole.CLIENTE,
         isActive:       true,
         documentType:   'CC',
-        documentNumber: data.usuario.numeroDocumento     || '',
+        documentNumber: '',
         gender:         'M',
-        birthDate:      data.usuario.fechaNacimiento     || '',
+        birthDate:      '',
         phone:          data.usuario.telefonoPrincipal   || '',
         secondaryPhone: data.usuario.telefonoAlternativo || '',
         city:           data.usuario.ciudad              || '',

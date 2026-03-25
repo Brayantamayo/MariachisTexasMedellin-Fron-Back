@@ -99,7 +99,8 @@ export const ServicesTable: React.FC<Props> = ({
                 <td className="py-4 px-4">
                   <div className="flex items-center justify-center gap-2">
                     <ActionButton icon={Eye} onClick={() => onView(service)} tooltip="Ver Detalle" />
-                    {canManage && (
+                      
+                    {canManage && service.estado && (
                       <>
                         <ActionButton icon={Edit2} onClick={() => onEdit(service)} tooltip="Editar" />
                         <ActionButton icon={Trash2} onClick={() => onDelete(service.id)} tooltip="Eliminar" />

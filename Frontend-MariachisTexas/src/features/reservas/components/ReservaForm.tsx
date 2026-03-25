@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock } from 'lucide-react';
-import { User as UserType, Song, Service } from '@/types';
+import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
 interface SelectedService {
@@ -31,8 +31,8 @@ interface Props {
   formData: FormData;
   isAdmin: boolean;
   isPublic?: boolean;
-  isEditing?: boolean; // editar reserva existente — bloquea campos cliente
-  isClient?: boolean;  // cliente creando su reserva — bloquea campos cliente
+  isEditing?: boolean;
+  isClient?: boolean;
   clients: UserType[];
   songs: Song[];
   services: Service[];
@@ -55,8 +55,8 @@ interface Props {
 
 export const ReservaForm: React.FC<Props> = ({
   formData, isAdmin, isPublic = false,
-  isEditing = false,  // editar reserva — bloquea cliente
-  isClient = false,   // cliente creando — bloquea cliente
+  isEditing = false,
+  isClient = false,
   clients, songs, services = [],
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
@@ -64,7 +64,6 @@ export const ReservaForm: React.FC<Props> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ✅ Bloquear campos de cliente si está editando O si es cliente
   const lockClientFields = isEditing || isClient
 
   const activeServices      = services.filter(s => s.estado === true);
@@ -154,7 +153,6 @@ export const ReservaForm: React.FC<Props> = ({
             Información del Cliente
           </h4>
 
-          {/* ✅ Buscador solo si es admin Y NO está en modo bloqueado */}
           {isAdmin && !lockClientFields && (
             <div className="mb-4">
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
@@ -172,7 +170,6 @@ export const ReservaForm: React.FC<Props> = ({
             </div>
           )}
 
-          {/* ✅ Aviso cuando los campos están bloqueados */}
           {lockClientFields && (
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
               <Lock size={12} className="text-slate-400" />
@@ -279,14 +276,12 @@ export const ReservaForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
-                <select name="eventType" value={formData.eventType || 'Cumpleaños'} onChange={onChange}
+                {/* ✅ Tipos de evento desde constante centralizada en @/types */}
+                <select name="eventType" value={formData.eventType || ''} onChange={onChange}
                   className={`${inputClass} appearance-none cursor-pointer`}>
-                  <option value="Serenata">Serenata</option>
-                  <option value="Boda">Boda</option>
-                  <option value="Cumpleaños">Cumpleaños</option>
-                  <option value="Empresarial">Empresarial</option>
-                  <option value="Fúnebre">Fúnebre</option>
-                  <option value="Otro">Otro</option>
+                  {TIPOS_EVENTO.map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
               </div>
