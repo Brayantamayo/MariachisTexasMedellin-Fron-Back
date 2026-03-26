@@ -94,18 +94,33 @@ export const EnsayosPage: React.FC = () => {
     }
   };
 
-  const toggleStatus = async (rehearsal: Rehearsal) => {
-      const newStatus = rehearsal.status === 'Programado' ? 'Completado' : 'Programado';
-      try {
-          setRehearsals(prev => prev.map(r => r.id === rehearsal.id ? { ...r, status: newStatus } : r));
-          await rehearsalService.updateRehearsal(rehearsal.id, { status: newStatus });
-          showNotification(`Ensayo marcado como ${newStatus}.`);
-      } catch (error) {
-          console.error(error);
-          fetchRehearsals();
-          showNotification("Error al cambiar estado.", "error");
-      }
-  };
+  // Reemplaza el toggleStatus actual por este:
+const handleToggleStatus = async (rehearsal: Rehearsal) => {
+  const isCompleted = rehearsal.status === 'Completado'
+
+  if (!isCompleted) {
+    const confirmed = window.confirm(
+      `¿Marcar "${rehearsal.title}" como Listo?\n` +
+      'Desaparecerá del calendario y no podrás editarlo.'
+    )
+    if (!confirmed) return
+  }
+
+  try {
+    const updated = await rehearsalService.toggleStatus(rehearsal.id)
+    setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r))
+    showNotification(
+      updated.status === 'Completado'
+        ? `Ensayo "${updated.title}" marcado como Listo.`
+        : `Ensayo "${updated.title}" marcado como Pendiente.`
+    )
+  } catch (err: any) {
+    showNotification(
+      err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
+      'error'
+    )
+  }
+}
 
   const filteredRehearsals = rehearsals.filter(r => 
       r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -186,7 +201,7 @@ export const EnsayosPage: React.FC = () => {
                 onView={(r) => { setSelectedRehearsal(r); setIsDetailOpen(true); }}
                 onEdit={(r) => { setSelectedRehearsal(r); setIsEditOpen(true); }}
                 onDelete={(id) => setDeleteModal({ isOpen: true, id })}
-                onToggleStatus={toggleStatus}
+                onToggleStatus={handleToggleStatus}
             />
         </div>
 

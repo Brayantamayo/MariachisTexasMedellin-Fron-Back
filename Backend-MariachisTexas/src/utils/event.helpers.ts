@@ -2,7 +2,6 @@ import { TipoEvento } from '../generated/prisma'
 
 export const mapEventType = (tipo: string): TipoEvento => {
   const map: Record<string, TipoEvento> = {
-    // Labels en español (frontend)
     'Serenata':       'OTRO',
     'Boda':           'BODA',
     'Cumpleaños':     'CUMPLEANOS',
@@ -11,10 +10,10 @@ export const mapEventType = (tipo: string): TipoEvento => {
     'Quinceaños':     'QUINCEANIOS',
     'Reconciliación': 'RECONCILIACION',
     'Día de la Madre':'DIA_DE_MADRE',
-    'Amor':           'AMOR',           // ← FALTABA
-    'Aniversario':    'ANIVERSARIO',    // ← FALTABA
-    'Padres':         'PADRES',         // ← FALTABA
-    'Fiesta':         'FIESTA',         // ← FALTABA
+    'Amor':           'AMOR',           
+    'Aniversario':    'ANIVERSARIO',    
+    'Padres':         'PADRES',         
+    'Fiesta':         'FIESTA',         
     'Otro':           'OTRO',
     // Valores del enum directos
     'BODA':           'BODA',

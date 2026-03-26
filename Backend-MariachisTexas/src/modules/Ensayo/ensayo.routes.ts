@@ -2,22 +2,23 @@ import { Router } from 'express'
 import * as ensayoController from './ensayo.controller'
 import { verifyToken } from '../../middlewares/Auth.middleware'
 import { requireRole } from '../../middlewares/Role.middleware'
-import { asyncHandler } from '../../middlewares/Asynchandler'
 
 const router = Router()
 
-// ─── PÚBLICA — solo fecha/hora para el calendario ─────────────────────────────
-router.get('/public/disponibilidad', asyncHandler(ensayoController.getDisponibilidad))
+// ─── PÚBLICA — sin autenticación ─────────────────────────────────────────────
+router.get('/public/disponibilidad', ensayoController.getDisponibilidad)
 
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 router.use(requireRole(['ADMIN', 'EMPLEADO']))
 
-router.get('/',    asyncHandler(ensayoController.getAll))
-router.get('/:id', asyncHandler(ensayoController.getById))
-router.post('/',   asyncHandler(ensayoController.create))
-router.put('/:id', asyncHandler(ensayoController.update))
+router.get('/',                        ensayoController.getAll)
+router.get('/:id',                     ensayoController.getById)
+router.post('/',                       ensayoController.create)
+router.patch('/:id/toggle-estado',     ensayoController.toggleEstado)  
+router.put('/:id',                     ensayoController.update)
 
-router.delete('/:id', requireRole(['ADMIN']), asyncHandler(ensayoController.remove))
+// ─── SOLO ADMIN ───────────────────────────────────────────────────────────────
+router.delete('/:id', requireRole(['ADMIN']), ensayoController.remove)
 
 export default router

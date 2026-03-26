@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma'
 import { EnsayoCreateSchema, EnsayoUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, dayRange } from '../../utils/date.helpers'
-import type { EnsayoCreateInput, EnsayoUpdateInput, RehearsalResponse } from '../../types/interfaces' 
+import type { EnsayoCreateInput, EnsayoUpdateInput, RehearsalResponse } from '../../types/interfaces'
 
 // ─── MAPEO ────────────────────────────────────────────────────────────────────
 const mapToRehearsal = (e: any): RehearsalResponse => ({
@@ -13,7 +13,7 @@ const mapToRehearsal = (e: any): RehearsalResponse => ({
   time:          toLocalTime(e.fechaHora),
   notes:         '',
   repertoireIds: e.repertorios?.map((r: any) => String(r.repertorioId)) ?? [],
-  status:        'Programado',
+  status:        e.estado === 'LISTO' ? 'Completado' : 'Pendiente',
   createdAt:     e.createdAt?.toISOString(),
   updatedAt:     e.updatedAt?.toISOString(),
 })
@@ -36,15 +36,15 @@ const validateDisponibilidad = async (date: string, time: string, excludeId?: nu
     where: { fechaEvento: { gte: dayStart, lte: dayEnd }, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } }
   })
   for (const cot of cotActivas) {
-    if (fechaHora >= bufferAntes && fechaHora <= bufferDespues)
-      if (bufferAntes < cot.horaFin && bufferDespues > cot.horaInicio)
-        throw new Error(`Conflicto con cotización activa (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`)
-    if (fechaHora >= cot.horaInicio && fechaHora < cot.horaFin)
-      throw new Error(`Horario bloqueado por cotización activa (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`)
+    if (bufferAntes < cot.horaFin && bufferDespues > cot.horaInicio)
+      throw new Error(`Conflicto con cotización activa (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`)
   }
 
   const reservas = await prisma.reserva.findMany({
-    where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] }, cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } } },
+    where: {
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } }
+    },
     include: { cotizacion: true }
   })
   for (const r of reservas) {
@@ -56,6 +56,8 @@ const validateDisponibilidad = async (date: string, time: string, excludeId?: nu
 
   const ensayoConflicto = await prisma.ensayo.findFirst({
     where: {
+      // ✅ Solo validar conflicto contra ensayos PENDIENTES — los LISTOS ya no ocupan espacio
+      estado: 'PENDIENTE',
       fechaHora: { gte: bufferAntes, lte: bufferDespues },
       id: excludeId ? { not: excludeId } : undefined
     }
@@ -67,7 +69,10 @@ const validateDisponibilidad = async (date: string, time: string, excludeId?: nu
 
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getEnsayos = async (): Promise<RehearsalResponse[]> => {
-  const ensayos = await prisma.ensayo.findMany({ include: { repertorios: true }, orderBy: { fechaHora: 'desc' } })
+  const ensayos = await prisma.ensayo.findMany({
+    include:  { repertorios: true },
+    orderBy:  { fechaHora: 'desc' }
+  })
   return ensayos.map(mapToRehearsal)
 }
 
@@ -78,9 +83,13 @@ export const getEnsayoById = async (id: number): Promise<RehearsalResponse> => {
   return mapToRehearsal(ensayo)
 }
 
-// ─── GET DISPONIBILIDAD PÚBLICA ───────────────────────────────────────────────
+// ─── GET DISPONIBILIDAD PÚBLICA — solo PENDIENTES ─────────────────────────────
 export const getDisponibilidadPublica = async () => {
-  const ensayos = await prisma.ensayo.findMany({ orderBy: { fechaHora: 'asc' } })
+  const ensayos = await prisma.ensayo.findMany({
+    // ✅ Los ensayos LISTOS no bloquean el calendario público
+    where:   { estado: 'PENDIENTE' },
+    orderBy: { fechaHora: 'asc' }
+  })
   return ensayos.map(e => ({ fecha: toLocalDate(e.fechaHora), hora: toLocalTime(e.fechaHora) }))
 }
 
@@ -105,12 +114,21 @@ export const createEnsayo = async (data: EnsayoCreateInput): Promise<RehearsalRe
 
   const ensayo = await prisma.$transaction(async (tx) => {
     const e = await tx.ensayo.create({
-      data: { nombre: title, fechaHora: new Date(`${date}T${time}:00`), lugar: location, ubicacion: address ?? null },
+      data: {
+        nombre:    title,
+        fechaHora: new Date(`${date}T${time}:00`),
+        lugar:     location,
+        ubicacion: address ?? null,
+        estado:    'PENDIENTE', // ← siempre inicia como PENDIENTE
+      },
       include: { repertorios: true }
     })
     if (repertoireIds?.length)
       await tx.ensayoRepertorio.createMany({
-        data: repertoireIds.map((rid: string | number) => ({ ensayoId: e.id, repertorioId: Number(rid) }))
+        data: repertoireIds.map((rid: string | number) => ({
+          ensayoId:     e.id,
+          repertorioId: Number(rid)
+        }))
       })
     return e
   })
@@ -123,6 +141,14 @@ export const updateEnsayo = async (id: number, data: EnsayoUpdateInput): Promise
   const exists = await prisma.ensayo.findUnique({ where: { id } })
   if (!exists) throw new Error('Ensayo no encontrado')
 
+  // ✅ No permitir editar un ensayo LISTO (solo cambiar estado o eliminar)
+  if (exists.estado === 'LISTO') {
+    // Si la única actualización es el estado, la permitimos
+    const soloEstado = Object.keys(data).every(k => k === 'status')
+    if (!soloEstado)
+      throw new Error('No se puede editar un ensayo completado. Solo puedes cambiar su estado o eliminarlo.')
+  }
+
   const trimmed = {
     ...data,
     title:    typeof data.title    === 'string' ? data.title.trim()    : data.title,
@@ -130,8 +156,8 @@ export const updateEnsayo = async (id: number, data: EnsayoUpdateInput): Promise
     address:  typeof data.address  === 'string' ? data.address.trim()  : data.address,
   }
 
-  if (trimmed.title    !== undefined && !trimmed.title)    throw new Error('El título no puede estar vacío o contener solo espacios')
-  if (trimmed.location !== undefined && !trimmed.location) throw new Error('El lugar no puede estar vacío o contener solo espacios')
+  if (trimmed.title    !== undefined && !trimmed.title)    throw new Error('El título no puede estar vacío')
+  if (trimmed.location !== undefined && !trimmed.location) throw new Error('El lugar no puede estar vacío')
 
   const parsed = EnsayoUpdateSchema.safeParse(trimmed)
   if (!parsed.success) throw new Error(zodError(parsed.error))
@@ -141,6 +167,11 @@ export const updateEnsayo = async (id: number, data: EnsayoUpdateInput): Promise
 
   if (parsed.data.date || parsed.data.time) await validateDisponibilidad(date, time, id)
 
+  // Convertir status del frontend → enum de BD
+  const estadoDB = parsed.data.status === 'LISTO'   ? 'LISTO'
+                : parsed.data.status === 'PENDIENTE' ? 'PENDIENTE'
+                : undefined
+
   await prisma.$transaction(async (tx) => {
     await tx.ensayo.update({
       where: { id },
@@ -149,17 +180,32 @@ export const updateEnsayo = async (id: number, data: EnsayoUpdateInput): Promise
         fechaHora: new Date(`${date}T${time}:00`),
         lugar:     parsed.data.location ?? exists.lugar,
         ubicacion: parsed.data.address  ?? exists.ubicacion,
+        ...(estadoDB !== undefined ? { estado: estadoDB } : {}),
       }
     })
     if (parsed.data.repertoireIds !== undefined) {
       await tx.ensayoRepertorio.deleteMany({ where: { ensayoId: id } })
       if (parsed.data.repertoireIds.length)
         await tx.ensayoRepertorio.createMany({
-          data: parsed.data.repertoireIds.map((rid: string | number) => ({ ensayoId: id, repertorioId: Number(rid) }))
+          data: parsed.data.repertoireIds.map((rid: string | number) => ({
+            ensayoId:     id,
+            repertorioId: Number(rid)
+          }))
         })
     }
   })
 
+  return getEnsayoById(id)
+}
+
+// ─── TOGGLE ESTADO (PENDIENTE ↔ LISTO) ───────────────────────────────────────
+export const toggleEstadoEnsayo = async (id: number): Promise<RehearsalResponse> => {
+  const exists = await prisma.ensayo.findUnique({ where: { id } })
+  if (!exists) throw new Error('Ensayo no encontrado')
+
+  const nuevoEstado = exists.estado === 'PENDIENTE' ? 'LISTO' : 'PENDIENTE'
+
+  await prisma.ensayo.update({ where: { id }, data: { estado: nuevoEstado } })
   return getEnsayoById(id)
 }
 

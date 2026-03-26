@@ -1,10 +1,11 @@
 // ─── ENSAYO ───────────────────────────────────────────────────────────────────
 export interface EnsayoCreateInput {
-  title:         string
-  location:      string
-  address?:      string | null
-  date:          string
-  time:          string
+  title:          string
+  location:       string
+  address?:       string | null
+  date:           string
+  time:           string
+  status?:        'PENDIENTE' | 'LISTO'
   repertoireIds?: (string | number)[]
 }
 
@@ -39,30 +40,30 @@ export interface CotizacionUpdateInput extends Partial<CotizacionCreateInput> {}
 
 // ─── RESERVA ──────────────────────────────────────────────────────────────────
 export interface ReservaCreateInput {
-  clienteId:        string | number
-  eventDate:        string
-  startTime:        string
-  endTime:          string
-  location:         string
-  totalAmount:      number
-  homenajeado?:     string
-  eventType?:       string
-  notes?:           string | null
+  clienteId:         string | number
+  eventDate:         string
+  startTime:         string
+  endTime:           string
+  location:          string
+  totalAmount:       number
+  homenajeado?:      string
+  eventType?:        string
+  notes?:            string | null
   selectedServices?: ServicioSeleccionado[]
-  repertoireIds?:   (string | number)[]
+  repertoireIds?:    (string | number)[]
 }
 
 export interface ReservaUpdateInput {
-  eventDate?:       string
-  startTime?:       string
-  endTime?:         string
-  location?:        string
-  homenajeado?:     string
-  eventType?:       string
-  notes?:           string | null
-  totalAmount?:     number
+  eventDate?:        string
+  startTime?:        string
+  endTime?:          string
+  location?:         string
+  homenajeado?:      string
+  eventType?:        string
+  notes?:            string | null
+  totalAmount?:      number
   selectedServices?: ServicioSeleccionado[]
-  repertoireIds?:   (string | number)[]
+  repertoireIds?:    (string | number)[]
 }
 
 // ─── SERVICIO ─────────────────────────────────────────────────────────────────
@@ -92,13 +93,13 @@ export interface RepertorioUpdateInput extends Partial<RepertorioCreateInput> {}
 
 // ─── BLOQUEO ──────────────────────────────────────────────────────────────────
 export interface BloqueoCreateInput {
-  type:        'TIME_RANGE' | 'FULL_DATE' | 'DATE_RANGE'
-  reason:      string
+  type:         'TIME_RANGE' | 'FULL_DATE' | 'DATE_RANGE'
+  reason:       string
   description?: string
-  startDate:   string
-  endDate?:    string
-  startTime?:  string
-  endTime?:    string
+  startDate:    string
+  endDate?:     string
+  startTime?:   string
+  endTime?:     string
 }
 
 export interface BloqueoUpdateInput extends Partial<BloqueoCreateInput> {}
@@ -113,7 +114,7 @@ export interface RehearsalResponse {
   time:          string
   notes:         string
   repertoireIds: string[]
-  status:        'Programado'
+  status:        'Pendiente' | 'Completado' | 'Programado'
   createdAt?:    string
   updatedAt?:    string
 }

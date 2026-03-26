@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Music, AlertCircle } from 'lucide-react';
 import { SongForm, SongFormErrors } from './SongForm';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 interface Props {
   isOpen:  boolean;
@@ -9,12 +10,19 @@ interface Props {
   onSave:  (data: any) => Promise<void>;
 }
 
-const EMPTY_SONG = {
-  title: '', artist: '', genre: '', category: '',
-  lyrics: '', audioUrl: '', duration: '', difficulty: 'Media', coverImage: ''
+const INITIAL_FORM = {
+  title:      '',
+  artist:     '',
+  genre:      '',
+  category:   '',
+  lyrics:     '',
+  audioUrl:   '',
+  duration:   '',
+  difficulty: 'Media',
+  coverImage: '',
+  isActive:   true,
 };
 
-// ─── Validaciones ─────────────────────────────────────────────────────────────
 const validate = (data: any): SongFormErrors => {
   const errors: SongFormErrors = {};
 
@@ -42,16 +50,38 @@ const validate = (data: any): SongFormErrors => {
   return errors;
 };
 
+const FIELD_ORDER: (keyof SongFormErrors)[] = ['title', 'artist', 'genre', 'category', 'duration'];
+
 export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
-  const [formData, setFormData] = useState<any>(EMPTY_SONG);
-  const [errors,   setErrors]   = useState<SongFormErrors>({});
-  const [saving,   setSaving]   = useState(false);
+  const [formData,    setFormData]    = useState<any>({ ...INITIAL_FORM });
+  const [errors,      setErrors]      = useState<SongFormErrors>({});
+  const [saving,      setSaving]      = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const registerFieldRef = (field: string, el: HTMLElement | null) => {
+    fieldRefs.current[field] = el;
+  };
+
+  const scrollToFirstError = (validationErrors: SongFormErrors) => {
+    const firstErrorField = FIELD_ORDER.find(field => validationErrors[field]);
+    if (!firstErrorField) return;
+
+    const el = fieldRefs.current[firstErrorField];
+    if (el && scrollContainerRef.current) {
+      const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
+      const elTop        = el.getBoundingClientRect().top;
+      const offset       = elTop - containerTop + scrollContainerRef.current.scrollTop - 24;
+      scrollContainerRef.current.scrollTo({ top: offset, behavior: 'smooth' });
+      setTimeout(() => (el as HTMLInputElement | HTMLSelectElement).focus?.(), 300);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
-    // Limpiar error del campo al escribir
     if (errors[name as keyof SongFormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
@@ -68,23 +98,26 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
     const validationErrors = validate(formData);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      scrollToFirstError(validationErrors);
       return;
     }
 
     setSaving(true);
     try {
-      await onSave({ ...formData, isActive: true });
-      setFormData(EMPTY_SONG);
+      await onSave(formData);
+      // ✅ Reset al cerrar exitosamente
+      setFormData({ ...INITIAL_FORM });
       setErrors({});
-    } catch (err: any) {
-      setGlobalError(err?.response?.data?.message || 'Error al guardar la canción.');
+    } catch (err) {
+      // ✅ getErrorMessage muestra el mensaje real del backend
+      setGlobalError(getErrorMessage(err, 'Error al guardar la canción.'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleClose = () => {
-    setFormData(EMPTY_SONG);
+    setFormData({ ...INITIAL_FORM });
     setErrors({});
     setGlobalError(null);
     onClose();
@@ -113,7 +146,7 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
           </button>
         </div>
 
-        {/* Error global */}
+        {/* ✅ Error global — muestra el mensaje real del backend */}
         {globalError && (
           <div className="mx-8 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
@@ -121,13 +154,14 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
         )}
 
         {/* Form */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <SongForm
             formData={formData}
             onChange={handleChange}
             onFieldChange={handleFieldChange}
             onSubmit={handleSubmit}
             errors={errors}
+            registerFieldRef={registerFieldRef}
           />
         </div>
 

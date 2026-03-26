@@ -21,9 +21,11 @@ export const ServicesPage: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   
-  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, serviceId: string | null}>({
+  // ✅ Guardamos también estado para pasarlo al deleteService
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; serviceId: string | null; isActive: boolean }>({
     isOpen: false,
-    serviceId: null
+    serviceId: null,
+    isActive: false,
   });
 
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -56,44 +58,51 @@ export const ServicesPage: React.FC = () => {
       setServices(prev => [newService, ...prev]);
       showNotification('Servicio creado exitosamente.');
       setIsCreateOpen(false);
-    } catch (error : any ) {
+    } catch (error: any) {
       showNotification(error.message || "Error al crear servicio.", "error");
     }
   };
 
-const handleUpdate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
-  if (!selectedService) return;
-  try {
-    const updated = await servicesService.updateService(selectedService.id, serviceData);
-    setServices(prev => prev.map(s => s.id === updated.id ? updated : s));
-    showNotification('Servicio actualizado exitosamente.');
-    setIsEditOpen(false);
-    setSelectedService(null);
-  } catch (error: any) {
-    showNotification(error.message || "Error al actualizar servicio.", "error");
-  }
-};
-
-  const confirmDelete = async () => {
-    if (!deleteModal.serviceId) return;
+  const handleUpdate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
+    if (!selectedService) return;
     try {
-      await servicesService.deleteService(deleteModal.serviceId);
-      setServices(prev => prev.filter(s => s.id !== deleteModal.serviceId));
-      showNotification('Servicio eliminado.');
-      setDeleteModal({ isOpen: false, serviceId: null });
-    } catch (error) {
-      showNotification("Este servicio no se puede eliminar esta vinculado a una reserva.", "error");
+      const updated = await servicesService.updateService(selectedService.id, serviceData);
+      setServices(prev => prev.map(s => s.id === updated.id ? updated : s));
+      showNotification('Servicio actualizado exitosamente.');
+      setIsEditOpen(false);
+      setSelectedService(null);
+    } catch (error: any) {
+      showNotification(error.message || "Error al actualizar servicio.", "error");
     }
   };
+
+ const confirmDelete = async () => {
+  if (!deleteModal.serviceId) return;
+  try {
+    await servicesService.deleteService(deleteModal.serviceId); // ✅ sin isActive
+    setServices(prev => prev.filter(s => s.id !== deleteModal.serviceId));
+    showNotification('Servicio eliminado.');
+  } catch (error: any) {
+    showNotification(
+      error?.response?.data?.message || error?.message || 'No se pudo eliminar el servicio.',
+      'error'
+    );
+  } finally {
+    setDeleteModal({ isOpen: false, serviceId: null });
+  }
+};
 
   const handleToggleStatus = async (service: Service) => {
     try {
       setServices(prev => prev.map(s => s.id === service.id ? { ...s, estado: !service.estado } : s));
       await servicesService.toggleEstado(service.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       fetchServices();
-      showNotification("Error al cambiar estado.", "error");
+      showNotification(
+        error?.response?.data?.message || error?.message || 'Error al cambiar estado.',
+        'error'
+      );
     }
   };
 
@@ -166,7 +175,8 @@ const handleUpdate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
           loading={loading}
           userRole={user?.role}
           onEdit={(service) => { setSelectedService(service); setIsEditOpen(true); }}
-          onDelete={(id) => setDeleteModal({ isOpen: true, serviceId: id })}
+          // ✅ Pasamos también estado al abrir el modal de confirmación
+          onDelete={(id, isActive) => setDeleteModal({ isOpen: true, serviceId: id, isActive })}
           onView={(service) => { setSelectedService(service); setIsDetailOpen(true); }}
           onToggleStatus={handleToggleStatus}
         />

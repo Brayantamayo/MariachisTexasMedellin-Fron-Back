@@ -17,23 +17,22 @@ export interface SongFormErrors {
 }
 
 interface Props {
-  formData:      any;
-  onChange:      (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  onFieldChange: (field: string, value: any) => void;
-  onSubmit:      (e: React.FormEvent) => void;
-  errors?:       SongFormErrors;
-  
-  
+  formData:         any;
+  onChange:         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onFieldChange:    (field: string, value: any) => void;
+  onSubmit:         (e: React.FormEvent) => void;
+  errors?:          SongFormErrors;
+  registerFieldRef?: (field: string, el: HTMLElement | null) => void;
 }
 
 export const SongForm: React.FC<Props> = ({
-  formData, onChange, onFieldChange, onSubmit, errors = {} as SongFormErrors
+  formData, onChange, onFieldChange, onSubmit, errors = {} as SongFormErrors, registerFieldRef
 }) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef      = useRef<HTMLAudioElement | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const genreInputRef = useRef<HTMLInputElement>(null); // ← ref para foco automático
+  const genreInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -93,7 +92,6 @@ export const SongForm: React.FC<Props> = ({
     setPlayingId(song.spotifyId)
   }, [playingId])
 
-  // Detener audio al desmontar
   useEffect(() => () => { audioRef.current?.pause() }, [])
 
   // ─── Seleccionar canción → llenar todos los campos ────────────────────────
@@ -107,11 +105,11 @@ export const SongForm: React.FC<Props> = ({
     onFieldChange('duration',   song.duration)
     onFieldChange('coverImage', song.coverImage  ?? '')
     onFieldChange('audioUrl',   song.previewUrl  ?? '')
-    onFieldChange('genre',      '')              // ← limpiar género (Spotify no lo devuelve)
+    onFieldChange('genre',      '')
     setSpotifyQuery('')
     setSpotifyResults([])
     setShowResults(false)
-    setTimeout(() => genreInputRef.current?.focus(), 100) // ← foco automático al campo género
+    setTimeout(() => genreInputRef.current?.focus(), 100)
   }
 
   // ─── Subir imagen ─────────────────────────────────────────────────────────
@@ -288,11 +286,22 @@ export const SongForm: React.FC<Props> = ({
           <label className="label-form">TÍTULO DE LA CANCIÓN <span className="text-red-500">*</span></label>
           <div className="relative group">
             <Music className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-400 transition-colors pointer-events-none" size={18} />
-            <input type="text" name="title" value={formData.title} onChange={onChange}
+            <input
+              type="text" name="title" value={formData.title} onChange={onChange}
               maxLength={100} placeholder="Ej: El Rey"
-              className={`input-form font-bold text-slate-700 ${errors.title ? 'border-red-400' : ''}`} />
+              ref={el => registerFieldRef?.('title', el)}
+              className={`input-form font-bold text-slate-700 transition-all duration-200 ${
+                errors.title
+                  ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100 ring-2 ring-red-100'
+                  : ''
+              }`}
+            />
           </div>
-          {errors.title && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.title}</p>}
+          {errors.title && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+              <AlertCircle size={12}/>{errors.title}
+            </p>
+          )}
         </div>
 
         {/* Artista + Género */}
@@ -301,30 +310,48 @@ export const SongForm: React.FC<Props> = ({
             <label className="label-form">ARTISTA ORIGINAL <span className="text-red-500">*</span></label>
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-400 transition-colors pointer-events-none" size={18} />
-              <input type="text" name="artist" value={formData.artist} onChange={onChange}
+              <input
+                type="text" name="artist" value={formData.artist} onChange={onChange}
                 maxLength={80} placeholder="Ej: José Alfredo Jiménez"
-                className={`input-form ${errors.artist ? 'border-red-400' : ''}`} />
+                ref={el => registerFieldRef?.('artist', el)}
+                className={`input-form transition-all duration-200 ${
+                  errors.artist
+                    ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100 ring-2 ring-red-100'
+                    : ''
+                }`}
+              />
             </div>
-            {errors.artist && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.artist}</p>}
+            {errors.artist && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                <AlertCircle size={12}/>{errors.artist}
+              </p>
+            )}
           </div>
 
-          {/* Género — input libre con foco automático al traer canción de Spotify */}
           <div>
             <label className="label-form">GÉNERO MUSICAL <span className="text-red-500">*</span></label>
             <div className="relative group">
               <List className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-400 transition-colors pointer-events-none" size={18} />
               <input
-                ref={genreInputRef}
+                ref={el => { genreInputRef.current = el; registerFieldRef?.('genre', el); }}
                 type="text"
                 name="genre"
                 value={formData.genre}
                 onChange={onChange}
                 maxLength={50}
                 placeholder="Ej: Ranchera, Bolero, Pop..."
-                className={`input-form ${errors.genre ? 'border-red-400' : ''}`}
+                className={`input-form transition-all duration-200 ${
+                  errors.genre
+                    ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100 ring-2 ring-red-100'
+                    : ''
+                }`}
               />
             </div>
-            {errors.genre && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.genre}</p>}
+            {errors.genre && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                <AlertCircle size={12}/>{errors.genre}
+              </p>
+            )}
           </div>
         </div>
 
@@ -333,15 +360,26 @@ export const SongForm: React.FC<Props> = ({
           <label className="label-form">CATEGORÍA / OCASIÓN <span className="text-red-500">*</span></label>
           <div className="relative group">
             <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-400 transition-colors pointer-events-none" size={18} />
-            <select name="category" value={formData.category} onChange={onChange}
-              className={`input-form appearance-none cursor-pointer ${errors.category ? 'border-red-400' : ''}`}>
+            <select
+              name="category" value={formData.category} onChange={onChange}
+              ref={el => registerFieldRef?.('category', el)}
+              className={`input-form appearance-none cursor-pointer transition-all duration-200 ${
+                errors.category
+                  ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100 ring-2 ring-red-100'
+                  : ''
+              }`}
+            >
               <option value="">-- Seleccionar --</option>
               {TIPOS_EVENTO.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
-          {errors.category && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/>{errors.category}</p>}
+          {errors.category && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+              <AlertCircle size={12}/>{errors.category}
+            </p>
+          )}
         </div>
 
         {/* Detalles técnicos */}
@@ -350,11 +388,19 @@ export const SongForm: React.FC<Props> = ({
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">
               Duración <span className="text-red-400">*</span>
             </label>
-            <input type="text" name="duration" value={formData.duration} onChange={onChange}
+            <input
+              type="text" name="duration" value={formData.duration} onChange={onChange}
               maxLength={5} placeholder="3:45"
-              className={`w-full bg-transparent border-b outline-none text-xs py-1 ${
-                errors.duration ? 'border-red-400 text-red-600' : 'border-slate-200 focus:border-red-400'}`} />
-            {errors.duration && <p className="text-red-500 text-[10px] mt-0.5">{errors.duration}</p>}
+              ref={el => registerFieldRef?.('duration', el)}
+              className={`w-full bg-transparent border-b outline-none text-xs py-1 transition-all duration-200 ${
+                errors.duration
+                  ? 'border-red-400 text-red-600 bg-red-50 rounded px-1'
+                  : 'border-slate-200 focus:border-red-400'
+              }`}
+            />
+            {errors.duration && (
+              <p className="text-red-500 text-[10px] mt-0.5 animate-pulse">{errors.duration}</p>
+            )}
           </div>
 
           <div>

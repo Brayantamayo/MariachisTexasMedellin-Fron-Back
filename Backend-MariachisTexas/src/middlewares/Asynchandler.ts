@@ -99,7 +99,6 @@ export const asyncHandler = (fn: AsyncFn) =>
           case 'P2000':
             return res.status(400).json({ message: 'El valor proporcionado es demasiado largo' })
           default:
-            // ✅ En desarrollo loguear el error completo de Prisma para debug
             console.error('[Prisma Error]', e.code, e.message)
             return res.status(500).json({ message: 'Error en la base de datos' })
         }

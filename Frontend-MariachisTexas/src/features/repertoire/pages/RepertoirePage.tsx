@@ -5,6 +5,7 @@ import { repertoireService } from '../services/repertoireService';
 import { Song, UserRole } from '@/types';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { useAuth } from '@/shared/contexts/AuthContext';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 import { RepertoireTable } from '../components/RepertoireTable';
 import { SongCreateModal } from '../components/SongCreateModal';
@@ -45,11 +46,9 @@ export const RepertoirePage: React.FC = () => {
   const fetchSongs = async () => {
     setLoading(true);
     try {
-      // ✅ FIX: Admin y Empleado ven todas (activas + inactivas) para gestionar
-      //         Cliente solo ve las activas — canciones inactivas no deben aparecer
       const data = canManage
         ? await repertoireService.getSongs()
-        : await repertoireService.getSongsPublic()
+        : await repertoireService.getSongsPublic();
       setSongs(data);
     } catch {
       showNotification('Error cargando el repertorio.', 'error');
@@ -61,7 +60,7 @@ export const RepertoirePage: React.FC = () => {
   useEffect(() => {
     fetchSongs();
     return () => { audioRef.current?.pause(); };
-  }, [user]); // ✅ re-ejecutar si cambia el usuario/rol
+  }, [user]);
 
   // ─── Audio ────────────────────────────────────────────────────────────────────
   const togglePlay = (song: Song) => {
@@ -97,18 +96,27 @@ export const RepertoirePage: React.FC = () => {
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────────
   const handleCreateSong = async (songData: any) => {
-    const newSong = await repertoireService.createSong({ ...songData, isActive: true });
-    setSongs(prev => [newSong, ...prev]);
-    showNotification('Nueva canción agregada al repertorio.');
-    setIsCreateOpen(false);
+    try {
+      const newSong = await repertoireService.createSong({ ...songData, isActive: true });
+      setSongs(prev => [newSong, ...prev]);
+      showNotification('Nueva canción agregada al repertorio.');
+      setIsCreateOpen(false);
+    } catch (error) {
+      showNotification(getErrorMessage(error, 'Error al crear la canción.'), 'error');
+    }
   };
 
   const handleUpdateSong = async (songData: any) => {
     if (!selectedSong) return;
-    const updated = await repertoireService.updateSong(selectedSong.id, songData);
-    setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
-    showNotification('Canción actualizada correctamente.');
-    setIsEditOpen(false);
+    try {
+      const updated = await repertoireService.updateSong(selectedSong.id, songData);
+      setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
+      showNotification('Canción actualizada correctamente.');
+      setIsEditOpen(false);
+      setSelectedSong(null);
+    } catch (error) {
+      showNotification(getErrorMessage(error, 'Error al actualizar la canción.'), 'error');
+    }
   };
 
   const confirmDelete = async () => {
@@ -122,8 +130,8 @@ export const RepertoirePage: React.FC = () => {
         setPlayingId(null);
       }
       showNotification('Canción eliminada del repertorio.');
-    } catch {
-      showNotification('esta cancion no se puede eliminar esta vinculada a una reserva.', 'error');
+    } catch (error) {
+      showNotification(getErrorMessage(error, 'No se pudo eliminar la canción.'), 'error');
     } finally {
       setDeleteModal({ isOpen: false, songId: null });
     }
@@ -138,12 +146,9 @@ export const RepertoirePage: React.FC = () => {
           ? 'Canción activada y visible en el catálogo.'
           : 'Canción desactivada del catálogo público.'
       );
-    } catch (error: any) {
-      // ✅ Mostrar el mensaje exacto del backend (ej: "está en una reserva activa")
-      showNotification(
-        error?.response?.data?.message || error?.message || 'Error al cambiar el estado.',
-        'error'
-      );
+    } catch (error) {
+      fetchSongs();
+      showNotification(getErrorMessage(error, 'Error al cambiar el estado.'), 'error');
     }
   };
 
@@ -233,9 +238,9 @@ export const RepertoirePage: React.FC = () => {
 
       {/* Modales */}
       <SongCreateModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSave={handleCreateSong} />
-      <SongEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdateSong} song={selectedSong} />
-      <SongDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} song={selectedSong} />
-      <LyricsModal     isOpen={isLyricsOpen} onClose={() => setIsLyricsOpen(false)} song={selectedSong} />
+      <SongEditModal   isOpen={isEditOpen}   onClose={() => { setIsEditOpen(false); setSelectedSong(null); }} onSave={handleUpdateSong} song={selectedSong} />
+      <SongDetailModal isOpen={isDetailOpen} onClose={() => { setIsDetailOpen(false); setSelectedSong(null); }} song={selectedSong} />
+      <LyricsModal     isOpen={isLyricsOpen} onClose={() => { setIsLyricsOpen(false); setSelectedSong(null); }} song={selectedSong} />
 
       <ConfirmationModal
         isOpen={deleteModal.isOpen}

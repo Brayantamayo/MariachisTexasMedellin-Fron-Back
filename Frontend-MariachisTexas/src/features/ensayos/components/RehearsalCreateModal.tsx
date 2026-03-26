@@ -28,7 +28,6 @@ export const RehearsalCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave 
     time:          '',
     notes:         '',
     repertoireIds: [] as string[],
-    status:        'Programado'
   };
 
   const [formData,       setFormData]       = useState<any>(emptyRehearsal);

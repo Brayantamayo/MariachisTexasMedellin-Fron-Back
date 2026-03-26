@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { User, Mail, Lock, Phone, MapPin, Calendar, FileText, Camera, Home, Hash, Map, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { authService } from '../pages/authService';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage'
 
 interface Props {
   onNavigate: (path: string) => void;
@@ -89,11 +90,8 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
       setTimeout(() => onNavigate('/login'), 2000);
 
     } catch (error: any) {
-      const msg = error?.response?.data?.message
-        || error?.response?.data?.error
-        || 'Error al registrarse. Verifica los datos e inténtalo de nuevo.';
-      showNotification(msg, 'error');
-    } finally {
+  showNotification(getErrorMessage(error), 'error');
+  } finally {
       setIsLoading(false);
     }
   };
@@ -202,9 +200,9 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                   <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                   <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange} required
                     className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-white/20 outline-none appearance-none cursor-pointer text-sm font-medium">
-                    <option value="CC"  className="bg-dark-900">Cédula de Ciudadanía</option>
-                    <option value="CE"  className="bg-dark-900">Cédula de Extranjería</option>
-                    <option value="PAS" className="bg-dark-900">Pasaporte</option>
+                    <option value="CC"  className="bg-dark-900">CC</option>
+                    <option value="CE"  className="bg-dark-900">CE</option>
+                    <option value="PAS" className="bg-dark-900">PP</option>
                   </select>
                 </div>
               </div>

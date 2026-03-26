@@ -8,6 +8,7 @@ interface Props {
   loading: boolean;
   userRole?: UserRole;
   onEdit: (service: Service) => void;
+  // ✅ Firma actualizada: pasa id y estado (isActive)
   onDelete: (id: string) => void;
   onView: (service: Service) => void;
   onToggleStatus: (service: Service) => void;
@@ -51,7 +52,7 @@ export const ServicesTable: React.FC<Props> = ({
           </thead>
           <tbody className="divide-y divide-slate-50">
             {currentServices.map((service) => (
-              <tr key={service.id} className="hover:bg-slate-50/50 transition-colors group">
+              <tr key={service.id} className={`transition-colors group ${service.estado ? 'hover:bg-slate-50/50' : 'opacity-60'}`}>
                 
                 {/* Nombre */}
                 <td className="py-4 px-4">
@@ -100,10 +101,13 @@ export const ServicesTable: React.FC<Props> = ({
                   <div className="flex items-center justify-center gap-2">
                     <ActionButton icon={Eye} onClick={() => onView(service)} tooltip="Ver Detalle" />
                       
-                    {canManage && service.estado && (
+                    {canManage && (
                       <>
-                        <ActionButton icon={Edit2} onClick={() => onEdit(service)} tooltip="Editar" />
-                        <ActionButton icon={Trash2} onClick={() => onDelete(service.id)} tooltip="Eliminar" />
+                        {service.estado && (
+                          <ActionButton icon={Edit2} onClick={() => onEdit(service)} tooltip="Editar" />
+                        )}
+                        {/* ✅ Eliminar siempre visible para admin, pasa estado */}
+                        <ActionButton icon={Trash2} onClick={() => onDelete(service.id, service.estado)} tooltip="Eliminar" />
                       </>
                     )}
                   </div>

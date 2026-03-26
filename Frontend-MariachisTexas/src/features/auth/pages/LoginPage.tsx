@@ -78,7 +78,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
           <div className="text-center mb-4">
             <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center hover:scale-105 transition-transform duration-500">
               <img
-                src="https://picsum.photos/seed/mariachilogo/200/200"
+                src="shared/assets/images/Logo.png"
                 alt="Logo Mariachis Texas"
                 className="w-full h-full object-contain drop-shadow-2xl"
                 referrerPolicy="no-referrer"

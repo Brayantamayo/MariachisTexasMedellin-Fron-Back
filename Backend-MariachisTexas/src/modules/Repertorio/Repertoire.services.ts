@@ -10,18 +10,6 @@ const normalizar = (s: string) =>
    .replace(/[\u0300-\u036f]/g, '')
    .replace(/\s+/g, ' ')
 
-// ─── HELPER: detecta texto gibberish ─────────────────────────────────────────
-const esTextoGibberish = (texto: string): boolean => {
-  const lower = texto.toLowerCase().replace(/\s/g, '')
-  if (/[bcdfghjklmnpqrstvwxyz]{5,}/i.test(lower)) return true
-  if (/(.)\1{4,}/.test(lower))                     return true
-  if (lower.length > 10) {
-    const vocales = (lower.match(/[aeiouáéíóú]/g) || []).length
-    if (vocales / lower.length < 0.10)             return true
-  }
-  return false
-}
-
 // ─── MAPPERS ──────────────────────────────────────────────────────────────────
 const mapToSong = (r: any): SongResponse => ({
   id:         String(r.id),
@@ -77,25 +65,9 @@ export const getSongById = async (id: number): Promise<SongResponse> => {
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const createSong = async (data: RepertorioCreateInput): Promise<SongResponse> => {
-  const trimmed = {
-    ...data,
-    title:  typeof data.title  === 'string' ? data.title.trim()  : data.title,
-    artist: typeof data.artist === 'string' ? data.artist.trim() : data.artist,
-    lyrics: typeof data.lyrics === 'string' ? data.lyrics.trim() : data.lyrics,
-  }
-
-  if (!trimmed.title)  throw new Error('El título no puede estar vacío o contener solo espacios')
-  if (!trimmed.artist) throw new Error('El artista no puede estar vacío o contener solo espacios')
-
-  if (esTextoGibberish(trimmed.title))
-    throw new Error('El título parece contener texto sin sentido. Por favor ingresa un título real')
-  if (esTextoGibberish(trimmed.artist))
-    throw new Error('El artista parece contener texto sin sentido. Por favor ingresa un artista real')
-
-  const parsed = RepertorioCreateSchema.safeParse(trimmed)
+  const parsed = RepertorioCreateSchema.safeParse(data)
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
-  // ✅ Verificar canción duplicada (mismo título + artista, normalizado)
   const canciones = await prisma.repertorio.findMany({ select: { titulo: true, artista: true } })
   const tituloNorm  = normalizar(parsed.data.title)
   const artistaNorm = normalizar(parsed.data.artist)
@@ -105,7 +77,6 @@ export const createSong = async (data: RepertorioCreateInput): Promise<SongRespo
   if (duplicada)
     throw new Error(`Ya existe la canción "${duplicada.titulo}" de "${duplicada.artista}" en el repertorio`)
 
-  // ✅ Validar duración coherente
   const [minStr, secStr] = parsed.data.duration.split(':')
   const minutos  = Number(minStr)
   const segundos = Number(secStr)
@@ -124,35 +95,18 @@ export const updateSong = async (id: number, data: RepertorioUpdateInput): Promi
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new Error('Canción no encontrada')
 
-  // ✅ No permitir editar si está desactivada
   if (!exists.activa)
     throw new Error('No se puede editar una canción desactivada. Actívala primero para poder modificarla')
 
-  const trimmed = {
-    ...data,
-    title:  typeof data.title  === 'string' ? data.title.trim()  : data.title,
-    artist: typeof data.artist === 'string' ? data.artist.trim() : data.artist,
-    lyrics: typeof data.lyrics === 'string' ? data.lyrics.trim() : data.lyrics,
-  }
-
-  if (trimmed.title  !== undefined && !trimmed.title)  throw new Error('El título no puede quedar vacío')
-  if (trimmed.artist !== undefined && !trimmed.artist) throw new Error('El artista no puede quedar vacío')
-
-  if (trimmed.title  && esTextoGibberish(trimmed.title))
-    throw new Error('El título parece contener texto sin sentido')
-  if (trimmed.artist && esTextoGibberish(trimmed.artist))
-    throw new Error('El artista parece contener texto sin sentido')
-
-  const parsed = RepertorioUpdateSchema.safeParse(trimmed)
+  const parsed = RepertorioUpdateSchema.safeParse(data)
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
-  // ✅ Si cambia título o artista, verificar duplicado normalizado
   if (parsed.data.title || parsed.data.artist) {
     const nuevoTitulo  = normalizar(parsed.data.title  ?? exists.titulo)
     const nuevoArtista = normalizar(parsed.data.artist ?? exists.artista)
     const canciones    = await prisma.repertorio.findMany({
       where:  { id: { not: id } },
-      select: { titulo: true, artista: true }
+      select: { titulo: true, artista: true },
     })
     const duplicada = canciones.find(
       c => normalizar(c.titulo) === nuevoTitulo && normalizar(c.artista) === nuevoArtista
@@ -161,7 +115,6 @@ export const updateSong = async (id: number, data: RepertorioUpdateInput): Promi
       throw new Error(`Ya existe la canción "${duplicada.titulo}" de "${duplicada.artista}" en el repertorio`)
   }
 
-  // ✅ Validar duración si se actualiza
   if (parsed.data.duration) {
     const [minStr, secStr] = parsed.data.duration.split(':')
     const minutos  = Number(minStr)
@@ -194,16 +147,21 @@ export const toggleStatus = async (id: number): Promise<SongResponse> => {
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new Error('Canción no encontrada')
 
-  // ✅ Solo verificar uso si se va a DESACTIVAR (no al activar)
   if (exists.activa) {
     const [enCotizacionActiva, enReservaActiva, enEnsayo] = await Promise.all([
       prisma.cotizacionRepertorio.findFirst({
-        where: { repertorioId: id, cotizacion: { estado: { in: ['EN_ESPERA'] } } },
+        where: {
+          repertorioId: id,
+          cotizacion: { estado: { in: ['EN_ESPERA'] } },
+        },
       }),
       prisma.cotizacionRepertorio.findFirst({
         where: {
           repertorioId: id,
-          cotizacion: { estado: 'CONVERTIDA', reserva: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] } } },
+          cotizacion: {
+            estado:  'CONVERTIDA',
+            reserva: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] } },
+          },
         },
       }),
       prisma.ensayoRepertorio.findFirst({ where: { repertorioId: id } }),
@@ -229,15 +187,22 @@ export const deleteSong = async (id: number) => {
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new Error('Canción no encontrada')
 
-  // ✅ Solo se puede eliminar si está desactivada
-  if (exists.activa)
-    throw new Error('Debes desactivar la canción antes de eliminarla')
-
+  // ✅ Bloquear si está en cotización o reserva activa
   const enUso = await prisma.cotizacionRepertorio.findFirst({
-    where: { repertorioId: id, cotizacion: { estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } } },
+    where: {
+      repertorioId: id,
+      cotizacion: { estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } },
+    },
   })
-  if (enUso) throw new Error('No se puede eliminar: la canción está asociada a una cotización activa.')
+  if (enUso)
+    throw new Error('No se puede eliminar: la canción está asociada a una cotización activa.')
 
-  await prisma.repertorio.delete({ where: { id } })
+  // ✅ Limpiar huérfanos y eliminar en una sola transacción
+  await prisma.$transaction([
+    prisma.cotizacionRepertorio.deleteMany({ where: { repertorioId: id } }),
+    prisma.ensayoRepertorio.deleteMany({ where: { repertorioId: id } }),
+    prisma.repertorio.delete({ where: { id } }),
+  ])
+
   return { message: 'Canción eliminada correctamente' }
 }

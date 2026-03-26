@@ -244,6 +244,33 @@ export const useReservasManager = () => {
     }
   };
 
+const handleToggleStatus = async (rehearsal: Rehearsal) => {
+  const isCompleted = rehearsal.status === 'Completado'
+
+  if (!isCompleted) {
+    const confirmed = window.confirm(
+      `¿Marcar "${rehearsal.title}" como Listo?\n` +
+      'Desaparecerá del calendario y no podrás editarlo.'
+    )
+    if (!confirmed) return
+  }
+
+  try {
+    const updated = await rehearsalService.toggleStatus(rehearsal.id)
+    setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r))
+    showNotification(
+      updated.status === 'Completado'
+        ? `Ensayo "${updated.title}" marcado como Listo.`
+        : `Ensayo "${updated.title}" marcado como Pendiente.`
+    )
+  } catch (err: any) {
+    showNotification(
+      err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
+      'error'
+    )
+  }
+}
+
   const handleSaveAbono = async (data: any) => {
     try {
       await abonoService.createAbono(data);
@@ -297,6 +324,8 @@ export const useReservasManager = () => {
     setIsBlockModalOpen(true);
   };
 
+
+
   return {
     view, setView, currentDate, setCurrentDate,
     reservations, setReservations, calendarReservations, blocks, setBlocks,
@@ -319,6 +348,6 @@ export const useReservasManager = () => {
     fetchData, handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization, handleCancelReserva, handleTimeSlotBlock,
-    handleViewReserva,
+    handleViewReserva,handleToggleStatus
   };
 };

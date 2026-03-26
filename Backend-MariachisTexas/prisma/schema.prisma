@@ -32,6 +32,11 @@ enum EstadoReserva {
   ANULADA
 }
 
+enum EstadoEnsayo {
+  PENDIENTE
+  LISTO
+}
+
 enum EstadoVenta {
   CONFIRMADO
   FINALIZADO
@@ -239,7 +244,7 @@ model CotizacionRepertorio {
   orden        Int @default(0)
 
   cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
-  repertorio Repertorio @relation(fields: [repertorioId], references: [id])
+  repertorio Repertorio @relation(fields: [repertorioId], references: [id],onDelete: Cascade)
 
   @@unique([cotizacionId, repertorioId])
   @@map("cotizacion_repertorio")
@@ -306,13 +311,14 @@ model Venta {
 // ─── ENSAYO ──────────────────────────────────────────────────────────────────
 
 model Ensayo {
-  id        Int      @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   nombre    String
   fechaHora DateTime
   lugar     String
   ubicacion String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  estado    EstadoEnsayo  @default(PENDIENTE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   repertorios EnsayoRepertorio[]
 
@@ -325,7 +331,7 @@ model EnsayoRepertorio {
   repertorioId Int
 
   ensayo     Ensayo     @relation(fields: [ensayoId],     references: [id], onDelete: Cascade)
-  repertorio Repertorio @relation(fields: [repertorioId], references: [id])
+  repertorio Repertorio @relation(fields: [repertorioId], references: [id], onDelete: Cascade)
 
   @@unique([ensayoId, repertorioId])
   @@map("ensayo_repertorio")
