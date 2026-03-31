@@ -4,37 +4,40 @@ import { Calendar, Clock, MapPin, AlignLeft, Music, Search, Plus, Trash2, Check,
 import { Song } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
+// Agrega errors a la interfaz Props:
 interface Props {
-  formData: any;
-  availableSongs: Song[];
-  availableHours?: string[]; // Nuevas props opcionales para manejo de disponibilidad
-  blockStatus?: { isBlocked: boolean; reason?: string; hasPartialBlocks?: boolean; blockedRanges?: any[] };
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  onDateChange: (name: string, value: string) => void;
-  onToggleSong: (songId: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+formData:       any;
+availableSongs: Song[];
+availableHours?: string[];
+blockStatus?:   { isBlocked: boolean; reason?: string; hasPartialBlocks?: boolean; blockedRanges?: any[] };
+onChange:       (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+onDateChange:   (name: string, value: string) => void;
+onToggleSong:   (songId: string) => void;
+onSubmit:       (e: React.FormEvent) => void;
+  errors?:        { title?: string; location?: string; date?: string; time?: string }; // ✅ nuevo
 }
 
 export const RehearsalForm: React.FC<Props> = ({ 
     formData, 
     availableSongs, 
-    availableHours = [], // Por defecto vacío si no se pasa
+    availableHours = [],
     blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] }, 
     onChange, 
     onDateChange, 
     onToggleSong, 
-    onSubmit 
+    onSubmit,
+    errors
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const today = new Date().toISOString().split('T')[0];
+const [searchTerm, setSearchTerm] = useState('');
+const today = new Date().toISOString().split('T')[0];
 
   // Filtrar canciones para el selector
-  const filteredSongs = availableSongs.filter(song => 
-      song.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      song.artist.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredSongs = availableSongs.filter(song => 
+    song.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    song.artist.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
-  return (
+return (
     <form id="rehearsal-form" onSubmit={onSubmit} className="flex flex-col md:flex-row h-full">
         
         {/* COLUMNA IZQUIERDA: Datos del Ensayo */}
@@ -77,10 +80,12 @@ export const RehearsalForm: React.FC<Props> = ({
                     className="input-form font-bold text-slate-700" 
                     placeholder="Ej: Ensayo General Boda..." 
                 />
+                {errors?.title && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.title}</p>}
             </div>
 
+
             <div className="grid grid-cols-2 gap-5">
-                 <div>
+                <div>
                     <CustomDatePicker 
                         name="date"
                         label="FECHA"
@@ -89,8 +94,11 @@ export const RehearsalForm: React.FC<Props> = ({
                         required
                         minDate={today}
                     />
-                 </div>
-                 <div>
+                    {errors?.date && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.date}</p>}
+                </div>
+
+
+                <div>
                     <label className="label-form">HORA <span className="text-red-500">*</span></label>
                     <div className="relative">
                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
@@ -117,9 +125,10 @@ export const RehearsalForm: React.FC<Props> = ({
                                 </>
                             )}
                         </select>
+                        {errors?.time && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.time}</p>}
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                     </div>
-                 </div>
+                </div>
             </div>
 
             <div>
@@ -128,19 +137,20 @@ export const RehearsalForm: React.FC<Props> = ({
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                     <input type="text" name="location" required value={formData.location} onChange={onChange} className="input-form input-icon-padding" placeholder="Ej: Sala de Ensayos A" />
                 </div>
+                {errors?.location && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.location}</p>}
             </div>
 
             <div className="flex-1">
-                 <label className="label-form flex items-center gap-2 mb-3">
-                     <AlignLeft size={14} /> NOTAS O DETALLES
-                 </label>
-                 <textarea 
+                <label className="label-form flex items-center gap-2 mb-3">
+                    <AlignLeft size={14} /> NOTAS O DETALLES
+                </label>
+                <textarea 
                     name="notes"
                     value={formData.notes}
                     onChange={onChange}
                     className="w-full p-4 rounded-xl border outline-none resize-none font-medium leading-relaxed min-h-[120px] transition-all bg-white border-slate-200 focus:ring-4 focus:ring-primary-50 focus:border-primary-300 text-slate-700"
                     placeholder="Escribe detalles importantes para los músicos..."
-                 />
+                />
             </div>
 
         </div>

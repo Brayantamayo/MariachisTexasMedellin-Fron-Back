@@ -70,16 +70,20 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Buffer DESPUÉS de una reserva
-    const bufferPostReserva = reservations.find(r => {
-      const end = timeToMinutes(r.endTime || '00:00')
-      return hMin === end
-    })
-    if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
+  //y este igual 
+  // 3. Buffer DESPUÉS de una reserva
+  const bufferPostReserva = reservations.find(r => {
+    const end = timeToMinutes(r.endTime || '00:00') 
+    return hMin > end && hMin < end + 60
+})  
+  if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
+
 
     // 4. Buffer ANTES de una reserva
     const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime)
     if (prevReservation) return { status: 'buffer', data: prevReservation }
+
+
 
     // 5. Cotización EN_ESPERA — rango completo
     const quote = quotations.find(q => {
@@ -89,12 +93,15 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (quote) return { status: 'quote', data: quote }
 
+    /////Esto lo modifique por que no servia 
     // 6. Buffer DESPUÉS de cotización
-    const bufferPostCotizacion = quotations.find(q => {
-      const end = timeToMinutes(q.endTime)
-      return hMin === end
-    })
-    if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
+  const bufferPostCotizacion = quotations.find(q => {
+    const end = timeToMinutes(q.endTime)
+    return hMin > end && hMin < end + 60  // ✅ mismo fix
+})
+  if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
+
+
 
     // 7. Ensayo
     const rehearsal = rehearsals.find(r => (r.time ?? r.hora) === time)

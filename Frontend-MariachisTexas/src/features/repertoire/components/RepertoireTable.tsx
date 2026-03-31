@@ -26,6 +26,7 @@ export const RepertoireTable: React.FC<Props> = ({
 
   const canManage = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
 
+  {/* Boton de accion para cada una de las columnas de la tabla */}
   const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, active?: boolean }> = ({ icon: Icon, onClick, tooltip, active }) => (
     <button 
       onClick={onClick}
@@ -40,20 +41,24 @@ export const RepertoireTable: React.FC<Props> = ({
     </button>
   );
 
-  if (loading) {
-    return <div className="text-center py-20 text-slate-400">Cargando repertorio...</div>;
+
+
+{/* Si no hay canciones cargadas, mostrar mensaje de cargando */}
+  if (loading) {return <div className="text-center py-20 text-slate-400">Cargando repertorio...</div>;
+  }
+  if (songs.length === 0) {return <div className="text-center py-20 text-slate-400">No se encontraron canciones.</div>;
   }
 
-  if (songs.length === 0) {
-    return <div className="text-center py-20 text-slate-400">No se encontraron canciones.</div>;
-  }
 
+{/* Total de paginas y canciones que se mostraran en la paginacion */}
   const totalPages = Math.ceil(songs.length / itemsPerPage);
   const currentSongs = songs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+
+{/* Tabla de canciones */}
   return (
     <div className="flex flex-col">
       <div className="overflow-x-auto pb-4">
@@ -71,7 +76,9 @@ export const RepertoireTable: React.FC<Props> = ({
             {currentSongs.map(song => (
               <tr key={song.id} className={`transition-colors group ${song.isActive ? 'hover:bg-slate-50/50' : 'opacity-60'}`}>
 
-                {/* Title & Artist */}
+
+
+                {/* Titulo del artista */}
                 <td className="py-5 px-8">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200 flex-shrink-0 overflow-hidden">
@@ -92,19 +99,21 @@ export const RepertoireTable: React.FC<Props> = ({
                   </div>
                 </td>
 
-                {/* Genre */}
+                {/* Genero de la cancion */}
                 <td className="py-5 px-6">
                   <span className="inline-flex px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
                     {song.genre}
                   </span>
                 </td>
 
-                {/* Duration */}
+                {/* duracion de la cancion */}
                 <td className="py-5 px-6 text-center text-sm font-medium text-slate-600 font-mono">
                   {song.duration}
                 </td>
 
-                {/* Status */}
+
+
+                {/* Estado de la cancion */}
                 <td className="py-5 px-6">
                   <div className="flex items-center justify-center gap-3">
                     {canManage ? (
@@ -124,43 +133,53 @@ export const RepertoireTable: React.FC<Props> = ({
                     </span>
                   </div>
                 </td>
-
-                {/* Actions */}
                 <td className="py-5 px-8">
                   <div className="flex items-center justify-center gap-2">
 
+
+                    {/* Boton de reproduccion de la cancion */}
                     {song.isActive && (
                       <ActionButton 
                         icon={playingId === song.id ? Pause : Play} 
                         onClick={() => onPlay(song)} 
                         active={playingId === song.id}
-                        tooltip={playingId === song.id ? "Pausar" : "Escuchar demo"}
+                        tooltip={playingId === song.id ? "Pausar" : "Reproducir Cancion"}
                       />
                     )}
 
-                    {/* Ver detalle — siempre visible */}
+                    {/* Ver detalle*/}
                     <ActionButton icon={Eye} onClick={() => onView(song)} tooltip="Ver detalles" />
 
+
+                    {/* Ver letra*/}
                     {song.isActive && (
                       <ActionButton icon={FileText} onClick={() => onViewLyrics(song)} tooltip="Ver letra" />
                     )}
 
+                    {/* Editar cancion */}
+                    {/*canmange es para manejar los permisos de usuario*/}
                     {canManage && (
                       <>
                         {song.isActive && (
                           <ActionButton icon={Edit2} onClick={() => onEdit(song)} tooltip="Editar" />
+
                         )}
-                        {/* ✅ Eliminar siempre visible para canManage, pasa isActive */}
-                        <ActionButton icon={Trash2} onClick={() => onDelete(song.id, song.isActive)} tooltip="Eliminar" />
+
+                        {/* Eliminar cancion */}
+                        {song.isActive && (
+                          <ActionButton icon={Trash2} onClick={() => onDelete(song.id)} tooltip="Eliminar" />
+                        )}
+                        
                       </>
                     )}
-
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      
+      {/* Paginacion de la pagina de canciones  */}
       </div>
       <TablePagination 
         currentPage={currentPage}

@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight
 import { UserRole } from '@/types';
 import { useReservasManager } from '../hooks/useReservasManager';
 
-import { ReservasTable }     from '../components/ReservasTable';
+import { ReservasTable }      from '../components/ReservasTable';
 import { ReservaCreateModal } from '../components/ReservaCreateModal';
 import { ReservaEditModal }   from '../components/ReservaEditModal';
 import { ReservaDetailModal } from '../components/ReservaDetailModal';
@@ -85,9 +85,6 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
   )
 }
 
-
-
-
 export const ReservasPage: React.FC = () => {
   const {
     view, setView, currentDate, setCurrentDate,
@@ -109,7 +106,7 @@ export const ReservasPage: React.FC = () => {
     canManage, isClient, user,
     handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
-    handleSaveAbono, processFinalization, handleCancelReserva, handleTimeSlotBlock, handleViewReserva,
+    handleSaveAbono, processFinalization, processCancel, handleTimeSlotBlock, handleViewReserva,
   } = useReservasManager();
 
   const handleDateMouseDown = (dateStr: string) => {
@@ -245,44 +242,24 @@ export const ReservasPage: React.FC = () => {
                 <span className="truncate">{b.startTime} Bloqueo</span>
               </div>
             ))}
-
-            {/* ✅ FIX: cliente ve "Reservado" en gris, admin ve "Cotización" en amarillo */}
             {dayQuotes.map((quote, index) => (
-              <div
-                key={quote.id || `cot-${dateStr}-${index}`}
-                className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate flex items-center gap-1 ${
-                  isClient
-                    ? 'border-slate-100 bg-slate-100 text-slate-400'
-                    : 'border-amber-200 bg-amber-50 text-amber-700'
-                }`}
-              >
+              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
                 {isClient ? <Lock size={9} /> : <FileText size={9} />}
                 <span className="font-bold">{quote.startTime}</span>
                 {isClient ? ' Reservado' : ' Cotización'}
               </div>
             ))}
-
             {dayRehearsals.map((reh, index) => (
-              <div
-                key={reh.id || `reh-${dateStr}-${index}`}
-                className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${
-                  !isClient ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-100 text-slate-400'
-                }`}
-              >
+              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
                 {isClient ? <Lock size={9} /> : null}
                 <span className="font-bold">{reh.time}</span> {isClient ? 'Reservado' : 'Ensayo'}
               </div>
             ))}
-
             {dayEvents.map(ev => {
               const isMyEvent = !isClient || user?.email === ev.clientEmail
-              const statusStyle = ev.status === 'CONFIRMADA'
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                : 'bg-amber-50 border-amber-100 text-amber-700'
+              const statusStyle = ev.status === 'CONFIRMADA' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'
               return (
-                <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate ${
-                  isMyEvent ? statusStyle : 'bg-slate-50 border-slate-100 text-slate-400'
-                }`}>
+                <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate ${isMyEvent ? statusStyle : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                   <span className="font-bold">{ev.eventTime}</span> {isMyEvent ? (canManage ? ev.clientName : ev.eventType) : 'Reservado'}
                 </div>
               )
@@ -310,6 +287,7 @@ export const ReservasPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up pb-10" onMouseUp={() => { if (isDragging || longPressTimer.current) handleDateMouseUp(); }}>
+
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
           <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${notification.type === 'success' ? 'bg-white/95 border-emerald-100' : 'bg-white/95 border-red-100'}`}>
@@ -355,12 +333,14 @@ export const ReservasPage: React.FC = () => {
               </div>
             </div>
             <ReservasTable
-              reservations={filteredReservations} loading={loading} userRole={user?.role}
+              reservations={filteredReservations}
+              loading={loading}
+              userRole={user?.role}
               onView={(res) => handleViewReserva(res)}
               onEdit={(res) => { setEditingReserva(res); setIsEditOpen(true); }}
               onAddPayment={(id) => { setAbonoReservationId(id); setIsAbonoModalOpen(true); }}
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
-              onCancel={(id) => handleCancelReserva(id)}
+              onCancel={processCancel}     
               onDelete={(id) => setDeleteReservaModal({ isOpen: true, id })}
             />
           </div>
@@ -407,14 +387,7 @@ export const ReservasPage: React.FC = () => {
       <ConfirmationModal isOpen={finalizeModal.isOpen} onClose={() => setFinalizeModal({ ...finalizeModal, isOpen: false })} onConfirm={processFinalization} title="¿Finalizar Evento?" message="Marcará la reserva como completada." confirmText="Sí, Finalizar" />
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
       <ConfirmationModal isOpen={deleteTimeBlocksModal.isOpen} onClose={() => setDeleteTimeBlocksModal({ ...deleteTimeBlocksModal, isOpen: false })} onConfirm={handleConfirmDeleteTimeBlocks} title="¿Liberar Horarios?" message="Se eliminarán todos los bloqueos de horas en este día." confirmText="Liberar Todo" />
-      <ConfirmationModal
-        isOpen={deleteReservaModal.isOpen}
-        onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })}
-        onConfirm={handleDeleteReserva}
-        title="¿Eliminar Reserva?"
-        message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado."
-        confirmText="Sí, eliminar"
-      />
+      <ConfirmationModal isOpen={deleteReservaModal.isOpen} onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })} onConfirm={handleDeleteReserva} title="¿Eliminar Reserva?" message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado." confirmText="Sí, eliminar" />
     </div>
   );
-};  
+};

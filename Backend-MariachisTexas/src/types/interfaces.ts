@@ -170,3 +170,36 @@ export interface SongResponse {
   createdAt?: string
   updatedAt?: string
 }
+
+// ─── PERFIL ───────────────────────────────────────────────────────────────────
+export interface PerfilResponse {
+  id:                  number
+  nombre:              string
+  email:               string
+  rol:                 string
+  apellido:            string
+  tipoDocumento:       string
+  numeroDocumento:     string
+  fechaNacimiento:     string
+  telefonoPrincipal:   string
+  telefonoAlternativo: string
+  ciudad:              string
+  barrio:              string
+  direccion:           string
+  zonaServicio:        string
+  foto:                string | null
+  clienteId:           number | null
+}
+
+export interface ActualizarPerfilDatos {
+  nombre?:              string
+  apellido?:            string
+  telefonoPrincipal?:   string
+  telefonoAlternativo?: string
+  ciudad?:              string
+  barrio?:              string
+  direccion?:           string
+  zonaServicio?:        string
+  fechaNacimiento?:     string
+  foto?:                string | null
+}

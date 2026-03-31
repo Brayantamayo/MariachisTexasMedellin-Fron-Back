@@ -4,70 +4,70 @@ import { Calendar, Clock, MapPin, Music, Edit2, Trash2, Eye } from 'lucide-react
 import { TablePagination } from '@/shared/components/TablePagination';
 
 interface Props {
-  rehearsals:     Rehearsal[];
-  loading:        boolean;
-  userRole?:      UserRole;
-  onView:         (rehearsal: Rehearsal) => void;
-  onEdit:         (rehearsal: Rehearsal) => void;
-  onDelete:       (id: string) => void;
-  onToggleStatus: (rehearsal: Rehearsal) => void;
+rehearsals:     Rehearsal[];
+loading:        boolean;
+userRole?:      UserRole;
+onView:         (rehearsal: Rehearsal) => void;
+onEdit:         (rehearsal: Rehearsal) => void;
+onDelete:       (id: string) => void;
+onToggleStatus: (rehearsal: Rehearsal) => void;
 }
 
 export const RehearsalsTable: React.FC<Props> = ({
-  rehearsals, loading, userRole, onView, onEdit, onDelete, onToggleStatus
+rehearsals, loading, userRole, onView, onEdit, onDelete, onToggleStatus
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+const [currentPage, setCurrentPage] = useState(1);
+const itemsPerPage = 10;
 
-  const canManage = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
+const canManage = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
 
   // ─── Botón de acción reutilizable ──────────────────────────────────────────
-  const ActionButton: React.FC<{
+const ActionButton: React.FC<{
     icon:     React.ElementType;
     onClick:  () => void;
     tooltip?: string;
     variant?: 'default' | 'danger';
-  }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => (
+}> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => (
     <button
-      onClick={onClick}
-      title={tooltip}
-      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
+    onClick={onClick}
+    title={tooltip}
+    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
         variant === 'danger'
-          ? 'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600'
-          : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-      }`}
+        ? 'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600'
+        : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+    }`}
     >
-      <Icon size={16} strokeWidth={2} />
+    <Icon size={16} strokeWidth={2} />
     </button>
-  );
+);
 
-  if (loading) {
+if (loading) {
     return (
-      <div className="text-center py-20 text-slate-400">
+    <div className="text-center py-20 text-slate-400">
         Cargando programación...
-      </div>
+    </div>
     );
-  }
+}
 
-  if (rehearsals.length === 0) {
+if (rehearsals.length === 0) {
     return (
-      <div className="text-center py-20 text-slate-400">
+    <div className="text-center py-20 text-slate-400">
         No se encontraron ensayos programados.
-      </div>
+    </div>
     );
-  }
+}
 
-  const totalPages       = Math.ceil(rehearsals.length / itemsPerPage);
-  const currentRehearsals = rehearsals.slice(
+const totalPages       = Math.ceil(rehearsals.length / itemsPerPage);
+const currentRehearsals = rehearsals.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  );
+);
 
-  return (
+return (
     <div className="flex flex-col">
-      <div className="overflow-x-auto pb-4">
+    <div className="overflow-x-auto pb-4">
         <table className="w-full">
-          <thead>
+        <thead>
             <tr className="border-b border-slate-100 text-left">
               <th className="py-6 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fecha y Hora</th>
               <th className="py-6 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Ensayo</th>

@@ -1,13 +1,19 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '../../types';
 import { authService } from '@/src/features/auth/pages/authService';
+import { profileService, PerfilData } from '@/shared/services/perfilservices.ts';
 
 interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  user:            User | null;
+  isLoading:       boolean;
+  login:           (email: string, password: string) => Promise<boolean>;
+  logout:          () => void;
   isAuthenticated: boolean;
+  /** Llámalo después de actualizar el perfil para sincronizar el contexto */
+  refreshUser:     () => Promise<void>;
+  /** Actualización optimista directa (sin llamada al servidor) */
+  updateUser:      (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +45,25 @@ const ROL_MAP: Record<string, UserRole> = {
   cliente:  UserRole.CLIENTE,
 }
 
+/** Convierte un PerfilData (API) → User (frontend) */
+const perfilToUser = (perfil: PerfilData): User => ({
+  id:             String(perfil.id),
+  name:           perfil.nombre,
+  lastName:       perfil.apellido,
+  email:          perfil.email,
+  role:           ROL_MAP[perfil.rol] ?? UserRole.CLIENTE,
+  isActive:       true,
+  documentType:   perfil.tipoDocumento,
+  documentNumber: perfil.numeroDocumento,
+  gender:         'M',
+  birthDate:      perfil.fechaNacimiento,
+  phone:          perfil.telefonoPrincipal,
+  secondaryPhone: perfil.telefonoAlternativo,
+  city:           perfil.ciudad,
+  neighborhood:   perfil.barrio,
+  address:        perfil.direccion,
+})
+
 // ─── PROVIDER ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser]           = useState<User | null>(null);
@@ -65,7 +90,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const data = await authService.login(email, password)
 
-      // ✅ nombre viene de Usuario, datos extra vienen de Cliente (solo si es CLIENTE)
       const usuario: User = {
         id:             String(data.usuario.id),
         name:           data.usuario.nombre,
@@ -97,6 +121,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
+  /**
+   * Recarga el perfil desde el servidor y actualiza el contexto + localStorage.
+   * Úsalo en ProfilePage después de un PUT exitoso.
+   */
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const perfil  = await profileService.obtener()
+      const updated = perfilToUser(perfil)
+      const token   = localStorage.getItem(SESSION_KEYS.TOKEN) || ''
+      setSession(token, updated)
+      setUser(updated)
+    } catch (error) {
+      console.error('refreshUser error:', error)
+    }
+  }
+
+  /**
+   * Actualización optimista: modifica el contexto y el localStorage sin llamar al servidor.
+   * Útil para reflejar cambios inmediatamente en la UI mientras el PUT ya se ejecutó.
+   */
+  const updateUser = (partial: Partial<User>): void => {
+    setUser(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, ...partial }
+      const token   = localStorage.getItem(SESSION_KEYS.TOKEN) || ''
+      setSession(token, updated)
+      return updated
+    })
+  }
+
   const logout = () => {
     clearSession()
     authService.setAuthToken(null)
@@ -104,7 +158,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      isAuthenticated: !!user,
+      isLoading,
+      refreshUser,
+      updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
   )

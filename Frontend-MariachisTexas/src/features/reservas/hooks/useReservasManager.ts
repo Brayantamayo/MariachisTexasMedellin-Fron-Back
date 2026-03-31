@@ -13,7 +13,6 @@ export const useReservasManager = () => {
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
   const isClient  = user?.role === UserRole.CLIENTE;
 
-  
   const [view, setView] = useState<'list' | 'calendar'>('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -52,6 +51,16 @@ export const useReservasManager = () => {
   const [deleteTimeBlocksModal, setDeleteTimeBlocksModal] = useState<{ isOpen: boolean; date: string | null }>({ isOpen: false, date: null });
   const [deleteReservaModal,    setDeleteReservaModal]    = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
 
+  // ── Modal de anulación (reemplaza window.confirm) ──────────────────────────
+  const [anularModal, setAnularModal] = useState<{ isOpen: boolean; reservation: Reservation | null }>({
+    isOpen: false, reservation: null,
+  });
+
+  // ── Modal de toggle ensayo (reemplaza window.confirm) ──────────────────────
+  const [toggleEnsayoModal, setToggleEnsayoModal] = useState<{ isOpen: boolean; rehearsal: Rehearsal | null }>({
+    isOpen: false, rehearsal: null,
+  });
+
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success', duration = 4000) => {
@@ -59,7 +68,7 @@ export const useReservasManager = () => {
     setTimeout(() => setNotification(null), duration);
   };
 
-  // ─── FETCH ────────────────────────────────────────────────────────────────────
+  // ─── FETCH ─────────────────────────────────────────────────────────────────
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -67,7 +76,6 @@ export const useReservasManager = () => {
       setBlocks(blocksData);
 
       if (!isClient) {
-        // Admin / Empleado — datos completos
         const [resData, rehData, quoteData] = await Promise.all([
           reservaService.getReservations(),
           rehearsalService.getRehearsals(),
@@ -77,9 +85,7 @@ export const useReservasManager = () => {
         setCalendarReservations(resData);
         setRehearsals(rehData);
         setQuotations(quoteData);
-
       } else {
-        // Cliente — sus reservas + calendario público + ensayos + cotizaciones como bloqueados
         const [misReservas, todasReservas, ensayosDisp, cotDisp] = await Promise.all([
           reservaService.getReservations(),
           reservaService.getReservationsForCalendar(),
@@ -90,7 +96,6 @@ export const useReservasManager = () => {
         setReservations(misReservas);
         setCalendarReservations(todasReservas);
 
-        // ✅ Ensayos: mapear { fecha, hora } → { date, time } (backend devuelve fecha/hora)
         setRehearsals(
           (ensayosDisp as any[]).map((e, i) => ({
             id:            `pub-ens-${i}`,
@@ -107,29 +112,27 @@ export const useReservasManager = () => {
           }))
         );
 
-        // ✅ Cotizaciones EN_ESPERA: mapear al tipo Quotation que espera el calendario
         setQuotations(
           cotDisp.map((c, i) => ({
-            id:           `pub-cot-${i}`,
-            clientId:     '',
-            clientName:   '',
-            clientEmail:  '',
-            eventDate:    c.date,
-            startTime:    c.startTime,
-            endTime:      c.endTime,
-            status:       'EN_ESPERA' as const,
-            eventType:    '',
-            // campos opcionales del tipo Quotation
-            clientPhone:   '',
-            secondaryPhone:'',
-            homenajeado:   '',
-            location:      '',
-            notes:         '',
-            totalAmount:   0,
+            id:              `pub-cot-${i}`,
+            clientId:        '',
+            clientName:      '',
+            clientEmail:     '',
+            eventDate:       c.date,
+            startTime:       c.startTime,
+            endTime:         c.endTime,
+            status:          'EN_ESPERA' as const,
+            eventType:       '',
+            clientPhone:     '',
+            secondaryPhone:  '',
+            homenajeado:     '',
+            location:        '',
+            notes:           '',
+            totalAmount:     0,
             selectedServices: [],
-            repertoireIds: [],
-            createdAt:     '',
-            updatedAt:     '',
+            repertoireIds:   [],
+            createdAt:       '',
+            updatedAt:       '',
           }))
         );
       }
@@ -244,32 +247,51 @@ export const useReservasManager = () => {
     }
   };
 
-const handleToggleStatus = async (rehearsal: Rehearsal) => {
-  const isCompleted = rehearsal.status === 'Completado'
+  // Abre el AnularReservaModal — sin window.confirm
+  const handleCancelReserva = (id: string) => {
+    const reservation = reservations.find(r => r.id === id) ?? null;
+    setAnularModal({ isOpen: true, reservation });
+  };
 
-  if (!isCompleted) {
-    const confirmed = window.confirm(
-      `¿Marcar "${rehearsal.title}" como Listo?\n` +
-      'Desaparecerá del calendario y no podrás editarlo.'
-    )
-    if (!confirmed) return
-  }
+  // Ejecuta la anulación real una vez el modal confirma (recibe motivo)
+  const processCancel = async (id: string, motivo: string) => {
+    try {
+      const updated = await reservaService.cancelReservation(id, motivo || 'Cancelación manual por usuario');
+      setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      if (selectedReserva?.id === id) setSelectedReserva(updated);
+      showNotification('Reserva anulada.');
+    } catch (error: any) {
+      showNotification(error?.response?.data?.message || 'Error al anular.', 'error');
+    }
+  };
 
-  try {
-    const updated = await rehearsalService.toggleStatus(rehearsal.id)
-    setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r))
-    showNotification(
-      updated.status === 'Completado'
-        ? `Ensayo "${updated.title}" marcado como Listo.`
-        : `Ensayo "${updated.title}" marcado como Pendiente.`
-    )
-  } catch (err: any) {
-    showNotification(
-      err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
-      'error'
-    )
-  }
-}
+  // Abre el modal de toggle ensayo — sin window.confirm
+  const handleToggleStatus = (rehearsal: Rehearsal) => {
+    const isCompleted = rehearsal.status === 'Completado';
+    // Si ya está completado, revertir directamente (no necesita confirmación)
+    if (isCompleted) {
+      processToggleStatus(rehearsal);
+      return;
+    }
+    // Si va a completarse, pedir confirmación via modal
+    setToggleEnsayoModal({ isOpen: true, rehearsal });
+  };
+
+  // Ejecuta el toggle real una vez confirmado
+  const processToggleStatus = async (rehearsal: Rehearsal) => {
+    try {
+      const updated = await rehearsalService.toggleStatus(rehearsal.id);
+      setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r));
+      showNotification(
+        updated.status === 'Completado'
+          ? `Ensayo "${updated.title}" marcado como Listo.`
+          : `Ensayo "${updated.title}" marcado como Pendiente.`
+      );
+    } catch (err: any) {
+      showNotification(err?.response?.data?.message || 'Error al cambiar el estado del ensayo.', 'error');
+    }
+  };
 
   const handleSaveAbono = async (data: any) => {
     try {
@@ -297,19 +319,6 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
     }
   };
 
-  const handleCancelReserva = async (id: string) => {
-    if (!window.confirm('¿Estás seguro de anular esta reserva? Esta acción es irreversible.')) return;
-    try {
-      const updated = await reservaService.cancelReservation(id, 'Cancelación manual por usuario');
-      setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-      if (selectedReserva?.id === id) setSelectedReserva(updated);
-      showNotification('Reserva anulada.');
-    } catch (error: any) {
-      showNotification(error?.response?.data?.message || 'Error al anular.', 'error');
-    }
-  };
-
   const handleTimeSlotBlock = (date: string, time: string) => {
     if (!canManage) return;
     const [h, m] = time.split(':').map(Number);
@@ -318,13 +327,11 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
       id: '', type: 'TIME_RANGE', reason: '', description: '',
       startDate: date, endDate: date,
       startTime: time,
-      endTime: `${nextH.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`,
+      endTime: `${nextH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
       isActive: true
     });
     setIsBlockModalOpen(true);
   };
-
-
 
   return {
     view, setView, currentDate, setCurrentDate,
@@ -343,11 +350,15 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
     finalizeModal, setFinalizeModal, deleteBlockModal, setDeleteBlockModal,
     deleteTimeBlocksModal, setDeleteTimeBlocksModal,
     deleteReservaModal, setDeleteReservaModal, handleDeleteReserva,
+    // Anular reserva
+    anularModal, setAnularModal, handleCancelReserva, processCancel,
+    // Toggle ensayo
+    toggleEnsayoModal, setToggleEnsayoModal, handleToggleStatus, processToggleStatus,
     notification, setNotification, showNotification,
     canManage, isClient, user,
     fetchData, handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
-    handleSaveAbono, processFinalization, handleCancelReserva, handleTimeSlotBlock,
-    handleViewReserva,handleToggleStatus
+    handleSaveAbono, processFinalization, handleTimeSlotBlock,
+    handleViewReserva,
   };
 };

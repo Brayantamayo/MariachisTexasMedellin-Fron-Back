@@ -3,6 +3,7 @@ import { Reservation, UserRole } from '@/types';
 import { Eye, DollarSign, Edit2, Ban, Trash2 } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { AnularReservaModal } from '@/shared/components/AnularReservaModal';
 
 interface Props {
   reservations: Reservation[];
@@ -12,8 +13,8 @@ interface Props {
   onEdit: (res: Reservation) => void;
   onAddPayment: (id: string) => void;
   onFinalize: (id: string) => void;
-  onCancel: (id: string) => void;
-  onDelete: (id: string) => void; // ✅ nuevo
+  onCancel: (id: string, motivo: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const getStatusBadgeStyles = (status: string) => {
@@ -38,7 +39,7 @@ const ActionButton: React.FC<{
   icon: React.ElementType;
   onClick: () => void;
   tooltip?: string;
-  variant?: 'default' | 'success' | 'indigo' | 'danger'
+  variant?: 'default' | 'success' | 'indigo' | 'danger';
 }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => {
   const variants = {
     default: 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600',
@@ -47,8 +48,11 @@ const ActionButton: React.FC<{
     danger:  'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600',
   };
   return (
-    <button onClick={onClick} title={tooltip}
-      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${variants[variant]}`}>
+    <button
+      onClick={onClick}
+      title={tooltip}
+      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${variants[variant]}`}
+    >
       <Icon size={16} strokeWidth={2} />
     </button>
   );
@@ -56,14 +60,17 @@ const ActionButton: React.FC<{
 
 export const ReservasTable: React.FC<Props> = ({
   reservations, loading, userRole,
-  onView, onEdit, onAddPayment, onFinalize, onCancel, onDelete
+  onView, onEdit, onAddPayment, onFinalize, onCancel, onDelete,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ✅ Estado del modal de confirmación
+  const [anularModal, setAnularModal] = useState<{ open: boolean; reservation: Reservation | null }>({
+    open: false, reservation: null,
+  });
+
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string }>({
-    open: false, id: ''
+    open: false, id: '',
   });
 
   if (loading) return <div className="py-20 text-center text-slate-400">Cargando reservas...</div>;
@@ -139,10 +146,14 @@ export const ReservasTable: React.FC<Props> = ({
                           <>
                             <ActionButton icon={DollarSign} onClick={() => onAddPayment(res.id)} tooltip="Registrar Abono" variant="success" />
                             <ActionButton icon={Edit2}      onClick={() => onEdit(res)}           tooltip="Editar Reserva"  variant="indigo" />
-                            <ActionButton icon={Ban}        onClick={() => onCancel(res.id)}       tooltip="Anular Reserva"  variant="danger" />
+                            <ActionButton
+                              icon={Ban}
+                              tooltip="Anular Reserva"
+                              variant="danger"
+                              onClick={() => setAnularModal({ open: true, reservation: res })}
+                            />
                           </>
                         )}
-                        {/* ✅ Eliminar solo si está ANULADA y es admin */}
                         {isAnulada && isAdmin && (
                           <ActionButton
                             icon={Trash2}
@@ -168,11 +179,24 @@ export const ReservasTable: React.FC<Props> = ({
         />
       </div>
 
-      {/* ✅ Modal de confirmación */}
+      {/* El modal vive aquí — cierra y llama onCancel en un solo lugar */}
+      <AnularReservaModal
+        isOpen={anularModal.open}
+        reservation={anularModal.reservation}
+        onClose={() => setAnularModal({ open: false, reservation: null })}
+        onConfirm={(id, motivo) => {
+          setAnularModal({ open: false, reservation: null }); // ← cierra primero
+          onCancel(id, motivo);                               // ← luego ejecuta
+        }}
+      />
+
       <ConfirmationModal
         isOpen={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, id: '' })}
-        onConfirm={() => onDelete(deleteModal.id)}
+        onConfirm={() => {
+          setDeleteModal({ open: false, id: '' });
+          onDelete(deleteModal.id);
+        }}
         title="¿Eliminar Reserva?"
         message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado."
         confirmText="Sí, eliminar"

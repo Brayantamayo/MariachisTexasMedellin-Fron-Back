@@ -1,17 +1,19 @@
 import { Router } from 'express'
-import { crear, listar, detalle, editar, cambiarEstado, eliminar } from './servicios.controller'
+import * as serviciosController from './servicios.controller'
 import { verifyToken } from '../../middlewares/Auth.middleware'
-
+import { requireRole } from '../../middlewares/Role.middleware'
 const router = Router()
 
 // ─── PÚBLICAS (sin token) ─────────────────────────────────────────────────────
-router.get('/',    listar)   // el formulario de cotización necesita ver servicios
-router.get('/:id', detalle)
+router.get('/',   serviciosController.listar)   // el formulario de cotización necesita ver servicios
+router.get('/:id', serviciosController.detalle) 
 
 // ─── PROTEGIDAS (requieren token) ────────────────────────────────────────────
-router.post('/',            verifyToken, crear)
-router.put('/:id',          verifyToken, editar)
-router.patch('/:id/estado', verifyToken, cambiarEstado)
-router.delete('/:id',       verifyToken, eliminar)
+router.use(verifyToken) /////A partir de aquí, todas las rutas necesitan un token válido
+
+router.post('/',         requireRole(['ADMIN'])   , serviciosController.crear)
+router.put('/:id',         requireRole(['ADMIN'])   , serviciosController.editar)
+router.patch('/:id/estado', requireRole(['ADMIN'])   , serviciosController.cambiarEstado)
+router.delete('/:id',        requireRole(['ADMIN'])   , serviciosController.eliminar)
 
 export default router

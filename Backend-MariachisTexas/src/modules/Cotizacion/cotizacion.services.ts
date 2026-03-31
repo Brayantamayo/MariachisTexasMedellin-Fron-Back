@@ -1,12 +1,11 @@
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../schemas'
-import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange } from '../../utils/date.helpers'
+import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
 import { emailCotizacionAprobada } from '../../utils/email.templates'
 import type { CotizacionCreateInput, CotizacionUpdateInput, ServicioSeleccionado } from '../../types/interfaces'
 
-// ─── TIPOS INTERNOS ───────────────────────────────────────────────────────────
 interface QuotationResponse {
   id:                  string
   clientId?:           string
@@ -31,7 +30,6 @@ interface QuotationResponse {
   updatedAt:           string
 }
 
-// ─── MAPEO ────────────────────────────────────────────────────────────────────
 const mapToQuotation = (c: any): QuotationResponse => {
   const clientName     = c.clienteId
     ? `${c.cliente?.usuario?.nombre ?? ''} ${c.cliente?.apellido ?? ''}`.trim()
@@ -69,7 +67,6 @@ const cotizacionInclude = {
   reserva: true,
 }
 
-// ─── VALIDACIÓN COMPLETA DE DISPONIBILIDAD ────────────────────────────────────
 const validarDisponibilidad = async (
   eventDate:            string,
   horaInicio:           Date,
@@ -116,7 +113,6 @@ const validarDisponibilidad = async (
   }
 }
 
-// ─── VINCULAR ─────────────────────────────────────────────────────────────────
 export const vincularCotizacionesPorEmail = async (email: string, clienteId: number) => {
   const result = await prisma.cotizacion.updateMany({
     where: { clienteId: null, contactoEmail: email, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } },
@@ -125,7 +121,6 @@ export const vincularCotizacionesPorEmail = async (email: string, clienteId: num
   return result.count
 }
 
-// ─── GET ALL / GET BY ID ──────────────────────────────────────────────────────
 export const getCotizaciones = async (): Promise<QuotationResponse[]> => {
   const cotizaciones = await prisma.cotizacion.findMany({
     where: { esReservaDirecta: false }, include: cotizacionInclude, orderBy: { createdAt: 'desc' }
@@ -144,7 +139,11 @@ export const createCotizacion = async (data: CotizacionCreateInput): Promise<Quo
   const parsed = CotizacionCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) || 0 })
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
-  const d          = parsed.data
+  const d = parsed.data
+
+  // ✅ Validar 6h de anticipación si es hoy
+  validarAnticipacionMismoDia(d.eventDate, d.startTime)
+
   const horaInicio = buildDateTime(d.eventDate, d.startTime)
   const horaFin    = buildDateTime(d.eventDate, d.endTime)
 
@@ -200,19 +199,22 @@ export const updateCotizacion = async (id: number, data: CotizacionUpdateInput):
   const horaInicio = d.startTime ? buildDateTime(date, d.startTime) : exists.horaInicio
   const horaFin    = d.endTime   ? buildDateTime(date, d.endTime)   : exists.horaFin
 
-  if (d.startTime || d.endTime || d.eventDate)
+  if (d.startTime || d.endTime || d.eventDate) {
+    // ✅ Validar 6h si es hoy y se cambia la hora
+    if (d.startTime) validarAnticipacionMismoDia(date, d.startTime)
     await validarDisponibilidad(date, horaInicio, horaFin, id)
+  }
 
   await prisma.cotizacion.update({
     where: { id },
     data: {
-      clienteId:         d.clientId      ? Number(d.clientId)       : undefined,
-      nombreHomenajeado: d.homenajeado   || d.clientName            || undefined,
-      tipoEvento:        d.eventType     ? mapEventType(d.eventType) : undefined,
-      fechaEvento:       d.eventDate     ? parseLocalDate(d.eventDate) : undefined,
+      clienteId:         d.clientId      ? Number(d.clientId)        : undefined,
+      nombreHomenajeado: d.homenajeado   || d.clientName             || undefined,
+      tipoEvento:        d.eventType     ? mapEventType(d.eventType)  : undefined,
+      fechaEvento:       d.eventDate     ? parseLocalDate(d.eventDate): undefined,
       horaInicio, horaFin,
       direccionEvento:   d.location      || undefined,
-      notasAdicionales:  d.notes !== undefined ? (d.notes || null) : undefined,
+      notasAdicionales:  d.notes !== undefined ? (d.notes || null)   : undefined,
       totalEstimado:     d.totalAmount   !== undefined ? d.totalAmount : undefined,
       contactoNombre:    d.clientName    !== undefined ? (d.clientName     || null) : undefined,
       contactoTelefono:  d.clientPhone   !== undefined ? (d.clientPhone    || null) : undefined,
@@ -280,18 +282,18 @@ export const convertirCotizacion = async (id: number) => {
     }
   })
 
-  const emailDestino  = cotizacion.cliente?.email                                 || cotizacion.contactoEmail    || ''
+  const emailDestino  = cotizacion.cliente?.email || cotizacion.contactoEmail || ''
   const nombreCliente = cotizacion.cliente
     ? `${cotizacion.cliente.usuario?.nombre ?? ''} ${cotizacion.cliente.apellido}`.trim()
     : cotizacion.contactoNombre || 'Cliente'
-  const telefono      = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
-  const telefono2     = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
+  const telefono  = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
+  const telefono2 = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
 
   if (emailDestino) {
-    const params        = new URLSearchParams({ email: emailDestino, nombre: nombreCliente, telefono, telefono2 })
-    const base          = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-    const registerUrl   = `${base}/registro?${params.toString()}`
-    const loginUrl      = `${base}/login`
+    const params      = new URLSearchParams({ email: emailDestino, nombre: nombreCliente, telefono, telefono2 })
+    const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
+    const registerUrl = `${base}/registro?${params.toString()}`
+    const loginUrl    = `${base}/login`
     const horaInicioStr = toLocalTime(cotizacion.horaInicio)
     const horaFinStr    = toLocalTime(cotizacion.horaFin)
     const fechaStr      = cotizacion.fechaEvento.toLocaleDateString('es-CO', {
@@ -299,13 +301,11 @@ export const convertirCotizacion = async (id: number) => {
     })
 
     const mail = emailCotizacionAprobada({
-      nombreCliente,
-      fechaStr,
+      nombreCliente, fechaStr,
       horaInicio:    horaInicioStr,
       horaFin:       horaFinStr,
       totalEstimado: Number(cotizacion.totalEstimado),
-      registerUrl,
-      loginUrl,
+      registerUrl,   loginUrl,
     })
     await transporter.sendMail({ from: process.env.MAIL_FROM, to: emailDestino, ...mail })
       .catch(err => console.error('Error enviando correo:', err))

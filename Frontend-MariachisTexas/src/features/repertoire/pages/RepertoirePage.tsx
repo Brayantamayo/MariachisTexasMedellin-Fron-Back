@@ -96,28 +96,22 @@ export const RepertoirePage: React.FC = () => {
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────────
   const handleCreateSong = async (songData: any) => {
-    try {
-      const newSong = await repertoireService.createSong({ ...songData, isActive: true });
-      setSongs(prev => [newSong, ...prev]);
-      showNotification('Nueva canción agregada al repertorio.');
-      setIsCreateOpen(false);
-    } catch (error) {
-      showNotification(getErrorMessage(error, 'Error al crear la canción.'), 'error');
-    }
-  };
+  // ✅ Lanzar el error para que el modal lo capture
+  const newSong = await repertoireService.createSong({ ...songData, isActive: true });
+  setSongs(prev => [newSong, ...prev]);
+  showNotification('Nueva canción agregada al repertorio.');
+  setIsCreateOpen(false);
+};
 
   const handleUpdateSong = async (songData: any) => {
-    if (!selectedSong) return;
-    try {
-      const updated = await repertoireService.updateSong(selectedSong.id, songData);
-      setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
-      showNotification('Canción actualizada correctamente.');
-      setIsEditOpen(false);
-      setSelectedSong(null);
-    } catch (error) {
-      showNotification(getErrorMessage(error, 'Error al actualizar la canción.'), 'error');
-    }
-  };
+  if (!selectedSong) return;
+  // ✅ Lanzar el error para que el modal lo capture
+  const updated = await repertoireService.updateSong(selectedSong.id, songData);
+  setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
+  showNotification('Canción actualizada correctamente.');
+  setIsEditOpen(false);
+  setSelectedSong(null);
+};
 
   const confirmDelete = async () => {
     if (!deleteModal.songId) return;
@@ -152,6 +146,7 @@ export const RepertoirePage: React.FC = () => {
     }
   };
 
+  
   const filteredSongs = songs.filter(s =>
     s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.artist.toLowerCase().includes(searchTerm.toLowerCase())

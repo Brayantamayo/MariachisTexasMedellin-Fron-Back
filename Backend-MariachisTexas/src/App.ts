@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 
 import authRoutes       from './modules/auth/auth.routes'
+import perfilRoutes     from './modules/auth/perfil.routes'
 import serviciosRoutes  from './modules/Servicios/servicios.routes'
 import repertoireRoutes from './modules/Repertorio/Repertoire.routes'
 import spotifyRoutes from './modules/Repertorio/spotify.routes'
@@ -54,6 +55,7 @@ app.use('/api/auth/recuperar', authLimiter)
 app.use('/api/auth/reset-password',  authLimiter)
 app.use('/api/auth/verify-otp',  authLimiter)
 app.use('/api/auth/resetear',  authLimiter)
+app.use('/api/perfil', perfilRoutes)
 
 app.use('/api/cotizaciones/public', publicLimiter)
 

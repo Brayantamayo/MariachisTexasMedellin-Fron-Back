@@ -1,145 +1,191 @@
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, Calendar } from 'lucide-react';
+import { X, Save, Calendar, AlertCircle } from 'lucide-react';
 import { RehearsalForm } from './RehearsalForm';
 import { Rehearsal, Song } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { reservaService } from '../../reservas/services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (data: any) => void;
-  rehearsal: Rehearsal | null;
+isOpen:    boolean;
+onClose:   () => void;
+onSave:    (data: any) => Promise<void>; // ✅ ahora es Promise
+rehearsal: Rehearsal | null;
 }
 
+interface FormErrors {
+title?:    string;
+location?: string;
+date?:     string;
+time?:     string;
+}
+
+const validate = (formData: any, blockStatus: any): FormErrors => {
+const errors: FormErrors = {};
+if (!formData.title?.trim())    errors.title    = 'El nombre del ensayo es obligatorio.';
+if (!formData.location?.trim()) errors.location = 'El lugar es obligatorio.';
+if (!formData.date)             errors.date     = 'La fecha es obligatoria.';
+if (blockStatus.isBlocked)      errors.date     = `Fecha bloqueada: ${blockStatus.reason || 'Restricción administrativa'}.`;
+if (!formData.time)             errors.time     = 'Selecciona una hora válida.';
+return errors;
+};
+
 export const RehearsalEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, rehearsal }) => {
-  const [formData, setFormData] = useState<any>(null);
-  const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
-  const [blockStatus, setBlockStatus] = useState<any>({ isBlocked: false });
+const [formData,       setFormData]       = useState<any>(null);
+const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
+const [availableHours, setAvailableHours] = useState<string[]>([]);
+const [blockStatus,    setBlockStatus]    = useState<any>({ isBlocked: false });
+const [errors,         setErrors]         = useState<FormErrors>({});
+const [globalError,    setGlobalError]    = useState<string | null>(null);
+const [saving,         setSaving]         = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (rehearsal && isOpen) {
-        setFormData(rehearsal);
-        
-        const loadData = async () => {
-            const songs = await repertoireService.getSongs();
-            setAvailableSongs(songs);
-            
-            // Cargar disponibilidad para la fecha existente
-            await checkBlockAndHours(rehearsal.date);
-        };
-        loadData();
+    setFormData({ ...rehearsal });
+    setErrors({});
+    setGlobalError(null);
+    const loadData = async () => {
+        const songs = await repertoireService.getSongs();
+        setAvailableSongs(songs);
+        await checkBlockAndHours(rehearsal.date);
+    };
+    loadData();
     }
-  }, [rehearsal, isOpen]);
+}, [rehearsal, isOpen]);
 
-  const checkBlockAndHours = async (date: string) => {
-      const status = await blockService.checkDateStatus(date);
-      setBlockStatus(status);
+const checkBlockAndHours = async (date: string) => {
+    const status = await blockService.checkDateStatus(date);
+    setBlockStatus(status);
+    let hours = await reservaService.getAvailableHours(date);
+    if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
+    hours = hours.filter(hour =>
+        !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
+    );
+    }
+    setAvailableHours(hours);
+};
 
-      let hours = await reservaService.getAvailableHours(date);
-      
-      if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
-          hours = hours.filter(hour => {
-              return !status.blockedRanges!.some(range => hour >= range.start && hour < range.end);
-          });
-      }
-      setAvailableHours(hours);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    if (errors[name as keyof FormErrors]) setErrors(prev => ({ ...prev, [name]: undefined }));
+};
 
-  const handleDateChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value, time: '' })); // Reset time on date change
-    if (name === 'date') {
-        checkBlockAndHours(value);
-    }
-  };
+const handleDateChange = (name: string, value: string) => {
+    setFormData((prev: any) => ({ ...prev, [name]: value, time: '' }));
+    if (name === 'date') checkBlockAndHours(value);
+    if (errors.date || errors.time) setErrors(prev => ({ ...prev, date: undefined, time: undefined }));
+};
 
-  const toggleSongSelection = (songId: string) => {
-      setFormData(prev => {
-          const exists = prev.repertoireIds.includes(songId);
-          if (exists) {
-              return { ...prev, repertoireIds: prev.repertoireIds.filter(id => id !== songId) };
-          } else {
-              return { ...prev, repertoireIds: [...prev.repertoireIds, songId] };
-          }
-      });
-  };
+const toggleSongSelection = (songId: string) => {
+    setFormData((prev: any) => {
+    const exists = prev.repertoireIds.includes(songId);
+    return {
+        ...prev,
+        repertoireIds: exists
+        ? prev.repertoireIds.filter((id: string) => id !== songId)
+        : [...prev.repertoireIds, songId],
+    };
+    });
+};
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (blockStatus.isBlocked) {
-        alert(`La fecha está bloqueada: ${blockStatus.reason}`);
-        return;
-    }
+const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setGlobalError(null);
 
-    if (!formData.time) {
-        alert("Por favor selecciona una hora.");
-        return;
+    const validationErrors = validate(formData, blockStatus);
+    if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+      return; // ✅ No cierra el modal
     }
 
-    onSave(formData);
-  };
+    setSaving(true);
+    try {
+    await onSave(formData);
+    setErrors({});
+    } catch (err) {
+      setGlobalError(getErrorMessage(err, 'Error al actualizar el ensayo.')); // ✅ Error del backend
+    } finally {
+    setSaving(false);
+    }
+};
 
-  if (!isOpen || !formData) return null;
+const handleClose = () => {
+    setErrors({});
+    setGlobalError(null);
+    onClose();
+};
 
-  return createPortal(
+if (!isOpen || !formData) return null;
+
+return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up overflow-hidden">
-        
+    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleClose} />
+    <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up overflow-hidden">
+
+        {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 bg-white border-b border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-primary-900/10 border bg-primary-50 border-primary-100">
-                <Calendar className="text-primary-600" size={24} />
+        <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shadow-lg">
+            <Calendar className="text-red-600" size={24} />
             </div>
             <div>
-                <h3 className="text-xl font-serif font-bold text-slate-800 tracking-wide uppercase">Editar Ensayo</h3>
-                <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5">Modificando: {rehearsal?.title}</p>
+            <h3 className="text-xl font-serif font-bold text-slate-800 tracking-wide uppercase">Editar Ensayo</h3>
+            <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5">Modificando: {rehearsal?.title}</p>
             </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors bg-slate-50 hover:bg-slate-100 p-2 rounded-lg">
+        </div>
+        <button onClick={handleClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
             <X size={20} />
-          </button>
+        </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-0 custom-scrollbar bg-white">
-            <RehearsalForm 
-                formData={formData} 
-                availableSongs={availableSongs}
-                availableHours={availableHours}
-                blockStatus={blockStatus}
-                onChange={handleChange} 
-                onDateChange={handleDateChange}
-                onToggleSong={toggleSongSelection}
-                onSubmit={handleSubmit} 
-            />
+        {/* ✅ Error global del backend */}
+        {globalError && (
+        <div className="mx-8 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
+            <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
+        </div>
+        )}
+
+        {/* Form */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+        <RehearsalForm
+            formData={formData}
+            availableSongs={availableSongs}
+            availableHours={availableHours}
+            blockStatus={blockStatus}
+            onChange={handleChange}
+            onDateChange={handleDateChange}
+            onToggleSong={toggleSongSelection}
+            onSubmit={handleSubmit}
+            errors={errors}  // ✅ pasamos errores al form
+        />
         </div>
 
-        <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4 z-10">
-             <button onClick={onClose} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest px-4 py-2">Cancelar</button>
-             <button 
-                onClick={handleSubmit} 
-                disabled={blockStatus.isBlocked}
-                className={`px-8 py-4 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-3 shadow-xl transition-all transform hover:-translate-y-0.5
-                    ${blockStatus.isBlocked 
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
-                        : 'bg-[#dc2626] hover:bg-red-700 text-white shadow-red-900/10 hover:shadow-red-900/20'}
-                `}
-            >
-                <Save size={18} /> {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Cambios'}
-            </button>
+        {/* Footer */}
+        <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4">
+        <button onClick={handleClose} disabled={saving}
+            className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest px-4 py-2 disabled:opacity-50">
+            Cancelar
+        </button>
+        <button
+            onClick={() => handleSubmit()}
+            disabled={blockStatus.isBlocked || saving}
+            className={`px-8 py-4 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-3 shadow-xl transition-all transform hover:-translate-y-0.5
+            ${blockStatus.isBlocked
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                : 'bg-[#dc2626] hover:bg-red-700 text-white shadow-red-900/10'
+            } disabled:opacity-60`}
+        >
+            {saving
+            ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
+            : <><Save size={18} /> {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Cambios'}</>
+            }
+        </button>
         </div>
-      </div>
+    </div>
     </div>,
     document.body
-  );
+);
 };

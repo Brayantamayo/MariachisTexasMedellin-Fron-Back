@@ -53,30 +53,23 @@ export const ServicesPage: React.FC = () => {
   }, []);
 
   const handleCreate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
-    try {
       const newService = await servicesService.createService(serviceData);
       setServices(prev => [newService, ...prev]);
       showNotification('Servicio creado exitosamente.');
       setIsCreateOpen(false);
-    } catch (error: any) {
-      showNotification(error.message || "Error al crear servicio.", "error");
-    }
   };
 
   const handleUpdate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
     if (!selectedService) return;
-    try {
+    
       const updated = await servicesService.updateService(selectedService.id, serviceData);
       setServices(prev => prev.map(s => s.id === updated.id ? updated : s));
       showNotification('Servicio actualizado exitosamente.');
       setIsEditOpen(false);
       setSelectedService(null);
-    } catch (error: any) {
-      showNotification(error.message || "Error al actualizar servicio.", "error");
-    }
   };
 
- const confirmDelete = async () => {
+const confirmDelete = async () => {
   if (!deleteModal.serviceId) return;
   try {
     await servicesService.deleteService(deleteModal.serviceId); // ✅ sin isActive

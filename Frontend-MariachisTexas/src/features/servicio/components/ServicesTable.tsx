@@ -31,12 +31,18 @@ export const ServicesTable: React.FC<Props> = ({
     </button>
   );
 
+
+  {/* Si no hay servicios cargados, mostrar mensaje de cargando */}
   if (loading) return <div className="text-center py-20 text-slate-400">Cargando servicios...</div>;
   if (services.length === 0) return <div className="text-center py-20 text-slate-400">No hay servicios registrados.</div>;
 
+
+
+  {/* Total de paginas y servicios que se mostraran en la paginacion */}
   const totalPages = Math.ceil(services.length / itemsPerPage);
   const currentServices = services.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  {/* Tabla de servicios */}
   return (
     <div className="flex flex-col">
       <div className="overflow-x-auto pb-4">
@@ -53,8 +59,10 @@ export const ServicesTable: React.FC<Props> = ({
           <tbody className="divide-y divide-slate-50">
             {currentServices.map((service) => (
               <tr key={service.id} className={`transition-colors group ${service.estado ? 'hover:bg-slate-50/50' : 'opacity-60'}`}>
-                
-                {/* Nombre */}
+
+
+
+                {/* Nombre del servicio */}
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 border border-red-100 flex-shrink-0">
@@ -64,12 +72,14 @@ export const ServicesTable: React.FC<Props> = ({
                   </div>
                 </td>
 
-                {/* Descripción */}
+
+                {/* Descripción del servicio */}
                 <td className="hidden md:table-cell py-4 px-4">
                   <p className="text-xs text-slate-500 max-w-xs truncate font-medium">{service.descripcion}</p>
                 </td>
 
-                {/* Precio */}
+
+                {/* Precio del servicio */}
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-1 text-slate-700 font-mono text-sm font-bold">
                     <span className="text-slate-400">$</span>
@@ -77,7 +87,9 @@ export const ServicesTable: React.FC<Props> = ({
                   </div>
                 </td>
 
-                {/* Estado */}
+
+
+                {/* Cambio de estado  */}
                 <td className="py-4 px-4">
                   <div className="flex items-center justify-center gap-2">
                     {canManage ? (
@@ -96,18 +108,23 @@ export const ServicesTable: React.FC<Props> = ({
                   </div>
                 </td>
 
-                {/* Acciones */}
+
+                {/* Acciones que tiene cuando se cambia de estado  */} 
                 <td className="py-4 px-4">
                   <div className="flex items-center justify-center gap-2">
                     <ActionButton icon={Eye} onClick={() => onView(service)} tooltip="Ver Detalle" />
                       
                     {canManage && (
                       <>
+                        {/* Editar servicio */}
                         {service.estado && (
                           <ActionButton icon={Edit2} onClick={() => onEdit(service)} tooltip="Editar" />
                         )}
-                        {/* ✅ Eliminar siempre visible para admin, pasa estado */}
-                        <ActionButton icon={Trash2} onClick={() => onDelete(service.id, service.estado)} tooltip="Eliminar" />
+
+                        {/* Eliminar servicio */}
+                        {service.estado && (
+                          <ActionButton icon={Trash2} onClick={() => onDelete(service.id)} tooltip="Eliminar" />
+                        )}
                       </>
                     )}
                   </div>
@@ -118,6 +135,8 @@ export const ServicesTable: React.FC<Props> = ({
         </table>
       </div>
 
+
+      {/* Paginacion de la pagina de servicios  */}
       <TablePagination
         currentPage={currentPage}
         totalPages={totalPages}

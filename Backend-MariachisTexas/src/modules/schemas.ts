@@ -19,7 +19,7 @@ const esGibberish = (texto: string): boolean => {
 
 // ─── Valida que una nota/texto libre tenga sentido ────────────────────────────
 const textoLibre = (campo: string, max: number) =>
-  z.string()
+    z.string()
     .trim()
     .max(max, `El campo "${campo}" no puede superar ${max} caracteres`)
     .refine(t => !/^\s+$/.test(t),                   `El campo "${campo}" no puede ser solo espacios`)
@@ -48,18 +48,17 @@ const fecha = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')
   .refine(d => !isNaN(Date.parse(d)), 'La fecha no es válida')
   .refine(d => {
-    const [y, m, day] = d.split('-').map(Number)
-    const date = new Date(y, m - 1, day)
-    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === day
+  const [y, m, day] = d.split('-').map(Number)
+  const date = new Date(y, m - 1, day)
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === day
   }, 'La fecha no existe en el calendario (ej: 31 de febrero)')
 
 const fechaFutura = fecha
   .refine(d => new Date(d) >= new Date(new Date().toDateString()), 'La fecha no puede ser en el pasado')
   .refine(d => {
-    const limite = new Date()
-    limite.setFullYear(limite.getFullYear() + 2)
-    return new Date(d) <= limite
-  }, 'No se pueden agendar eventos con más de 2 años de anticipación')
+  const limite = new Date()
+  limite.setFullYear(limite.getFullYear() + 2)
+  return new Date(d) <= limite}, 'No se pueden agendar eventos con más de 2 años de anticipación')
 
 const duracion = z.string()
   .trim()
@@ -81,17 +80,15 @@ const email = z.string()
   .refine(e => !e.includes('+'),                       'No se permiten alias de correo con +')
   .refine(e => !DOMINIOS_TEMPORALES.includes(e.split('@')[1] ?? ''), 'No se permiten correos temporales')
   .refine(e => {
-    const local = e.split('@')[0]
-    return !/^[._-]/.test(local) && !/[._-]$/.test(local)
-  }, 'La parte local del correo no puede empezar ni terminar con puntos o guiones')
+  const local = e.split('@')[0]
+  return !/^[._-]/.test(local) && !/[._-]$/.test(local)}, 'La parte local del correo no puede empezar ni terminar con puntos o guiones')
   .transform(e => e.toLowerCase().trim())
 
 const DOMINIOS_PERMITIDOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'protonmail.com']
 
 const emailRegistro = email.refine(e => {
   const dominio = e.split('@')[1]
-  return DOMINIOS_PERMITIDOS.includes(dominio)
-}, `Dominio no válido. Usa: ${DOMINIOS_PERMITIDOS.join(', ')}`)
+  return DOMINIOS_PERMITIDOS.includes(dominio)}, `Dominio no válido. Usa: ${DOMINIOS_PERMITIDOS.join(', ')}`)
 
 // ─── CONTRASEÑA — validación relajada ────────────────────────────────────────
 // Solo se exige: mínimo 6 caracteres, sin espacios, no un solo carácter repetido
@@ -109,31 +106,31 @@ const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.mp4', '.mpeg']
 
 const urlImagen = z.union([
   z.string().trim()
-    .url('URL de imagen inválida')
-    .max(500, 'URL demasiado larga')
-    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-    .refine(u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'),
+  .url('URL de imagen inválida')
+  .max(500, 'URL demasiado larga')
+  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+  .refine(u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'),
   z.literal(''), z.null(), z.undefined(),
 ])
 
 const urlAudio = z.union([
   z.string().trim()
-    .url('URL de audio inválida')
-    .max(500, 'URL demasiado larga')
-    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-    .refine(u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'),
+  .url('URL de audio inválida')
+  .max(500, 'URL demasiado larga')
+  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+  .refine(u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'),
   z.literal(''), z.null(), z.undefined(),
 ])
 
 const servicioSeleccionado = z.object({
   serviceId: z.union([
-    z.string().min(1, 'El ID del servicio no puede estar vacío'),
-    z.number().int().positive('El ID debe ser un número positivo')
+  z.string().min(1, 'El ID del servicio no puede estar vacío'),
+  z.number().int().positive('El ID debe ser un número positivo')
   ]),
   quantity: z.number()
-    .int('La cantidad debe ser un número entero')
-    .min(1,  'La cantidad mínima es 1')
-    .max(10, 'La cantidad máxima es 10'),
+  .int('La cantidad debe ser un número entero')
+  .min(1,  'La cantidad mínima es 1')
+  .max(10, 'La cantidad máxima es 10'),
 })
 
 const repertorioId = z.union([z.string().min(1), z.number().int().positive()])
@@ -163,10 +160,8 @@ export const RegistroSchema = z.object({
     .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
     .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
     .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido'),
-
-  tipoDocumento: z.string().trim().refine(
-    v => ['CC', 'CE', 'PAS'].includes(v),
-    'Tipo de documento inválido. Opciones: CC, CE, PAS'
+    tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, PAS'
   ),
 
   numeroDocumento: z.string()
@@ -184,17 +179,16 @@ export const RegistroSchema = z.object({
     .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
     .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
     .refine(d => {
-      const nac  = new Date(d)
-      const hoy  = new Date()
-      const edad = hoy.getFullYear() - nac.getFullYear()
-      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
-      return (hoy >= cumple ? edad : edad - 1) >= 18
-    }, 'Debes ser mayor de 18 años para registrarte')
+    const nac  = new Date(d)
+    const hoy  = new Date()
+    const edad = hoy.getFullYear() - nac.getFullYear()
+    const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+    return (hoy >= cumple ? edad : edad - 1) >= 18}, 'Debes ser mayor de 18 años para registrarte')
     .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años'),
 
-  email:               emailRegistro,
-  telefonoPrincipal:   telefono,
-  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+    email:               emailRegistro,
+    telefonoPrincipal:   telefono,
+    telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
 
   ciudad: z.string()
     .trim()
@@ -221,14 +215,12 @@ export const RegistroSchema = z.object({
     .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos'),
 
   zonaServicio: z.string().trim().refine(
-    v => ['URBANA', 'RURAL'].includes(v),
-    'La zona de servicio debe ser URBANA o RURAL'
+    v => ['URBANA', 'RURAL'].includes(v),'La zona de servicio debe ser URBANA o RURAL'
   ),
 
   password,
   passwordConfirmation: z.string().trim().min(1, 'La confirmación de contraseña es requerida'),
   foto: z.string().trim().url('URL de foto inválida').optional().or(z.literal('')),
-
 })
 .refine(d => d.password === d.passwordConfirmation, {
   message: 'Las contraseñas no coinciden', path: ['passwordConfirmation']
@@ -250,8 +242,8 @@ export const ResetPasswordSchema = z.object({
     .refine(o => !['123456', '000000', '111111', '222222', '999999', '654321'].includes(o), 'Código no válido'),
     nuevaPassword:     password,
     confirmarPassword: z.string().trim().min(1, 'La confirmación es requerida'),
-}).refine(d => d.nuevaPassword === d.confirmarPassword, {
-  message: 'Las contraseñas no coinciden', path: ['confirmarPassword']
+})  .refine(d => d.nuevaPassword === d.confirmarPassword, {
+    message: 'Las contraseñas no coinciden', path: ['confirmarPassword']
 })
 
 
@@ -387,22 +379,30 @@ const precioServicio = z.union([z.string(), z.number()])
   )
 
 export const ServicioCreateSchema = z.object({
-  nombre: z.string()
+    nombre: z.string()
     .trim()
     .min(2,   'El nombre debe tener al menos 2 caracteres')
     .max(100, 'El nombre no puede superar 100 caracteres')
     .refine(n => n.trim().length > 0,      'El nombre no puede ser solo espacios')
     .refine(n => !/^\d+$/.test(n.trim()),  'El nombre no puede ser solo números')
     .refine(n => !/[<>{}[\]\\]/.test(n),   'El nombre contiene caracteres no permitidos')
-    .refine(n => !esGibberish(n),          'El nombre parece contener texto sin sentido'),
+    .refine(n => !esGibberish(n),          'El nombre parece contener texto sin sentido')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2),'Cada palabra del nombre debe tener al menos 2 caracteres')
+    .refine(n => n.trim().split(/\s+/).some(p => p.length >= 3),'El nombre debe contener al menos una palabra de 3 o más caracteres')
+    .refine(n => n.trim().split(/\s+/).some(p => p.length >= 4),'El nombre debe contener al menos una palabra de 4 o más caracteres'),
+
     descripcion: z.string()
     .trim()
     .min(10,  'La descripción debe tener al menos 10 caracteres')
-    .max(500, 'La descripción no puede superar 500 caracteres')
+    .max(100, 'La descripción no puede superar 100 caracteres')
     .refine(d => d.trim().length > 0,      'La descripción no puede ser solo espacios')
     .refine(d => !/^\d+$/.test(d.trim()),  'La descripción no puede ser solo números')
     .refine(d => !/[<>{}[\]\\]/.test(d),   'La descripción contiene caracteres no permitidos')
-    .refine(d => !esGibberish(d),          'La descripción parece contener texto sin sentido'),
+    .refine(d => !esGibberish(d),          'La descripción parece contener texto sin sentido')
+    .refine(d => d.trim().split(/\s+/).filter(p => p.length >= 2).length >= 3,'La descripción debe contener al menos 3 palabras con sentido')
+    .refine(d => d.trim().split(/\s+/).some(p => p.length >= 4),'La descripción debe contener al menos una palabra de 4 o más caracteres')
+    .refine(d => d.trim().split(/\s+/).every(p => p.length >= 2),'Cada palabra de la descripción debe tener al menos 2 caracteres')
+    .refine(d => d.trim().split(/\s+/).some(p => p.length >= 3),'La descripción debe contener al menos una palabra de 3 o más caracteres'),
     precio: precioServicio,
 })
 
@@ -412,11 +412,16 @@ export const ServicioUpdateSchema = z.object({
     .refine(n => n.trim().length > 0,     'El nombre no puede ser solo espacios')
     .refine(n => !/^\d+$/.test(n.trim()), 'El nombre no puede ser solo números')
     .refine(n => !esGibberish(n),         'El nombre parece contener texto sin sentido')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2),'Cada palabra del nombre debe tener al menos 2 caracteres')
+    .refine(n => n.trim().split(/\s+/).some(p => p.length >= 3),'El nombre debe contener al menos una palabra de 3 o más caracteres')
     .optional(),
+
     descripcion: z.string()
     .trim().min(10).max(500)
     .refine(d => d.trim().length > 0,     'La descripción no puede ser solo espacios')
     .refine(d => !esGibberish(d),         'La descripción parece contener texto sin sentido')
+    .refine(d => d.trim().split(/\s+/).filter(p => p.length >= 2).length >= 3,'La descripción debe contener al menos 3 palabras con sentido')
+    .refine(d => d.trim().split(/\s+/).some(p => p.length >= 4),'La descripción debe contener al menos una palabra de 4 o más caracteres')
     .optional(),
     precio: precioServicio.optional(),
 })
@@ -435,14 +440,21 @@ export const EnsayoCreateSchema = z.object({
     .refine(t => t.trim().length > 0,      'El título no puede ser solo espacios')
     .refine(t => !/^\d+$/.test(t.trim()),  'El título no puede ser solo números')
     .refine(t => !/[<>{}[\]\\]/.test(t),   'El título contiene caracteres no permitidos')
-    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido'),
+    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido')
+    .refine(t => t.length <= 50,          'El título no puede superar 50 caracteres')
+    .refine(t => t.length >= 2,           'El título no puede ser menor a 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).every(p => p.length >= 2), 'Cada palabra del título debe tener al menos 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 3), 'El título debe contener al menos una palabra de 3 o más caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 4), 'El título debe contener al menos una palabra de 4 o más caracteres'),
+
     location: z.string()
     .trim()
     .min(2,   'El lugar debe tener al menos 2 caracteres')
-    .max(200, 'El lugar no puede superar 200 caracteres')
+    .max(50, 'El lugar no puede superar 50 caracteres')
     .refine(l => l.trim().length > 0,    'El lugar no puede ser solo espacios')
     .refine(l => !/[<>{}[\]\\]/.test(l), 'El lugar contiene caracteres no permitidos')
-    .refine(l => !esGibberish(l),        'El lugar parece contener texto sin sentido'),
+    .refine(l => !esGibberish(l),        'El lugar parece contener texto sin sentido')
+    .refine(t => t.length <= 200,        'El lugar no puede superar 200 caracteres'),
     address: z.string().trim().max(200).optional().nullable(),
     date:    fechaFutura,
     time:    hora,
@@ -464,7 +476,7 @@ const CATEGORIAS   = [
 const DIFICULTADES = ['Baja', 'Media', 'Alta'] as const
 
 export const RepertorioCreateSchema = z.object({
-  title: z.string()
+    title: z.string()
     .trim()
     .min(2,   'El título debe tener al menos 2 caracteres')
     .max(100, 'El título no puede superar 100 caracteres')
@@ -490,8 +502,7 @@ export const RepertorioCreateSchema = z.object({
     .refine(g => !esGibberish(g),          'El género parece contener texto sin sentido')
     .refine(g => !/\s{2,}/.test(g.trim()), 'El género no puede tener espacios consecutivos'),
     category:   z.string().trim().refine(
-    c => (CATEGORIAS as readonly string[]).includes(c),
-    `Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`
+    c => (CATEGORIAS as readonly string[]).includes(c),`Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`
   ),
     duration:   duracion,
     difficulty: z.string().trim().refine(

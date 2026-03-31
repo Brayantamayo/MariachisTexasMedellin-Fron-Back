@@ -1,12 +1,11 @@
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
-import { toLocalDate, toLocalTime, parseLocalDate, bloquearRango, dayRange } from '../../utils/date.helpers'
+import { toLocalDate, toLocalTime, parseLocalDate, bloquearRango, dayRange, validarAnticipacionMismoDia } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
 import { emailReservaCreada } from '../../utils/email.templates'
 import type { ReservaCreateInput, ReservaUpdateInput, ServicioSeleccionado, ReservationResponse } from '../../types/interfaces'
 
-// ─── MAPEO ────────────────────────────────────────────────────────────────────
 const mapToReservation = (r: any): ReservationResponse => {
   const cot            = r.cotizacion
   const clientName     = cot?.cliente
@@ -70,7 +69,7 @@ const reservaInclude = {
   abonos: true,
 }
 
-// ─── GET ALL ──────────────────────────────────────────────────────────────────
+// ───Obtener reservas─────────────────────────────────────────────────────────────────
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
   let where: any = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] } }
   if (usuarioId) {
@@ -84,6 +83,7 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(mapToReservation)
 }
 
+///
 export const getReservasCalendario = async () => {
   const reservas = await prisma.reserva.findMany({
     where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as any } },
@@ -104,7 +104,7 @@ export const getReservasCalendario = async () => {
   }))
 }
 
-// ─── GET HORAS DISPONIBLES ────────────────────────────────────────────────────
+// ─── OBTENER HORAS DISPONIBLES ────────────────────────────────────────────────────
 export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {
   const allHours: string[] = []
   for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
@@ -145,25 +145,38 @@ export const getAvailableHours = async (dateStr: string, excludeId?: number): Pr
     const [h]  = time.split(':').map(Number)
     blocked.add(time)
     blocked.add(`${((h - 1 + 24) % 24).toString().padStart(2, '0')}:00`)
-    blocked.add(`${((h + 1) % 24).toString().padStart(2, '0')}:00`)
+  }
+
+  //  Si es hoy filtrar horas con menos de 6h de anticipación para evitar problemas de horarios
+  const hoy = new Date().toISOString().split('T')[0]
+  if (dateStr === hoy) {
+    const limiteMs = new Date().getTime() + 6 * 60 * 60 * 1000
+    return allHours.filter(h => {
+      if (blocked.has(h)) return false
+      return new Date(`${dateStr}T${h}:00`).getTime() >= limiteMs
+    })
   }
 
   return allHours.filter(h => !blocked.has(h))
 }
 
-// ─── GET BY ID ────────────────────────────────────────────────────────────────
+// ─── OBTENER POR  ID ────────────────────────────────────────────────────────────────
 export const getReservaById = async (id: number): Promise<ReservationResponse> => {
   const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
   if (!r) throw new Error('Reserva no encontrada')
   return mapToReservation(r)
 }
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────
+// ─── CREAR RESERVAS ───────────────────────────────────────────────────────────────────
 export const createReserva = async (data: ReservaCreateInput): Promise<ReservationResponse> => {
   const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
-  const d       = parsed.data
+  const d = parsed.data
+
+  // ✅ Validar 6h de anticipación si es hoy
+  validarAnticipacionMismoDia(d.eventDate, d.startTime)
+
   const usuario = await prisma.usuario.findUnique({ where: { id: Number(d.clienteId) } })
   if (!usuario) throw new Error('Usuario no encontrado')
 
@@ -173,12 +186,16 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   const nuevaInicio  = new Date(`${d.eventDate}T${d.startTime}:00`)
   const nuevaFin     = new Date(`${d.eventDate}T${d.endTime}:00`)
   const bufferInicio = new Date(nuevaInicio.getTime() - 60 * 60 * 1000)
-  const bufferFin    = new Date(nuevaFin.getTime()    + 60 * 60 * 1000)
+  const bufferFin    = nuevaFin
 
   const reservaSolapada = await prisma.reserva.findFirst({
     where: {
       estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
-      cotizacion: { fechaEvento: parseLocalDate(d.eventDate), horaInicio: { lt: bufferFin }, horaFin: { gt: bufferInicio } }
+      cotizacion: {
+        fechaEvento: parseLocalDate(d.eventDate),
+        horaInicio:  { lt: bufferFin },
+        horaFin:     { gt: bufferInicio },
+      }
     }
   })
   if (reservaSolapada) throw new Error('Ya existe una reserva en ese horario. Por favor elige otro horario.')
@@ -209,19 +226,23 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
       totalEstimado:     d.totalAmount,
       esReservaDirecta:  true,
       estado:            'CONVERTIDA',
-      contactoNombre: null, contactoTelefono: null,
-      contactoTelefono2: null, contactoEmail: null,
+      contactoNombre:    null, contactoTelefono:  null,
+      contactoTelefono2: null, contactoEmail:     null,
     }
   })
 
   if (d.selectedServices?.length)
     await prisma.cotizacionServicio.createMany({
-      data: d.selectedServices.map((s: ServicioSeleccionado) => ({ cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity }))
+      data: d.selectedServices.map((s: ServicioSeleccionado) => ({
+        cotizacionId: cot.id, servicioId: Number(s.serviceId), cantidad: s.quantity
+      }))
     })
 
   if (d.repertoireIds?.length)
     await prisma.cotizacionRepertorio.createMany({
-      data: d.repertoireIds.map((rid: string | number, i: number) => ({ cotizacionId: cot.id, repertorioId: Number(rid), orden: i }))
+      data: d.repertoireIds.map((rid: string | number, i: number) => ({
+        cotizacionId: cot.id, repertorioId: Number(rid), orden: i
+      }))
     })
 
   const reserva = await prisma.reserva.create({
@@ -232,21 +253,18 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   const fechaFormateada = parseLocalDate(d.eventDate).toLocaleDateString('es-CO', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
-  const base     = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-  const loginUrl = `${base}/login`
-
+  const base          = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
+  const loginUrl      = `${base}/login`
   const nombreCliente = `${usuario.nombre} ${cliente.apellido}`.trim()
 
   const mail = emailReservaCreada({
-    nombreCliente,
-    fechaFormateada,
+    nombreCliente, fechaFormateada,
     startTime:   d.startTime,
     endTime:     d.endTime,
     location:    d.location,
     eventType:   d.eventType ?? 'Serenata',
     totalAmount: d.totalAmount,
-    anticipo,
-    loginUrl,
+    anticipo,    loginUrl,
   })
   await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
     .catch(err => console.error('Error enviando correo de reserva:', err))
@@ -254,7 +272,7 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   return getReservaById(reserva.id)
 }
 
-// ─── UPDATE ───────────────────────────────────────────────────────────────────
+// ─── EDITAR ───────────────────────────────────────────────────────────────────
 export const updateReserva = async (id: number, data: ReservaUpdateInput): Promise<ReservationResponse> => {
   const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
@@ -269,14 +287,21 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput): Promi
   const horaFin    = d.endTime   ? new Date(`${date}T${d.endTime}:00`)   : r.cotizacion.horaFin
 
   if (d.startTime || d.endTime || d.eventDate) {
+    // ✅ Validar 6h si es hoy y se está cambiando la hora
+    if (d.startTime) validarAnticipacionMismoDia(date, d.startTime)
+
     const bufferInicio = new Date(horaInicio.getTime() - 60 * 60 * 1000)
-    const bufferFin    = new Date(horaFin.getTime()    + 60 * 60 * 1000)
+    const bufferFin    = horaFin
 
     const reservaSolapada = await prisma.reserva.findFirst({
       where: {
         id:     { not: id },
         estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
-        cotizacion: { fechaEvento: parseLocalDate(date), horaInicio: { lt: bufferFin }, horaFin: { gt: bufferInicio } }
+        cotizacion: {
+          fechaEvento: parseLocalDate(date),
+          horaInicio:  { lt: bufferFin },
+          horaFin:     { gt: bufferInicio },
+        }
       }
     })
     if (reservaSolapada) throw new Error('Ya existe una reserva en ese horario. Por favor elige otro horario.')
@@ -327,6 +352,12 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput): Promi
 }
 
 // ─── ANULAR ───────────────────────────────────────────────────────────────────
+/**
+ * Marca una reserva y su cotizacion asociada como ANULADA.
+ * Opcionalmente registra el motivo de anulación al final de las notas
+ * existentes en la cotización (formato: "[Anulada: motivo]").
+ * Usa Promise.all para ejecutar ambas actualizaciones en paralelo.
+ */
 export const anularReserva = async (id: number, motivo?: string): Promise<ReservationResponse> => {
   const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
   if (!r) throw new Error('Reserva no encontrada')
@@ -347,7 +378,13 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
   return getReservaById(id)
 }
 
-// ─── CONFIRMAR ────────────────────────────────────────────────────────────────
+// ─── CONFIRMAR RESERVA ────────────────────────────────────────────────────────────────
+/**
+ * Cambia el estado de una reserva PENDIENTE a CONFIRMADA.
+ * Acción típicamente ejecutada por el administrador tras verificar
+ * el pago del anticipo o aprobar manualmente la solicitud.
+ */
+
 export const confirmarReserva = async (id: number): Promise<ReservationResponse> => {
   const r = await prisma.reserva.findUnique({ where: { id } })
   if (!r) throw new Error('Reserva no encontrada')
@@ -355,7 +392,12 @@ export const confirmarReserva = async (id: number): Promise<ReservationResponse>
   return getReservaById(id)
 }
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
+// ─── ELIMINAR RESERVA ───────────────────────────────────────────────────────────────────
+/**
+ * Elimina físicamente una reserva de la base de datos.
+ * Solo se permite si la reserva está ANULADA y no tiene abonos registrados,
+ * para proteger el historial financiero y evitar eliminaciones accidentales.
+ */
 export const deleteReserva = async (id: number) => {
   const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
   if (!r) throw new Error('Reserva no encontrada')

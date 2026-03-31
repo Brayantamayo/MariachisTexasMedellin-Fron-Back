@@ -327,6 +327,8 @@ return (
         </div>
     </div>
 
+
+
       {/* Lyrics Modal */}
     <AnimatePresence>
         {lyricsSong && (
@@ -379,6 +381,7 @@ return (
         </motion.div>
         )}
     </AnimatePresence>
+
 
 
     <AnimatePresence>

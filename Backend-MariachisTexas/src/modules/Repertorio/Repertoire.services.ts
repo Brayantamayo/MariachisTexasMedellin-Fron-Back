@@ -1,51 +1,17 @@
 import prisma from '../../config/prisma'
 import { RepertorioCreateSchema, RepertorioUpdateSchema, zodError } from '../schemas'
+import { AppError } from '../../utils/AppError'
+import { mapToSong, mapToPrisma }           from './helpers/repertoire.mappers'
+import { validarDuracion, verificarDuplicado } from './helpers/repertoire.validators'
+import { verificarCancionEnUso }             from './helpers/repertorire.guards'
 import type { RepertorioCreateInput, RepertorioUpdateInput, SongResponse } from '../../types/interfaces'
 
-// ─── HELPER: normaliza texto para comparación ─────────────────────────────────
-const normalizar = (s: string) =>
-  s.trim()
-   .toLowerCase()
-   .normalize('NFD')
-   .replace(/[\u0300-\u036f]/g, '')
-   .replace(/\s+/g, ' ')
-
-// ─── MAPPERS ──────────────────────────────────────────────────────────────────
-const mapToSong = (r: any): SongResponse => ({
-  id:         String(r.id),
-  title:      r.titulo,
-  artist:     r.artista,
-  genre:      r.genero,
-  category:   r.categoria,
-  lyrics:     r.letra      ?? '',
-  audioUrl:   r.audioUrl   ?? '',
-  duration:   r.duracion,
-  difficulty: r.dificultad as 'Baja' | 'Media' | 'Alta',
-  coverImage: r.portada    ?? '',
-  isActive:   r.activa,
-  createdAt:  r.createdAt?.toISOString(),
-  updatedAt:  r.updatedAt?.toISOString(),
-})
-
-const mapToPrisma = (data: RepertorioCreateInput) => ({
-  titulo:     data.title?.trim(),
-  artista:    data.artist?.trim(),
-  genero:     data.genre,
-  categoria:  data.category,
-  letra:      data.lyrics     || null,
-  audioUrl:   data.audioUrl   || null,
-  duracion:   data.duration?.trim(),
-  dificultad: data.difficulty || 'Media',
-  portada:    data.coverImage || null,
-  activa:     data.isActive   ?? true,
-})
-
-// ─── QUERIES ──────────────────────────────────────────────────────────────────
+// ───OBTENER CANCION──────────────────────────────────────────────────────────────────
 export const getSongs = async (): Promise<SongResponse[]> => {
   const songs = await prisma.repertorio.findMany({ orderBy: { createdAt: 'desc' } })
   return songs.map(mapToSong)
 }
-
+// ─── OBTENER PUBLICAMENTE PARA EL REPERTORIO PUBLICO──────────────────────────────────────────────────────────────────
 export const getSongsPublic = async (): Promise<SongResponse[]> => {
   const songs = await prisma.repertorio.findMany({
     where:   { activa: true },
@@ -53,35 +19,23 @@ export const getSongsPublic = async (): Promise<SongResponse[]> => {
   })
   return songs.map(mapToSong)
 }
-
+// ─── BUSCAR POR ID──────────────────────────────────────────────────────────────────
 export const getSongById = async (id: number): Promise<SongResponse> => {
   if (!Number.isInteger(id) || id <= 0)
-    throw new Error('El ID de la canción no es válido')
+    throw new AppError('El ID de la canción no es válido', 400)
 
   const song = await prisma.repertorio.findUnique({ where: { id } })
-  if (!song) throw new Error('Canción no encontrada')
+  if (!song) throw new AppError('Canción no encontrada', 404)
   return mapToSong(song)
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const createSong = async (data: RepertorioCreateInput): Promise<SongResponse> => {
   const parsed = RepertorioCreateSchema.safeParse(data)
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
-  const canciones = await prisma.repertorio.findMany({ select: { titulo: true, artista: true } })
-  const tituloNorm  = normalizar(parsed.data.title)
-  const artistaNorm = normalizar(parsed.data.artist)
-  const duplicada   = canciones.find(
-    c => normalizar(c.titulo) === tituloNorm && normalizar(c.artista) === artistaNorm
-  )
-  if (duplicada)
-    throw new Error(`Ya existe la canción "${duplicada.titulo}" de "${duplicada.artista}" en el repertorio`)
-
-  const [minStr, secStr] = parsed.data.duration.split(':')
-  const minutos  = Number(minStr)
-  const segundos = Number(secStr)
-  if (minutos === 0 && segundos === 0) throw new Error('La duración no puede ser 0:00')
-  if (minutos > 15)                    throw new Error('La duración no puede superar 15 minutos')
+  await verificarDuplicado(parsed.data.title, parsed.data.artist)
+  validarDuracion(parsed.data.duration)
 
   const song = await prisma.repertorio.create({ data: mapToPrisma(parsed.data) })
   return mapToSong(song)
@@ -90,38 +44,28 @@ export const createSong = async (data: RepertorioCreateInput): Promise<SongRespo
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 export const updateSong = async (id: number, data: RepertorioUpdateInput): Promise<SongResponse> => {
   if (!Number.isInteger(id) || id <= 0)
-    throw new Error('El ID de la canción no es válido')
+    throw new AppError('El ID de la canción no es válido', 400)
 
   const exists = await prisma.repertorio.findUnique({ where: { id } })
-  if (!exists) throw new Error('Canción no encontrada')
+  if (!exists) throw new AppError('Canción no encontrada', 404)
 
   if (!exists.activa)
-    throw new Error('No se puede editar una canción desactivada. Actívala primero para poder modificarla')
+    throw new AppError('No se puede editar una canción desactivada. Actívala primero para poder modificarla', 409)
+
+  await verificarCancionEnUso(id, 'editar')
 
   const parsed = RepertorioUpdateSchema.safeParse(data)
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
   if (parsed.data.title || parsed.data.artist) {
-    const nuevoTitulo  = normalizar(parsed.data.title  ?? exists.titulo)
-    const nuevoArtista = normalizar(parsed.data.artist ?? exists.artista)
-    const canciones    = await prisma.repertorio.findMany({
-      where:  { id: { not: id } },
-      select: { titulo: true, artista: true },
-    })
-    const duplicada = canciones.find(
-      c => normalizar(c.titulo) === nuevoTitulo && normalizar(c.artista) === nuevoArtista
+    await verificarDuplicado(
+      parsed.data.title  ?? exists.titulo,
+      parsed.data.artist ?? exists.artista,
+      id
     )
-    if (duplicada)
-      throw new Error(`Ya existe la canción "${duplicada.titulo}" de "${duplicada.artista}" en el repertorio`)
   }
 
-  if (parsed.data.duration) {
-    const [minStr, secStr] = parsed.data.duration.split(':')
-    const minutos  = Number(minStr)
-    const segundos = Number(secStr)
-    if (minutos === 0 && segundos === 0) throw new Error('La duración no puede ser 0:00')
-    if (minutos > 15)                    throw new Error('La duración no puede superar 15 minutos')
-  }
+  if (parsed.data.duration) validarDuracion(parsed.data.duration)
 
   const updateData: Partial<ReturnType<typeof mapToPrisma>> = {}
   if (parsed.data.title      !== undefined) updateData.titulo     = parsed.data.title?.trim()
@@ -139,55 +83,31 @@ export const updateSong = async (id: number, data: RepertorioUpdateInput): Promi
   return mapToSong(song)
 }
 
-// ─── TOGGLE ACTIVA/INACTIVA ───────────────────────────────────────────────────
+// ─── CAMBIO DE ESTADO  ───────────────────────────────────────────────────
 export const toggleStatus = async (id: number): Promise<SongResponse> => {
   if (!Number.isInteger(id) || id <= 0)
-    throw new Error('El ID de la canción no es válido')
+    throw new AppError('El ID de la canción no es válido', 400)
 
   const exists = await prisma.repertorio.findUnique({ where: { id } })
-  if (!exists) throw new Error('Canción no encontrada')
+  if (!exists) throw new AppError('Canción no encontrada', 404)
 
-  if (exists.activa) {
-    const [enCotizacionActiva, enReservaActiva, enEnsayo] = await Promise.all([
-      prisma.cotizacionRepertorio.findFirst({
-        where: {
-          repertorioId: id,
-          cotizacion: { estado: { in: ['EN_ESPERA'] } },
-        },
-      }),
-      prisma.cotizacionRepertorio.findFirst({
-        where: {
-          repertorioId: id,
-          cotizacion: {
-            estado:  'CONVERTIDA',
-            reserva: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] } },
-          },
-        },
-      }),
-      prisma.ensayoRepertorio.findFirst({ where: { repertorioId: id } }),
-    ])
-
-    if (enCotizacionActiva)
-      throw new Error('No se puede desactivar: la canción está en una cotización pendiente de revisión.')
-    if (enReservaActiva)
-      throw new Error('No se puede desactivar: la canción está incluida en una reserva activa o confirmada.')
-    if (enEnsayo)
-      throw new Error('No se puede desactivar: la canción está programada en un ensayo.')
-  }
+  if (exists.activa) await verificarCancionEnUso(id, 'desactivar')
 
   const song = await prisma.repertorio.update({ where: { id }, data: { activa: !exists.activa } })
   return mapToSong(song)
 }
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
+// ─── ELIMINAR ───────────────────────────────────────────────────────────────────
 export const deleteSong = async (id: number) => {
   if (!Number.isInteger(id) || id <= 0)
-    throw new Error('El ID de la canción no es válido')
+    throw new AppError('El ID de la canción no es válido', 400)
 
   const exists = await prisma.repertorio.findUnique({ where: { id } })
-  if (!exists) throw new Error('Canción no encontrada')
+  if (!exists) throw new AppError('Canción no encontrada', 404)
 
-  // ✅ Bloquear si está en cotización o reserva activa
+  if (exists.activa)
+    throw new AppError('Debes desactivar la canción antes de eliminarla', 409)
+
   const enUso = await prisma.cotizacionRepertorio.findFirst({
     where: {
       repertorioId: id,
@@ -195,9 +115,8 @@ export const deleteSong = async (id: number) => {
     },
   })
   if (enUso)
-    throw new Error('No se puede eliminar: la canción está asociada a una cotización activa.')
+    throw new AppError('No se puede eliminar: la canción está asociada a una cotización activa.', 409)
 
-  // ✅ Limpiar huérfanos y eliminar en una sola transacción
   await prisma.$transaction([
     prisma.cotizacionRepertorio.deleteMany({ where: { repertorioId: id } }),
     prisma.ensayoRepertorio.deleteMany({ where: { repertorioId: id } }),

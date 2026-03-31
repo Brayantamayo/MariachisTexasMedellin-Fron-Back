@@ -56,11 +56,16 @@ export const repertoireService = {
   await api.delete(`/repertorio/${id}`)
 },
 
-  // ─── Spotify ──────────────────────────────────────────────────────────────
-  searchSpotify: async (query: string, limit = 8): Promise<SpotifySong[]> => {
+searchSpotify: async (query: string, limit = 8): Promise<SpotifySong[]> => {
+  try {
     const { data } = await api.get('/spotify/search', {
       params: { q: query, limit }
-    })
-    return data
+    });
+    return data;
+  } catch (error) {
+    console.error('Error en búsqueda de Spotify:', error);
+    // Puedes lanzar un error personalizado o mostrar notificación
+    throw new Error('No se pudo buscar en Spotify. Verifica tu conexión o permisos.');
   }
+}
 }

@@ -63,11 +63,6 @@ const inferStatus = (message: string): number => {
   return 400
 }
 
-/**
- * Wrapper que elimina el try/catch repetitivo en cada controller.
- * Detecta automáticamente el HTTP status correcto según el mensaje del error.
- * Valida params de la URL y captura errores de Prisma limpiamente.
- */
 export const asyncHandler = (fn: AsyncFn) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {

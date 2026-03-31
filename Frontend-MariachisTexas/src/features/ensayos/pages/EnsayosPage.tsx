@@ -53,34 +53,24 @@ export const EnsayosPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     fetchRehearsals();
-  }, []);
+}, []);
 
-  const handleCreateRehearsal = async (data: any) => {
-    try {
-        const newRehearsal = await rehearsalService.createRehearsal(data);
-        setRehearsals(prev => [newRehearsal, ...prev]);
-        showNotification('Ensayo programado exitosamente.');
-        setIsCreateOpen(false);
-    } catch (error) {
-      console.error(error);
-      showNotification("Error al guardar el ensayo.", "error");
-    }
-  };
+const handleCreateRehearsal = async (data: any) => {
+    const newRehearsal = await rehearsalService.createRehearsal(data);
+    setRehearsals(prev => [newRehearsal, ...prev]);
+    showNotification('Ensayo programado exitosamente.');
+    setIsCreateOpen(false);
+};
 
-  const handleUpdateRehearsal = async (data: any) => {
-    if (!selectedRehearsal) return;
-    try {
-        const updated = await rehearsalService.updateRehearsal(selectedRehearsal.id, data);
-        setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r));
-        showNotification('Ensayo actualizado correctamente.');
-        setIsEditOpen(false);
-    } catch (error) {
-        console.error(error);
-        showNotification("Error al actualizar.", "error");
-    }
-  };
+const handleUpdateRehearsal = async (data: any) => {
+if (!selectedRehearsal) return;
+    const updated = await rehearsalService.updateRehearsal(selectedRehearsal.id, data);
+    setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r));
+    showNotification('Ensayo actualizado correctamente.');
+    setIsEditOpen(false);
+};
 
   const confirmDelete = async () => {
     if (!deleteModal.id) return;
@@ -180,8 +170,8 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
         <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
             
              {/* Search */}
-             <div className="p-8 pb-4">
-                 <div className="relative max-w-sm">
+            <div className="p-8 pb-4">
+            <div className="relative max-w-sm">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                         type="text" 
