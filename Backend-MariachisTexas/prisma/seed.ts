@@ -109,6 +109,39 @@ async function main() {
 
   console.log('✅ Usuarios creados')
 
+  // ─── USUARIO PARA CLIENTE DIRECTA ─────────────────────────
+  await prisma.usuario.upsert({
+    where: { email: 'directa@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Cliente',
+      email:    'directa@mariachistexas.com',
+      password: await bcrypt.hash('Directa-123456', 10),
+      rolId:    cliente.id
+    }
+  })
+
+  // ─── CLIENTE PARA VENTAS DIRECTAS ────────────────────────
+  await prisma.cliente.upsert({
+    where: { email: 'directa@mariachistexas.com' },
+    update: {},
+    create: {
+      email:               'directa@mariachistexas.com',
+      apellido:            'Directa',
+      tipoDocumento:       'CC',
+      numeroDocumento:     '000000000',
+      fechaNacimiento:     new Date('2000-01-01'),
+      telefonoPrincipal:   '3000000000',
+      telefonoAlternativo: null,
+      ciudad:              'Medellín',
+      barrio:              'Centro',
+      direccion:           'Venta Directa',
+      zonaServicio:        'URBANA',
+      activo:              true
+    }
+  })
+
+  console.log('✅ Cliente para ventas directas creado')
 
 }
 

@@ -18,6 +18,19 @@ export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {c
 // ─── GET CALENDARIO ───────────────────────────────────────────────────────────
 export const getCalendario = asyncHandler(async (_req: Request, res: Response) => {res.json(await reservaService.getReservasCalendario())})
 
+// ─── GET ABONOS ───────────────────────────────────────────────────────────────
+export const getAbonos = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  res.json(await reservaService.getAbonos(usuarioId))
+})
+
+// ─── AGREGAR ABONO A RESERVA ───────────────────────────────────────────────────
+export const addAbono = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
+  const { amount, date, method, notes } = req.body
+  res.status(201).json(await reservaService.createAbono(id, { amount, date, method, notes }))
+})
+
 // ─── GET AVAILABLE HOURS ──────────────────────────────────────────────────────
 export const getAvailableHours = asyncHandler(async (req: Request, res: Response) => {const date = Array.isArray(req.params.date) ? req.params.date[0] : req.params.date
 const excludeId = req.query.excludeId ? Number(req.query.excludeId) : undefined

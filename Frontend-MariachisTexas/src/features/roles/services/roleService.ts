@@ -1,83 +1,89 @@
 
+import api from '@/shared/api/api'
 import { Role } from '@/types';
 
-// Datos iniciales simulados con nombres de módulos
-let mockRoles: Role[] = [
-  {
-    id: '1',
-    name: 'Administrador Maestro',
-    description: 'Acceso total a todos los módulos del sistema.',
-    permissions: [
-        'dashboard', 
-        'usuarios', 
-        'roles', 
-        'empleados', 
-        'clientes', 
-        'reservas', 
-        'repertorio', 
-        'ensayos', 
-        'bloqueos', 
-        'ventas', 
-        'cotizaciones', 
-        'abonos'
-    ],
-    isActive: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    name: 'Músico Líder',
-    description: 'Gestión de repertorio y visualización de ensayos.',
-    permissions: ['repertorio', 'ensayos', 'reservas'],
-    isActive: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '3',
-    name: 'Vendedor',
-    description: 'Encargado de reservas, cotizaciones y clientes.',
-    permissions: ['reservas', 'cotizaciones', 'ventas', 'clientes', 'abonos'],
-    isActive: true,
-    createdAt: new Date().toISOString()
-  }
-];
+// Tipos para la API del backend
+interface BackendRole {
+  id: string
+  name: string
+  description: string
+  permissions: string[]
+  isActive: boolean
+  createdAt: string
+}
+
+interface BackendPermission {
+  id: string
+  module: string
+  label: string
+  description: string
+  isActive: boolean
+}
 
 export const roleService = {
   getRoles: async (): Promise<Role[]> => {
-    // Simulamos delay de red
-    return new Promise((resolve) => {
-      setTimeout(() => resolve([...mockRoles]), 500);
-    });
+    try {
+      const { data } = await api.get('/roles')
+      return data as Role[]
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+      throw error
+    }
+  },
+
+  getPermissions: async (): Promise<BackendPermission[]> => {
+    try {
+      const { data } = await api.get('/roles/permisos')
+      return data as BackendPermission[]
+    } catch (error) {
+      console.error('Error fetching permissions:', error)
+      throw error
+    }
   },
 
   createRole: async (role: Omit<Role, 'id' | 'createdAt'>): Promise<Role> => {
-    return new Promise((resolve) => {
-      const newRole: Role = {
-        ...role,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString()
-      };
-      mockRoles = [newRole, ...mockRoles];
-      setTimeout(() => resolve(newRole), 500);
-    });
+    try {
+      const payload = {
+        nombre: role.name,
+        descripcion: role.description || undefined,
+        estado: role.isActive,
+        permisos: role.permissions.map(p => parseInt(p)).filter(id => !isNaN(id))
+      }
+
+      const { data } = await api.post('/roles', payload)
+      return data as Role
+    } catch (error) {
+      console.error('Error creating role:', error)
+      throw error
+    }
   },
 
   updateRole: async (id: string, updates: Partial<Role>): Promise<Role> => {
-    return new Promise((resolve, reject) => {
-      const index = mockRoles.findIndex(r => r.id === id);
-      if (index === -1) {
-        reject(new Error('Rol no encontrado'));
-        return;
+    try {
+      const payload: any = {}
+
+      if (updates.name !== undefined) payload.nombre = updates.name
+      if (updates.description !== undefined) payload.descripcion = updates.description
+      if (updates.isActive !== undefined) payload.estado = updates.isActive
+      if (updates.permissions !== undefined) {
+        payload.permisos = updates.permissions.map(p => parseInt(p)).filter(id => !isNaN(id))
       }
-      mockRoles[index] = { ...mockRoles[index], ...updates };
-      setTimeout(() => resolve(mockRoles[index]), 500);
-    });
+
+      const { data } = await api.put(`/roles/${id}`, payload)
+      return data as Role
+    } catch (error) {
+      console.error('Error updating role:', error)
+      throw error
+    }
   },
 
   deleteRole: async (id: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      mockRoles = mockRoles.filter(r => r.id !== id);
-      setTimeout(() => resolve(true), 500);
-    });
+    try {
+      await api.delete(`/roles/${id}`)
+      return true
+    } catch (error) {
+      console.error('Error deleting role:', error)
+      throw error
+    }
   }
 };

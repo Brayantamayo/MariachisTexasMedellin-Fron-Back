@@ -462,7 +462,36 @@ export const EnsayoCreateSchema = z.object({
     repertoireIds: z.array(repertorioId).max(20).optional(),
 })
 
-export const EnsayoUpdateSchema = EnsayoCreateSchema.partial()
+export const EnsayoUpdateSchema = z.object({
+  title: z.string()
+    .trim()
+    .min(2,   'El título debe tener al menos 2 caracteres')
+    .max(100, 'El título no puede superar 100 caracteres')
+    .refine(t => t.trim().length > 0,      'El título no puede ser solo espacios')
+    .refine(t => !/^\d+$/.test(t.trim()),  'El título no puede ser solo números')
+    .refine(t => !/[<>{}[\]\\]/.test(t),   'El título contiene caracteres no permitidos')
+    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido')
+    .refine(t => t.length <= 50,          'El título no puede superar 50 caracteres')
+    .refine(t => t.length >= 2,           'El título no puede ser menor a 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).every(p => p.length >= 2), 'Cada palabra del título debe tener al menos 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 3), 'El título debe contener al menos una palabra de 3 o más caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 4), 'El título debe contener al menos una palabra de 4 o más caracteres')
+    .optional(),
+  location: z.string()
+    .trim()
+    .min(2,   'El lugar debe tener al menos 2 caracteres')
+    .max(50, 'El lugar no puede superar 50 caracteres')
+    .refine(l => l.trim().length > 0,    'El lugar no puede ser solo espacios')
+    .refine(l => !/[<>{}[\]\\]/.test(l), 'El lugar contiene caracteres no permitidos')
+    .refine(l => !esGibberish(l),        'El lugar parece contener texto sin sentido')
+    .refine(t => t.length <= 200,        'El lugar no puede superar 200 caracteres')
+    .optional(),
+  address: z.string().trim().max(200).optional().nullable(),
+  date: fechaFutura.optional(),
+  time: hora.optional(),
+  status: z.enum(['PENDIENTE', 'LISTO']).optional(),
+  repertoireIds: z.array(repertorioId).max(20).optional()
+})
 
 
 
@@ -523,7 +552,125 @@ export const RepertorioCreateSchema = z.object({
   isActive:   z.boolean().optional(),
 })
 
-export const RepertorioUpdateSchema = RepertorioCreateSchema.partial()
+export const RepertorioUpdateSchema = z.object({
+  title: z.string()
+    .trim()
+    .min(2,   'El título debe tener al menos 2 caracteres')
+    .max(100, 'El título no puede superar 100 caracteres')
+    .refine(t => t.trim().length > 0,      'El título no puede ser solo espacios')
+    .refine(t => !/^\d+$/.test(t.trim()),  'El título no puede ser solo números')
+    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido')
+    .refine(t => !/\s{2,}/.test(t.trim()), 'El título no puede tener espacios consecutivos')
+    .optional(),
+  artist: z.string()
+    .trim()
+    .min(2,  'El artista debe tener al menos 2 caracteres')
+    .max(80, 'El artista no puede superar 80 caracteres')
+    .refine(a => a.trim().length > 0,      'El artista no puede ser solo espacios')
+    .refine(a => !/^\d+$/.test(a.trim()),  'El artista no puede ser solo números')
+    .refine(a => !esGibberish(a),          'El artista parece contener texto sin sentido')
+    .refine(a => !/\s{2,}/.test(a.trim()), 'El artista no puede tener espacios consecutivos')
+    .optional(),
+  genre: z.string()
+    .trim()
+    .min(2,  'El género debe tener al menos 2 caracteres')
+    .max(50, 'El género no puede superar 50 caracteres')
+    .refine(g => g.replace(/\s+/g, '').length >= 2, 'El género debe tener al menos 2 caracteres reales')
+    .refine(g => g.trim().length > 0,      'El género no puede ser solo espacios')
+    .refine(g => !/^\d+$/.test(g.trim()),  'El género no puede ser solo números')
+    .refine(g => !esGibberish(g),          'El género parece contener texto sin sentido')
+    .refine(g => !/\s{2,}/.test(g.trim()), 'El género no puede tener espacios consecutivos')
+    .optional(),
+  category: z.string().trim().refine(
+    c => (CATEGORIAS as readonly string[]).includes(c),`Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`
+  ).optional(),
+  duration: duracion.optional(),
+  difficulty: z.string().trim().refine(
+    d => (DIFICULTADES as readonly string[]).includes(d),
+    `Dificultad inválida. Opciones: ${DIFICULTADES.join(', ')}`
+  ).optional(),
+  lyrics: z.string()
+    .trim()
+    .max(5000, 'La letra no puede superar 5000 caracteres')
+    .refine(l => !/^\d+$/.test(l),       'La letra no puede ser solo números')
+    .refine(l => !esGibberish(l),         'La letra parece contener texto sin sentido')
+    .refine(l => !/[<>{}[\]\\]/.test(l),  'La letra contiene caracteres no permitidos')
+    .optional()
+    .nullable(),
+  coverImage: urlImagen.optional(),
+  audioUrl: urlAudio.optional(),
+  isActive: z.boolean().optional()
+})
+
+// ─── VENTA ────────────────────────────────────────────────────────────────────
+
+export const VentaCreateSchema = z.object({
+  reservaId: z.union([z.number().int().positive(), z.null()]).optional(),
+  clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo'),
+  tipo: z.enum(['RESERVA', 'DIRECTA']),
+  estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional().default('CONFIRMADO'),
+  montoTotal: z.number()
+    .positive('El monto total debe ser mayor a 0')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
+  montoPagado: z.number()
+    .min(0, 'El monto pagado no puede ser negativo')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
+  fechaVenta: fecha,
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']),
+})
+.refine(d => d.montoPagado <= d.montoTotal, {
+  message: 'El monto pagado no puede ser mayor al total', path: ['montoPagado']
+})
+
+export const VentaUpdateSchema = z.object({
+  reservaId: z.union([z.number().int().positive(), z.null()]).optional(),
+  clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo').optional(),
+  tipo: z.enum(['RESERVA', 'DIRECTA']).optional(),
+  estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional(),
+  montoTotal: z.number()
+    .positive('El monto total debe ser mayor a 0')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+    .optional(),
+  montoPagado: z.number()
+    .min(0, 'El monto pagado no puede ser negativo')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+    .optional(),
+  fechaVenta: fecha.optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']).optional()
+})
+
+export const RolCreateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre del rol debe tener al menos 2 caracteres')
+    .max(50, 'El nombre del rol no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido'),
+  descripcion: textoLibre('descripción', 200).optional(),
+  estado: z.boolean().optional().default(true),
+  permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional().default([])
+})
+
+export const RolUpdateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre del rol debe tener al menos 2 caracteres')
+    .max(50, 'El nombre del rol no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido')
+    .optional(),
+  descripcion: textoLibre('descripción', 200).optional(),
+  estado: z.boolean().optional(),
+  permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional()
+})
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── HELPER ───────────────────────────────────────────────────────────────────
