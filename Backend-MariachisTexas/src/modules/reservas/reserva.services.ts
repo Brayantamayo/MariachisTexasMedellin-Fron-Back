@@ -106,6 +106,7 @@ export const getReservasCalendario = async () => {
 
 export { getAvailableHours }
 
+// ─── OBTENER POR ID ───────────────────────────────────────────────────────────────────
 export const getReservaById = async (id: number): Promise<ReservationResponse> => {
   const r = await prisma.reserva.findUnique({ where: { id }, include: reservaInclude })
   if (!r) throw new AppError('Reserva no encontrada', 404)

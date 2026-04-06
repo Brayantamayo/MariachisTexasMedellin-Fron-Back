@@ -41,7 +41,7 @@ const excludeId = req.query.excludeId ? Number(req.query.excludeId) : undefined
   res.json(await reservaService.getAvailableHours(date, excludeId))
 })
 
-// ─── GET BY ID ────────────────────────────────────────────────────────────────
+// ─── OBTENER POR ID  ────────────────────────────────────────────────────────────────
 export const getById = asyncHandler(async (req: AuthRequest, res: Response) => {const id      = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 const reserva = await reservaService.getReservaById(Number(id))
   if (req.user?.rol === 'CLIENTE') {
@@ -53,11 +53,11 @@ const reserva = await reservaService.getReservaById(Number(id))
   res.json(reserva)
 })
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────
+// ─── CREAR ───────────────────────────────────────────────────────────────────
 export const create = asyncHandler(async (req: AuthRequest, res: Response) => {const data = { ...req.body, clienteId: req.body.clienteId || req.user?.id }
 res.status(201).json(await reservaService.createReserva(data))})
 
-// ─── UPDATE ───────────────────────────────────────────────────────────────────
+// ─── ACTUALIZAR ───────────────────────────────────────────────────────────────────
 export const update = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 res.json(await reservaService.updateReserva(Number(id), req.body))})
 
