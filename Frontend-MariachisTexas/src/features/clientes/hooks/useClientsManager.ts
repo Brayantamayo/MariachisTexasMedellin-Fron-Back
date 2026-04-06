@@ -7,6 +7,7 @@ export const useClientsManager = () => {
   const [clients, setClients] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
   
   // Estados de Modales
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -30,11 +31,18 @@ export const useClientsManager = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const fetchClients = async () => {
+  const fetchClients = async (page: number = 1, query: string = '') => {
     setLoading(true);
     try {
-      const data = await clientService.getClients();
-      setClients(data);
+      if (query.trim()) {
+        const data = await clientService.searchClients(query);
+        setClients(data);
+        setPagination({ page: 1, limit: data.length, total: data.length, pages: 1 });
+      } else {
+        const data = await clientService.getClients(page, pagination.limit);
+        setClients(data.clients);
+        setPagination(data.pagination);
+      }
     } catch (error) {
       console.error(error);
       showNotification("Error cargando clientes.", "error");
@@ -46,6 +54,17 @@ export const useClientsManager = () => {
   useEffect(() => {
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm.trim()) {
+        fetchClients(1, searchTerm);
+      } else {
+        fetchClients(1);
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   // Handlers
   const handleCreateClient = async (clientData: any) => {
@@ -89,7 +108,7 @@ export const useClientsManager = () => {
     const newStatus = !client.isActive;
     try {
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, isActive: newStatus } : c));
-        await clientService.updateClient(client.id, { isActive: newStatus });
+        await clientService.toggleClientStatus(client.id, newStatus);
         showNotification(`Cliente ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
     } catch (error) {
         console.error(error);
@@ -102,6 +121,7 @@ export const useClientsManager = () => {
     clients, setClients,
     loading, setLoading,
     searchTerm, setSearchTerm,
+    pagination, setPagination,
     isCreateOpen, setIsCreateOpen,
     isEditOpen, setIsEditOpen,
     isDetailOpen, setIsDetailOpen,

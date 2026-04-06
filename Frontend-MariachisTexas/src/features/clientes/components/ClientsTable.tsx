@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { User } from '@/types';
 import { User as UserIcon, MapPin, Phone, Eye, Edit2, Trash2, Mail, Hash } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
@@ -7,15 +7,15 @@ import { TablePagination } from '@/shared/components/TablePagination';
 interface Props {
   clients: User[];
   loading: boolean;
+  pagination: { page: number; limit: number; total: number; pages: number };
   onView: (client: User) => void;
   onEdit: (client: User) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (client: User) => void;
+  onPageChange: (page: number) => void;
 }
 
-export const ClientsTable: React.FC<Props> = ({ clients, loading, onView, onEdit, onDelete, onToggleStatus }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, onView, onEdit, onDelete, onToggleStatus, onPageChange }) => {
   
   const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, variant?: 'default' | 'danger' }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => (
     <button 
@@ -39,12 +39,8 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, onView, onEdit
       return <div className="text-center py-20 text-slate-400">No se encontraron clientes.</div>;
   }
 
-  // Pagination Logic
-  const totalPages = Math.ceil(clients.length / itemsPerPage);
-  const currentClients = clients.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Usar clients directamente, paginación manejada en backend
+  const currentClients = clients;
 
   return (
     <div className="flex flex-col">
@@ -134,11 +130,11 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, onView, onEdit
           </table>
       </div>
       <TablePagination 
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-        totalItems={clients.length}
-        itemsPerPage={itemsPerPage}
+        currentPage={pagination.page}
+        totalPages={pagination.pages}
+        onPageChange={onPageChange}
+        totalItems={pagination.total}
+        itemsPerPage={pagination.limit}
       />
     </div>
   );

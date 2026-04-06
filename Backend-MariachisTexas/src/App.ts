@@ -8,6 +8,7 @@ import perfilRoutes     from './modules/auth/perfil.routes'
 import serviciosRoutes  from './modules/Servicios/servicios.routes'
 import repertoireRoutes from './modules/Repertorio/Repertoire.routes'
 import spotifyRoutes from './modules/Repertorio/spotify.routes'
+import clienteRoutes    from './modules/Cliente/cliente.routes'
 
 import cotizacionRoutes from './modules/Cotizacion/cotizacion.routes'
 import reservaRoutes    from './modules/reservas/reservas.routes'
@@ -63,6 +64,7 @@ app.use('/api/auth',         authRoutes)
 app.use('/api/servicios',    serviciosRoutes)
 app.use('/api/repertorio',   repertoireRoutes)
 app.use('/api/spotify', spotifyRoutes)
+app.use('/api/clientes',     clienteRoutes)
 app.use('/api/cotizaciones', cotizacionRoutes)
 app.use('/api/reservas',     reservaRoutes)
 app.use('/api/ensayos',      ensayoRoutes)
