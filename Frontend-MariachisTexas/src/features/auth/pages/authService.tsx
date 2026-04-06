@@ -10,8 +10,8 @@ export const authService = {
     }
   },
 
-  // ✅ nombre va al backend y se guarda en Usuario
-  // ✅ sin password en los datos de cliente — el backend lo maneja solo en Usuario
+  // nombre va al backend y se guarda en Usuario
+  // sin password en los datos de cliente — el backend lo maneja solo en Usuario
   registro: async (data: {
     nombre:               string
     apellido:             string

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
@@ -6,57 +5,58 @@ import { Rehearsal, UserRole } from '@/types';
 import { rehearsalService } from '../services/rehearsalService';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { useAuth } from '@/shared/contexts/AuthContext';
-
-// Componentes Modulares
 import { RehearsalsTable } from '../components/RehearsalsTable';
 import { RehearsalCreateModal } from '../components/RehearsalCreateModal';
 import { RehearsalEditModal } from '../components/RehearsalEditModal';
 import { RehearsalDetailModal } from '../components/RehearsalDetailModal';
 
 export const EnsayosPage: React.FC = () => {
-  const { user } = useAuth();
-  const [rehearsals, setRehearsals] = useState<Rehearsal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+const { user } = useAuth();
+const [rehearsals, setRehearsals] = useState<Rehearsal[]>([]);
+const [loading, setLoading] = useState(true);
+const [searchTerm, setSearchTerm] = useState('');
 
-  // Modales
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
-  const [selectedRehearsal, setSelectedRehearsal] = useState<Rehearsal | null>(null);
+// Modales
+const [isCreateOpen, setIsCreateOpen] = useState(false);
+const [isEditOpen, setIsEditOpen] = useState(false);
+const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Confirmación
-  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, id: string | null}>({
-      isOpen: false,
-      id: null
-  });
+const [selectedRehearsal, setSelectedRehearsal] = useState<Rehearsal | null>(null);
 
-  // Notificaciones
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+// Confirmación de borrado
+const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, id: string | null}>({
+    isOpen: false,
+    id: null
+});
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+// Notificaciones de error
+const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
-  };
+};
 
-  const fetchRehearsals = async () => {
+
+///fetch de rehearsals sirve para cargar los datos de la tabla
+const fetchRehearsals = async () => {
     setLoading(true);
     try {
-      const data = await rehearsalService.getRehearsals();
-      setRehearsals(data);
+    const data = await rehearsalService.getRehearsals();
+    setRehearsals(data);
     } catch (error) {
-      console.error(error);
-      showNotification("Error cargando ensayos.", "error");
+    console.error(error);
+    showNotification("Error cargando ensayos.", "error");
     } finally {
-      setLoading(false);
+    setLoading(false);
     }
-  };
-
+};
+///useEffect sirve para llamar a la funcion fetchRehearsals cuando se cargue la página
 useEffect(() => {
     fetchRehearsals();
 }, []);
 
+///handleCreateRehearsal sirve para crear un nuevo ensayo
 const handleCreateRehearsal = async (data: any) => {
     const newRehearsal = await rehearsalService.createRehearsal(data);
     setRehearsals(prev => [newRehearsal, ...prev]);
@@ -64,6 +64,7 @@ const handleCreateRehearsal = async (data: any) => {
     setIsCreateOpen(false);
 };
 
+//handleUpdateRehearsal sirve para actualizar un ensayo existente
 const handleUpdateRehearsal = async (data: any) => {
 if (!selectedRehearsal) return;
     const updated = await rehearsalService.updateRehearsal(selectedRehearsal.id, data);
@@ -72,7 +73,8 @@ if (!selectedRehearsal) return;
     setIsEditOpen(false);
 };
 
-  const confirmDelete = async () => {
+//confirmDelete sirve para confirmar la eliminación de un ensayo
+const confirmDelete = async () => {
     if (!deleteModal.id) return;
     try {
         await rehearsalService.deleteRehearsal(deleteModal.id);
@@ -82,47 +84,51 @@ if (!selectedRehearsal) return;
         console.error(error);
         showNotification("Error al eliminar.", "error");
     }
-  };
+};
 
-  // Reemplaza el toggleStatus actual por este:
+//handleToggleStatus sirve para marcar un ensayo como listo se crea en pendiente 
 const handleToggleStatus = async (rehearsal: Rehearsal) => {
-  const isCompleted = rehearsal.status === 'Completado'
+const isCompleted = rehearsal.status === 'Completado'
 
-  if (!isCompleted) {
+///confirmacion a la hora de cambiar de estado el ensayo
+if (!isCompleted) {
     const confirmed = window.confirm(
-      `¿Marcar "${rehearsal.title}" como Listo?\n` +
-      'Desaparecerá del calendario y no podrás editarlo.'
+    `¿Marcar "${rehearsal.title}" como Listo?\n` +
+    'Desaparecerá del calendario y no podrás editarlo.'
     )
     if (!confirmed) return
-  }
-
-  try {
+}
+////
+try {
+    // Al hacer cambio con el suiche, el backend devuelve el ensayo actualizado con el nuevo estado
     const updated = await rehearsalService.toggleStatus(rehearsal.id)
     setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r))
     showNotification(
-      updated.status === 'Completado'
+    updated.status === 'Completado'
         ? `Ensayo "${updated.title}" marcado como Listo.`
         : `Ensayo "${updated.title}" marcado como Pendiente.`
     )
-  } catch (err: any) {
+} catch (err: any) {
     showNotification(
-      err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
-      'error'
+    err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
+    'error'
     )
-  }
+}
 }
 
-  const filteredRehearsals = rehearsals.filter(r => 
-      r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+// Filtrar canciones para el selector
+const filteredRehearsals = rehearsals.filter(r => 
+    r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.location.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
-  const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
+///canManage es una variable booleana que indica si el usuario tiene permisos de ADMIN o EMPLEADO para mostrar/ocultar acciones en la UI
+const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
 
-  return (
+return (
     <div className="space-y-8 animate-fade-in-up pb-10">
         
-        {/* Toast */}
+        {/* Notificaciones  de error y exito */}
         {notification && createPortal(
             <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
                 <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${
@@ -147,13 +153,14 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
             document.body
         )}
 
-        {/* Header */}
+        {/* Parte de arriba de la pagina de ensayos  */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
             <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Ensayos</h1>
             <p className="text-slate-500 mt-2 text-sm">Organiza las prácticas y repertorio de la banda.</p>
             </div>
             
+            {/* Aqui se manejan las acciones para ADMIN y EMPLEADO */}
             {/* Mostrar botón para ADMIN y EMPLEADO */}
             {canManage && (
                 <button 
@@ -166,7 +173,7 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
             )}
         </div>
 
-        {/* Main Table Container */}
+        {/* Contenedor principal de la tabla */}
         <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
             
              {/* Search */}
@@ -183,7 +190,7 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
                 </div>
             </div>
 
-            {/* Modular Table */}
+            {/* componente de la tabla de ensayo */}
             <RehearsalsTable 
                 rehearsals={filteredRehearsals}
                 loading={loading}
@@ -195,13 +202,14 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
             />
         </div>
 
-        {/* Modals */}
+        {/* componente de crear ensayo */}
         <RehearsalCreateModal 
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
             onSave={handleCreateRehearsal}
         />
 
+        {/* componente de editar ensayo */}
         <RehearsalEditModal 
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
@@ -209,12 +217,14 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
             rehearsal={selectedRehearsal}
         />
 
+        {/* componente de detalle de ensayo */}
         <RehearsalDetailModal 
             isOpen={isDetailOpen}
             onClose={() => setIsDetailOpen(false)}
             rehearsal={selectedRehearsal}
         />
 
+        {/* componente de confirmacion de eliminacion de ensayo */}
         <ConfirmationModal 
             isOpen={deleteModal.isOpen}
             onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
@@ -223,5 +233,5 @@ const handleToggleStatus = async (rehearsal: Rehearsal) => {
             message="Esta acción eliminará el evento del calendario. No se puede deshacer."
         />
     </div>
-  );
+);
 };

@@ -6,7 +6,7 @@ import prisma from '../../config/prisma'
 
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO']
 
-// ─── GET ALL ──────────────────────────────────────────────────────────────────
+// ─── OBTENER TODOS LOS RESERVAS ───────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {const rol = req.user?.rol
   if (rol && ROLES_ADMIN.includes(rol)) {
     return res.json(await reservaService.getReservas())
@@ -18,10 +18,28 @@ export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {c
 // ─── GET CALENDARIO ───────────────────────────────────────────────────────────
 export const getCalendario = asyncHandler(async (_req: Request, res: Response) => {res.json(await reservaService.getReservasCalendario())})
 
-// ─── GET AVAILABLE HOURS ──────────────────────────────────────────────────────
+// ─── OBTENER HORAS DISPONIBLES ──────────────────────────────────────────────────────
 export const getAvailableHours = asyncHandler(async (req: Request, res: Response) => {const date = Array.isArray(req.params.date) ? req.params.date[0] : req.params.date
+
+// ─── Validar formato YYYY-MM-DD ───────────────────────────────────────────
+const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+if (!dateRegex.test(date)) {
+  return res.status(400).json({
+    message: 'Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-04-15)'
+  })
+}
+
+// ─── Validar que sea una fecha real (ej: no 2026-02-31) ───────────────────
+const parsed = new Date(`${date}T00:00:00`)
+if (isNaN(parsed.getTime())) {
+  return res.status(400).json({
+    message: 'La fecha proporcionada no es válida'
+  })
+}
+
 const excludeId = req.query.excludeId ? Number(req.query.excludeId) : undefined
-res.json(await reservaService.getAvailableHours(date, excludeId))})
+  res.json(await reservaService.getAvailableHours(date, excludeId))
+})
 
 // ─── GET BY ID ────────────────────────────────────────────────────────────────
 export const getById = asyncHandler(async (req: AuthRequest, res: Response) => {const id      = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id

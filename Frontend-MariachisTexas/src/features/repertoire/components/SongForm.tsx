@@ -8,6 +8,7 @@ import { uploadImage, uploadAudio } from '@/shared/services/uploadService';
 import { repertoireService, SpotifySong } from '@/src/features/repertoire/services/repertoireService';
 import { TIPOS_EVENTO } from '@/types';
 
+{/*interface sirve para validar los campos de la interfaz de usuario*/}
 export interface SongFormErrors {
   title?:    string;
   artist?:   string;
@@ -16,6 +17,7 @@ export interface SongFormErrors {
   duration?: string;
 }
 
+{/*interface sirve para manejar los datos del formulario*/}
 interface Props {
   formData:         any;
   onChange:         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
@@ -25,15 +27,26 @@ interface Props {
   registerFieldRef?: (field: string, el: HTMLElement | null) => void;
 }
 
+{/*componente de formulario para crear una canción*/}
 export const SongForm: React.FC<Props> = ({
   formData, onChange, onFieldChange, onSubmit, errors = {} as SongFormErrors, registerFieldRef
 }) => {
+  {/*Este componente se encarga de manejar un formulario de canciones, 
+    permitiendo al usuario ingresar y editar información de manera dinámica. Además, 
+    incluye funcionalidades para subir tanto imágenes como archivos de audio, 
+    mostrando en tiempo real el progreso de cada carga. Integra también un sistema de búsqueda de 
+    canciones similar a Spotify, facilitando la selección de música, y permite controlar la reproducción de 
+    previews de audio. Por último, gestiona adecuadamente los errores y estados del formulario para ofrecer 
+    una experiencia más fluida y controlada al usuario.*/}
+
+  {/*se usan para manejar la subida de imágenes y audio*/}
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef      = useRef<HTMLAudioElement | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const genreInputRef = useRef<HTMLInputElement>(null);
 
+  {/*se usan para mostrar el progreso de la subida de imágenes y audio*/}
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [imageProgress,  setImageProgress]  = useState(0);
@@ -48,7 +61,7 @@ export const SongForm: React.FC<Props> = ({
   const [playingId,      setPlayingId]      = useState<string | null>(null);
   const [showResults,    setShowResults]    = useState(false);
 
-  // ─── Buscar en Spotify con debounce 500ms ─────────────────────────────────
+  // ─── Buscar en Spotify no busqueda inmediata despues de 500ms de dejar de escribir se busca ──────────────────────────────────
   useEffect(() => {
     if (spotifyQuery.trim().length < 2) {
       setSpotifyResults([])
@@ -72,7 +85,7 @@ export const SongForm: React.FC<Props> = ({
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
   }, [spotifyQuery])
 
-  // ─── Reproducir preview 30s ───────────────────────────────────────────────
+// ─── Reproducir preview 30s ───────────────────────────────────────────────
   const togglePreview = useCallback((song: SpotifySong) => {
     if (!song.previewUrl) return
     if (playingId === song.spotifyId) {
@@ -94,7 +107,7 @@ export const SongForm: React.FC<Props> = ({
 
   useEffect(() => () => { audioRef.current?.pause() }, [])
 
-  // ─── Seleccionar canción → llenar todos los campos ────────────────────────
+// ─── Seleccionar canción  llenara automaticamente todos estos campos  ────────────────────────
   const handleSelectSpotify = (song: SpotifySong) => {
     if (playingId === song.spotifyId) {
       audioRef.current?.pause()
@@ -112,7 +125,7 @@ export const SongForm: React.FC<Props> = ({
     setTimeout(() => genreInputRef.current?.focus(), 100)
   }
 
-  // ─── Subir imagen ─────────────────────────────────────────────────────────
+// ─── subir imagen ─────────────────────────────────────────────────────────
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -127,7 +140,8 @@ export const SongForm: React.FC<Props> = ({
     }
   }
 
-  // ─── Subir audio ──────────────────────────────────────────────────────────
+
+// ─── Subir audio ──────────────────────────────────────────────────────────
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -145,12 +159,12 @@ export const SongForm: React.FC<Props> = ({
   return (
     <form id="song-form" onSubmit={onSubmit} className="flex flex-col md:flex-row h-full gap-6">
 
-      {/* ── COLUMNA IZQUIERDA: Portada ──────────────────────────────────── */}
+
+      {/* ── Columna izuqierada de el formulario : Portada  ──────────────────────────────────── */}
       <div className="w-full md:w-[35%] flex flex-col gap-3">
         <label className="label-form">PORTADA DEL ÁLBUM</label>
         <input type="file" ref={imageInputRef} onChange={handleImageUpload}
           accept="image/jpeg,image/png,image/webp" className="hidden" />
-
         <div
           onClick={() => !uploadingImage && imageInputRef.current?.click()}
           className={`relative aspect-square rounded-[2rem] overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 transition-all group
@@ -182,6 +196,7 @@ export const SongForm: React.FC<Props> = ({
           )}
         </div>
 
+        {/*se muestra cuando se carga la imagen y se quita cuando se cambia*/}
         {formData.coverImage && !uploadingImage && (
           <button type="button" onClick={() => onFieldChange('coverImage', '')}
             className="text-xs text-red-400 hover:text-red-600 flex items-center justify-center gap-1 transition-colors">
@@ -195,14 +210,14 @@ export const SongForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* ── COLUMNA DERECHA: Datos ──────────────────────────────────────── */}
+      {/* ── columna derecha: Datos ──────────────────────────────────── */}
       <div className="w-full md:w-[65%] space-y-5">
 
-        {/* ✅ Buscador Spotify */}
+        {/* Buscador Spotify */}
         <div>
           <label className="label-form flex items-center gap-2">
             <Sparkles size={12} className="text-green-500" />
-            BUSCAR EN SPOTIFY — AUTOCOMPLETA LOS CAMPOS
+            BUSCAR CANCION
           </label>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
@@ -217,7 +232,7 @@ export const SongForm: React.FC<Props> = ({
               className="input-form border-green-200 focus:border-green-400"
             />
 
-            {/* Dropdown resultados */}
+            {/* mostrar una lista desplegable de las canciones encontradas  */}
             {showResults && spotifyResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
@@ -227,12 +242,14 @@ export const SongForm: React.FC<Props> = ({
                   <button type="button" onClick={() => setShowResults(false)}
                     className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
                 </div>
-
+                {/* mostrar las canciones encontradas */}
                 {spotifyResults.map(song => (
                   <div key={song.spotifyId}
                     className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
                     onClick={() => handleSelectSpotify(song)}
                   >
+
+                    {/* mostrar la imagen de la cancion */}
                     {song.coverImage
                       ? <img src={song.coverImage} alt={song.title} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                       : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Music size={16} className="text-slate-400" /></div>
@@ -243,6 +260,8 @@ export const SongForm: React.FC<Props> = ({
                       <p className="text-[10px] text-slate-400 truncate">{song.album} · {song.duration}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+
+                      {/* mostrar el boton de la cancion */}
                       {song.previewUrl ? (
                         <button type="button" onClick={() => togglePreview(song)}
                           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
@@ -258,6 +277,8 @@ export const SongForm: React.FC<Props> = ({
                           <Music size={14} className="text-slate-300" />
                         </div>
                       )}
+
+                      {/* mostrar el boton de abrir en spotify */}
                       <a href={song.externalUrl} target="_blank" rel="noreferrer"
                         className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
                         title="Abrir en Spotify">
@@ -321,6 +342,8 @@ export const SongForm: React.FC<Props> = ({
                 }`}
               />
             </div>
+
+            {/* Errores de validación */}
             {errors.artist && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
                 <AlertCircle size={12}/>{errors.artist}
@@ -328,6 +351,7 @@ export const SongForm: React.FC<Props> = ({
             )}
           </div>
 
+          {/* Género */}
           <div>
             <label className="label-form">GÉNERO MUSICAL <span className="text-red-500">*</span></label>
             <div className="relative group">
@@ -347,6 +371,7 @@ export const SongForm: React.FC<Props> = ({
                 }`}
               />
             </div>
+
             {errors.genre && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
                 <AlertCircle size={12}/>{errors.genre}
@@ -403,6 +428,7 @@ export const SongForm: React.FC<Props> = ({
             )}
           </div>
 
+          {/* Dificultad */}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">Dificultad</label>
             <select name="difficulty" value={formData.difficulty} onChange={onChange}
@@ -413,6 +439,7 @@ export const SongForm: React.FC<Props> = ({
             </select>
           </div>
 
+          {/* Audio Demo */}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">Audio Demo</label>
             <input type="file" ref={audioInputRef} onChange={handleAudioUpload}

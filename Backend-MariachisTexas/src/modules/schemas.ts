@@ -106,19 +106,30 @@ const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.mp4', '.mpeg']
 
 const urlImagen = z.union([
   z.string().trim()
-  .url('URL de imagen inválida')
-  .max(500, 'URL demasiado larga')
-  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-  .refine(u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'),
+    .url('URL de imagen inválida')
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u =>
+      u.includes(CLOUDINARY) ||
+      u.includes('i.scdn.co') ||          
+      u.includes('mosaic.scdn.co') ||     
+      IMG_EXTS.some(e => u.toLowerCase().includes(e)),
+    'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'
+    ),
   z.literal(''), z.null(), z.undefined(),
 ])
 
 const urlAudio = z.union([
   z.string().trim()
-  .url('URL de audio inválida')
-  .max(500, 'URL demasiado larga')
-  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-  .refine(u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'),
+    .url('URL de audio inválida')
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u =>
+      u.includes(CLOUDINARY) ||
+      u.includes('p.scdn.co') ||       
+      AUDIO_EXTS.some(e => u.toLowerCase().includes(e)),
+    'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'
+    ),
   z.literal(''), z.null(), z.undefined(),
 ])
 
