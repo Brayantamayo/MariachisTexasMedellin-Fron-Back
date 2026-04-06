@@ -18,10 +18,12 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
   const [selectedReserva, setSelectedReserva] = useState<Reservation | null>(null);
   
   // CLIENTE EXCLUSIVO PARA VENTAS DIRECTAS
-  const EXCLUSIVE_DIRECT_CLIENT = "Cliente Directa";
+  const EXCLUSIVE_DIRECT_CLIENT_ID = 1; // ID del cliente directa creado en seed
+  const EXCLUSIVE_DIRECT_CLIENT_NAME = "Cliente Directa";
 
   const initialForm = {
       reservationId: '',
+      clienteId: '',
       clientName: '',
       concept: '',
       date: new Date().toISOString().split('T')[0],
@@ -48,7 +50,8 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
           // Asignar el Cliente Exclusivo y bloquear la reserva
           setFormData(prev => ({
               ...prev,
-              clientName: EXCLUSIVE_DIRECT_CLIENT,
+              clienteId: EXCLUSIVE_DIRECT_CLIENT_ID.toString(),
+              clientName: EXCLUSIVE_DIRECT_CLIENT_NAME,
               reservationId: '',
               amount: '',
               concept: 'Venta Directa'
@@ -58,6 +61,7 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
           // Limpiar cliente para que venga de la reserva
           setFormData(prev => ({
               ...prev,
+              clienteId: '',
               clientName: '',
               amount: '',
               concept: ''
@@ -85,6 +89,7 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
       setFormData(prev => ({
           ...prev,
           reservationId: id,
+          clienteId: found ? found.clientId : '',
           amount: saldo > 0 ? saldo.toString() : '', // Set default amount to pending balance
           clientName: found ? found.clientName : '',
           concept: found ? `Pago a Reserva #${found.id} - ${found.eventType}` : ''
@@ -96,6 +101,7 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
       onSave({
           ...formData,
           type: saleType,
+          clienteId: formData.clienteId,
           reservationId: saleType === 'Por Reserva' ? formData.reservationId : undefined
       });
   };

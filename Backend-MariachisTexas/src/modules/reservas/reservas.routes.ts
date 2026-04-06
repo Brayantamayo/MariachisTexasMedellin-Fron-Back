@@ -13,8 +13,12 @@ router.use(verifyToken)
 
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/calendario', reservaController.getCalendario)
+router.get('/abonos',     reservaController.getAbonos)
 router.get('/',           reservaController.getAll)
 router.get('/:id',        reservaController.getById)
+
+// Agregar abono — Admin, Empleado y Cliente
+router.post('/:id/abonos', requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']), reservaController.addAbono)
 
 // Crear reserva — Admin y Cliente
 router.post('/', requireRole(['ADMIN', 'CLIENTE']), reservaController.create)
