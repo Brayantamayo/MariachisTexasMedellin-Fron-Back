@@ -46,7 +46,6 @@ enum EstadoVenta {
 enum MetodoPago {
   EFECTIVO
   TRANSFERENCIA
-  TARJETA
   NEQUI
   DAVIPLATA
   OTRO
