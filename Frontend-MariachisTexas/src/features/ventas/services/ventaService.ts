@@ -28,19 +28,35 @@ export const ventaService = {
         }
     },
 
-    // Obtener reservas pendientes de pago para el select
+    // Obtener reservas pendientes de pago para el select - AHORA desde el endpoint de ventas
     getPayableReservations: async (): Promise<any[]> => {
-        const { data } = await api.get('/reservas')
-        return data.filter((r: any) => r.status !== 'ANULADA' && r.paidAmount < r.totalAmount);
+        try {
+            const { data } = await api.get('/ventas/payable/reservations')
+            return data
+        } catch (err) {
+            console.error('Error obteniendo reservas pagables:', err)
+            return []
+        }
     },
 
     // Método principal para crear venta desde el módulo de Ventas
     createSale: async (data: any): Promise<Sale> => {
+        // Normalizar método de pago
+        const methodMap: Record<string, string> = {
+            'efectivo': 'EFECTIVO',
+            'transferencia': 'TRANSFERENCIA',
+            'tarjeta': 'TARJETA',
+            'nequi': 'NEQUI',
+            'daviplata': 'DAVIPLATA',
+            'otro': 'OTRO'
+        };
+        const normalizedMethod = methodMap[String(data.method || '').toLowerCase()] || 'OTRO';
+
         // 1. Si es por reserva, actualizamos la reserva original
         if (data.type === 'Por Reserva' && data.reservationId) {
             await api.post(`/reservas/${data.reservationId}/abonos`, {
                 amount: Number(data.amount),
-                method: data.method,
+                method: normalizedMethod,
                 date: new Date().toISOString(),
                 notes: 'Generado desde módulo Ventas'
             });
@@ -55,7 +71,7 @@ export const ventaService = {
             montoTotal: Number(data.amount),
             montoPagado: Number(data.amount),
             fechaVenta: data.date,
-            metodoPago: data.method
+            metodoPago: normalizedMethod
         }
 
         const { data: newSale } = await api.post('/ventas', payload)

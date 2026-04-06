@@ -8,6 +8,9 @@ const router = Router()
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 
+// ⚠️ IMPORTANTE: Rutas más específicas ANTES de rutas con parámetros
+router.get('/payable/reservations', ventaController.getPayableReservations)
+
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/',    ventaController.getAll)
 router.get('/:id', ventaController.getById)

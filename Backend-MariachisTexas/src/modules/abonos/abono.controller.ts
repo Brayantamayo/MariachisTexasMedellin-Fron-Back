@@ -25,14 +25,23 @@ export const create = asyncHandler(async (req: AuthRequest, res: Response) => {
 })
 
 export const convertToVenta = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const reservaId = Number(Array.isArray(req.body.reservaId) ? req.body.reservaId[0] : req.body.reservaId)
-  if (!reservaId) {
-    return res.status(400).json({ message: 'Debe proporcionar el reservaId' })
+  let reservaId = req.body.reservaId
+  
+  // Manejar tanto array como valor directo
+  if (Array.isArray(reservaId)) {
+    reservaId = reservaId[0]
+  }
+  
+  reservaId = Number(reservaId)
+  
+  if (!reservaId || isNaN(reservaId)) {
+    return res.status(400).json({ message: 'Debe proporcionar un reservaId válido' })
   }
 
-  if (req.user?.rol && ['ADMIN', 'EMPLEADO'].includes(req.user.rol)) {
-    const venta = await abonoService.convertAbonosToVenta(reservaId)
-    return res.status(201).json(venta)
+  if (!req.user?.rol || !['ADMIN', 'EMPLEADO'].includes(req.user.rol)) {
+    return res.status(403).json({ message: 'No tienes permisos para convertir abonos a ventas' })
   }
-  return res.status(403).json({ message: 'No tienes permisos para convertir abonos a ventas' })
+
+  const venta = await abonoService.convertAbonosToVenta(reservaId)
+  res.status(201).json(venta)
 })

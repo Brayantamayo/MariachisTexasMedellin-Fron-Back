@@ -66,7 +66,7 @@ export const abonoService = {
       const methodKey = String(data.method ?? '').trim().toLowerCase();
       const normalizedMethod = methodMap[methodKey] || 'OTRO';
 
-      // 1. Crear abono a través del nuevo endpoint de módulo abonos
+      // 1. Crear ab ono a través del nuevo endpoint de módulo abonos
       const { data: updatedReserva } = await api.post(`/abonos`, {
           reservaId: data.reservationId,
           amount: data.amount,
@@ -86,26 +86,29 @@ export const abonoService = {
           reservationTotal: updatedReserva.totalAmount
       };
 
-      // 3. SINCRONIZACIÓN: Registrar también en el módulo de Ventas (no interrumpe el abono si falla)
-      try {
-        await ventaService.registerExternalSale({
-            date: data.date,
-            type: 'Por Reserva',
-            clientName: updatedReserva.clientName,
-            concept: `Abono a Reserva #${updatedReserva.id} (${updatedReserva.eventType})`,
-            method: normalizedMethod,
-            amount: data.amount,
-            reservationId: updatedReserva.id
-        });
-      } catch (err) {
-        console.warn('No se pudo registrar venta automática de abono:', err);
-      }
-
       return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },
 
   // Simular descarga de PDF
   downloadComprobante: async (paymentId: string): Promise<boolean> => {
       return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
+  },
+
+  // Convertir abonos a venta cuando reserva está completamente pagada
+  convertAbonosToVenta: async (reservationId: string): Promise<any> => {
+      try {
+          const numId = Number(reservationId);
+          if (!numId || isNaN(numId)) {
+              throw new Error('ID de reserva inválido');
+          }
+          
+          const { data } = await api.post('/abonos/convert-to-venta', {
+              reservaId: numId
+          });
+          return data;
+      } catch (err: any) {
+          const message = err.response?.data?.message || err.message || 'Error al convertir abonos a venta';
+          throw new Error(message);
+      }
   }
 };
