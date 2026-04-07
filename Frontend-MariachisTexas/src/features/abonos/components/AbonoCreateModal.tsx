@@ -53,7 +53,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
     }
   }, [isOpen, initialReservationId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       
       // Validación especial para monto
