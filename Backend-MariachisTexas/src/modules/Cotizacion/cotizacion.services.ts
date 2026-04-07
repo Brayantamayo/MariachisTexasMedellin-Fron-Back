@@ -290,10 +290,47 @@ export const convertirCotizacion = async (id: number) => {
   const telefono2 = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
 
   if (emailDestino) {
-    const params      = new URLSearchParams({ email: emailDestino, nombre: nombreCliente, telefono, telefono2 })
+    // ✅ Generar token seguro y guardarlo en BD
+    const { randomUUID } = await import('crypto')
+    const token = randomUUID()
+
+    await prisma.registroToken.create({
+      data: {
+        token,
+        email:     emailDestino,
+        nombre:    nombreCliente,
+        telefono,
+        telefono2: telefono2 || null,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+        usado:     false,
+      }
+    })
+
     const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-    const registerUrl = `${base}/registro?${params.toString()}`
+    const registerUrl = `${base}/registro?token=${token}` // ✅ Solo el token
     const loginUrl    = `${base}/login`
+
+    if (emailDestino) {
+    const { randomUUID } = await import('crypto')
+    const token = randomUUID()
+
+    await prisma.registroToken.create({
+      data: {
+        token,
+        email:     emailDestino,
+        nombre:    nombreCliente,
+        telefono,
+        telefono2: telefono2 || null,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        usado:     false,
+      }
+    })
+
+    const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
+    const registerUrl = `${base}/registro?token=${token}`
+    const loginUrl    = `${base}/login`
+
+    // ✅ Esto te faltó — el resto del email
     const horaInicioStr = toLocalTime(cotizacion.horaInicio)
     const horaFinStr    = toLocalTime(cotizacion.horaFin)
     const fechaStr      = cotizacion.fechaEvento.toLocaleDateString('es-CO', {
@@ -311,5 +348,8 @@ export const convertirCotizacion = async (id: number) => {
       .catch(err => console.error('Error enviando correo:', err))
   }
 
+  // ✅ Esto también te faltó — el return
   return { quotation: await getCotizacionById(id), reservationId: String(reserva.id) }
 }
+}
+

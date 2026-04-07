@@ -178,3 +178,24 @@ export const resetearPassword = async (
 
   return { message: 'Contraseña actualizada correctamente' }
 }
+////////// REGISTRO COTIZACION //////////
+
+export const getRegistroToken = async (token: string) => {
+  const registro = await prisma.registroToken.findUnique({ where: { token } })
+
+  if (!registro)                    throw new Error('Token inválido')
+  if (registro.usado)               throw new Error('Este enlace ya fue utilizado')
+  if (registro.expiresAt < new Date()) throw new Error('Este enlace ha expirado')
+
+  return {
+    email:    registro.email,
+    nombre:   registro.nombre,
+    telefono: registro.telefono,
+    telefono2: registro.telefono2 ?? '',
+  }
+}
+
+// Llama esto cuando el registro sea exitoso
+export const marcarTokenUsado = async (token: string) => {
+  await prisma.registroToken.update({ where: { token }, data: { usado: true } })
+}

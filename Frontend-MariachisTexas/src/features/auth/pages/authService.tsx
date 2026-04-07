@@ -10,8 +10,6 @@ export const authService = {
     }
   },
 
-  // nombre va al backend y se guarda en Usuario
-  // sin password en los datos de cliente — el backend lo maneja solo en Usuario
   registro: async (data: {
     nombre:               string
     apellido:             string
@@ -50,5 +48,21 @@ export const authService = {
   resetearPassword: async (email: string, otp: string, nuevaPassword: string, confirmarPassword: string) => {
     const { data } = await api.post('/auth/reset-password', { email, otp, nuevaPassword, confirmarPassword })
     return data
-  }
+  },
+
+  // ─── TOKEN DE REGISTRO (viene del correo de cotización aprobada) ──────────
+  getRegistroToken: async (token: string): Promise<{
+    email:    string
+    nombre:   string
+    telefono: string
+    telefono2: string
+  }> => {
+    const { data } = await api.get(`/auth/registro-token/${token}`)
+    return data
+  },
+
+  marcarTokenUsado: async (token: string) => {
+    const { data } = await api.patch(`/auth/registro-token/${token}/usar`)
+    return data
+  },
 }

@@ -361,3 +361,17 @@ model PasswordResetOtp {
 
   @@map("password_reset_otp")
 }
+
+model RegistroToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @default(uuid())
+  email     String
+  nombre    String
+  telefono  String
+  telefono2 String?
+  usado     Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("registro_token")
+}

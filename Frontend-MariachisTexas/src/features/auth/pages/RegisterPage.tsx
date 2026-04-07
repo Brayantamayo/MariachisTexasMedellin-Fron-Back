@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { User, Mail, Lock, Phone, MapPin, Calendar, FileText, Camera, Home, Hash, Map, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { authService } from '../pages/authService';
@@ -17,25 +17,17 @@ const PlusIcon = ({ size, className }: { size: number; className: string }) => (
 
 export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
-  // ─── Leer datos desde URL (vienen del correo de aprobación de cotización) ────
-  const urlParams     = new URLSearchParams(window.location.search)
-  const emailFromUrl  = urlParams.get('email')     || ''
-  const nombreFromUrl = urlParams.get('nombre')    || ''
-  const telFromUrl    = urlParams.get('telefono')  || ''
-  const tel2FromUrl   = urlParams.get('telefono2') || ''
-
-  const nombreParts = nombreFromUrl.trim().split(' ')
-  const nombrePre   = nombreParts[0] || ''
-  const apellidoPre = nombreParts.slice(1).join(' ') || ''
+  const [emailFromUrl, setEmailFromUrl] = useState('')
+  const tokenRef = useRef<string | null>(null) // ✅ Guarda el token antes de limpiar la URL
 
   const [formData, setFormData] = useState({
-    nombre:              nombrePre,
-    apellido:            apellidoPre,
-    tipoDocumento:       'CC',      // ✅ ya es el valor correcto para el backend
+    nombre:              '',
+    apellido:            '',
+    tipoDocumento:       'CC',
     numeroDocumento:     '',
-    email:               emailFromUrl,
-    telefono:            telFromUrl,
-    telefonoAlternativo: tel2FromUrl,
+    email:               '',
+    telefono:            '',
+    telefonoAlternativo: '',
     fechaNacimiento:     '',
     ciudad:              'Medellín',
     direccion:           '',
@@ -44,6 +36,30 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
     password:            '',
     confirmPassword:     ''
   });
+
+  // ─── Leer token desde URL y pre-llenar datos ─────────────────────────────
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    if (!token) return
+
+    tokenRef.current = token                          // ✅ Guardamos el token en ref
+    window.history.replaceState({}, '', '/registro')  // ✅ Limpiamos la URL inmediatamente
+
+    authService.getRegistroToken(token)
+      .then(data => {
+        setEmailFromUrl(data.email)
+        const partes = (data.nombre ?? '').trim().split(' ')
+        setFormData(prev => ({
+          ...prev,
+          email:               data.email,
+          nombre:              partes[0] || '',
+          apellido:            partes.slice(1).join(' ') || '',
+          telefono:            data.telefono  || '',
+          telefonoAlternativo: data.telefono2 || '',
+        }))
+      })
+      .catch(() => {})  // token inválido o expirado → formulario vacío normal
+  }, [])
 
   const [isLoading,    setIsLoading]    = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -69,7 +85,6 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
     setIsLoading(true);
     try {
-      // ✅ tipoDocumento se envía directo: 'CC', 'CE' o 'PAS' — sin conversión
       await authService.registro({
         nombre:               formData.nombre,
         apellido:             formData.apellido,
@@ -87,12 +102,17 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
         passwordConfirmation: formData.confirmPassword,
       });
 
+      // ─── Marcar token como usado usando el ref (la URL ya está limpia) ───
+      if (tokenRef.current) {
+        authService.marcarTokenUsado(tokenRef.current).catch(() => {})
+      }
+
       showNotification('¡Registro exitoso! Redirigiendo al inicio de sesión...', 'success');
       setTimeout(() => onNavigate('/login'), 2000);
 
     } catch (error: any) {
-  showNotification(getErrorMessage(error), 'error');
-  } finally {
+      showNotification(getErrorMessage(error), 'error');
+    } finally {
       setIsLoading(false);
     }
   };
