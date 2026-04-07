@@ -1,4 +1,5 @@
 
+import api from '@/shared/api/api'
 import { Payment, Reservation } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
 import { ventaService } from '../../ventas/services/ventaService';
@@ -17,23 +18,32 @@ let localPayments: EnrichedPayment[] = [];
 export const abonoService = {
   // Obtener todos los abonos enriquecidos con datos del cliente
   getAbonos: async (): Promise<EnrichedPayment[]> => {
-    const reservations = await reservaService.getReservations();
-    const abonos: EnrichedPayment[] = [];
-    
-    reservations.forEach(res => {
-        res.payments.forEach(p => {
+    try {
+      const { data } = await api.get('/abonos')
+      return data as EnrichedPayment[]
+    } catch (err) {
+      // Si /abonos falla, intentar endpoint antiguo
+      try {
+        const { data } = await api.get('/reservas/abonos')
+        return data as EnrichedPayment[]
+      } catch (_) {
+        const reservations = await reservaService.getReservations();
+        const abonos: EnrichedPayment[] = [];
+        reservations.forEach(res => {
+          res.payments.forEach(p => {
             abonos.push({
-                ...p,
-                reservationId: res.id,
-                clientId: res.clientId,
-                clientName: res.clientName,
-                reservationTotal: res.totalAmount
+              ...p,
+              reservationId: res.id,
+              clientId: res.clientId,
+              clientName: res.clientName,
+              reservationTotal: res.totalAmount
             });
+          });
         });
-    });
 
-    // Ordenar por fecha descendente
-    return abonos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return abonos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      }
+    }
   },
 
   // Obtener reservas activas para el dropdown del formulario
@@ -45,15 +55,23 @@ export const abonoService = {
 
   // Registrar nuevo abono
   createAbono: async (data: { reservationId: string, amount: number, date: string, method: string, notes?: string }): Promise<EnrichedPayment> => {
-      
-      const methodCast = data.method as any; 
+      const methodMap: Record<string, string> = {
+        transferencia: 'TRANSFERENCIA',
+        efectivo: 'EFECTIVO',
+        tarjeta: 'TARJETA',
+        nequi: 'NEQUI',
+        daviplata: 'DAVIPLATA',
+        otro: 'OTRO'
+      };
+      const methodKey = String(data.method ?? '').trim().toLowerCase();
+      const normalizedMethod = methodMap[methodKey] || 'OTRO';
 
-      // 1. Actualizar la reserva real (Saldo y Estado)
-      const updatedReserva = await reservaService.addPayment(data.reservationId, {
+      // 1. Crear ab ono a través del nuevo endpoint de módulo abonos
+      const { data: updatedReserva } = await api.post(`/abonos`, {
+          reservaId: data.reservationId,
           amount: data.amount,
-          method: methodCast,
-          date: data.date, // Usar la fecha del formulario
-          type: 'Abono Parcial',
+          method: normalizedMethod,
+          date: data.date,
           notes: data.notes
       });
 
@@ -68,22 +86,29 @@ export const abonoService = {
           reservationTotal: updatedReserva.totalAmount
       };
 
-      // 3. SINCRONIZACIÓN: Registrar también en el módulo de Ventas
-      await ventaService.registerExternalSale({
-          date: data.date,
-          type: 'Por Reserva',
-          clientName: updatedReserva.clientName,
-          concept: `Abono a Reserva #${updatedReserva.id} (${updatedReserva.eventType})`,
-          method: data.method,
-          amount: data.amount,
-          reservationId: updatedReserva.id
-      });
-      
       return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },
 
   // Simular descarga de PDF
   downloadComprobante: async (paymentId: string): Promise<boolean> => {
       return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
+  },
+
+  // Convertir abonos a venta cuando reserva está completamente pagada
+  convertAbonosToVenta: async (reservationId: string): Promise<any> => {
+      try {
+          const numId = Number(reservationId);
+          if (!numId || isNaN(numId)) {
+              throw new Error('ID de reserva inválido');
+          }
+          
+          const { data } = await api.post('/abonos/convert-to-venta', {
+              reservaId: numId
+          });
+          return data;
+      } catch (err: any) {
+          const message = err.response?.data?.message || err.message || 'Error al convertir abonos a venta';
+          throw new Error(message);
+      }
   }
 };

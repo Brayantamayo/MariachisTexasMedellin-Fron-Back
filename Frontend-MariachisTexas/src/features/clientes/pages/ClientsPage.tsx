@@ -16,6 +16,7 @@ export const ClientsPage: React.FC = () => {
     clients,
     loading,
     searchTerm, setSearchTerm,
+    pagination,
     isCreateOpen, setIsCreateOpen,
     isEditOpen, setIsEditOpen,
     isDetailOpen, setIsDetailOpen,
@@ -25,16 +26,12 @@ export const ClientsPage: React.FC = () => {
     handleCreateClient,
     handleUpdateClient,
     confirmDelete,
-    handleToggleStatus
+    handleToggleStatus,
+    fetchClients
   } = useClientsManager();
 
-  // Filtros
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    client.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.documentNumber.includes(searchTerm) ||
-    client.phone.includes(searchTerm)
-  );
+  // Filtros (ahora manejado en backend)
+  const filteredClients = clients;
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
@@ -102,10 +99,12 @@ export const ClientsPage: React.FC = () => {
         <ClientsTable 
             clients={filteredClients}
             loading={loading}
+            pagination={pagination}
             onView={(client) => { setSelectedClient(client); setIsDetailOpen(true); }}
             onEdit={(client) => { setSelectedClient(client); setIsEditOpen(true); }}
             onDelete={(id) => setDeleteModal({ isOpen: true, clientId: id })}
             onToggleStatus={handleToggleStatus}
+            onPageChange={(page) => fetchClients(page)}
         />
       </div>
 

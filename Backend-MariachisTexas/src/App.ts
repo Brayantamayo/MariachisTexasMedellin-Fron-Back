@@ -8,11 +8,15 @@ import perfilRoutes     from './modules/auth/perfil.routes'
 import serviciosRoutes  from './modules/Servicios/servicios.routes'
 import repertoireRoutes from './modules/Repertorio/Repertoire.routes'
 import spotifyRoutes from './modules/Repertorio/spotify.routes'
+import clienteRoutes    from './modules/Cliente/cliente.routes'
 
 import cotizacionRoutes from './modules/Cotizacion/cotizacion.routes'
 import reservaRoutes    from './modules/reservas/reservas.routes'
+import abonoRoutes      from './modules/abonos/abono.routes'
 import bloqueoRoutes    from './modules/Bloqueos/bloqueos.routes'
 import ensayoRoutes     from './modules/Ensayo/ensayo.routes'
+import ventasRoutes     from './modules/ventas/ventas.routes'
+import rolesRoutes      from './modules/roles/roles.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -63,10 +67,14 @@ app.use('/api/auth',         authRoutes)
 app.use('/api/servicios',    serviciosRoutes)
 app.use('/api/repertorio',   repertoireRoutes)
 app.use('/api/spotify', spotifyRoutes)
+app.use('/api/clientes',     clienteRoutes)
 app.use('/api/cotizaciones', cotizacionRoutes)
 app.use('/api/reservas',     reservaRoutes)
+app.use('/api/abonos',       abonoRoutes)
 app.use('/api/ensayos',      ensayoRoutes)
 app.use('/api/bloqueos',     bloqueoRoutes)
+app.use('/api/ventas',       ventasRoutes)
+app.use('/api/roles',        rolesRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)   // atrapa rutas inexistentes

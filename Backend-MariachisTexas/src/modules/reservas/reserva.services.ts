@@ -1,4 +1,4 @@
-import prisma from '../../config/prisma'
+  import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia } from '../../utils/date.helpers'
@@ -101,9 +101,8 @@ export const getReservasCalendario = async () => {
     clientEmail: c.cliente?.email ?? c.contactoEmail ?? '',
   }))
 
-  return [...reservasMapped, ...ensayosMapped, ...cotizacionesMapped]
+  return [...reservasMapped, ...ensayosMapped, ...cotizacionesMapped] 
 }
-
 export { getAvailableHours }
 
 // ─── OBTENER POR ID ───────────────────────────────────────────────────────────────────
@@ -405,4 +404,97 @@ export const deleteReserva = async (id: number) => {
   })
 
   return { message: 'Reserva eliminada correctamente' }
+}
+// ─── ABONOS ────────────────────────────────────────────────────────────────────
+export const getAbonos = async (usuarioId?: number) => {
+  const where: any = {}
+
+  if (usuarioId) {
+    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } })
+    if (usuario) {
+      const cliente = await prisma.cliente.findUnique({ where: { email: usuario.email } })
+      if (cliente) where.clienteId = cliente.id
+    }
+  }
+
+  const abonos = await prisma.abono.findMany({
+    where,
+    include: {
+      reserva: { include: { cotizacion: { include: { cliente: true } } } },
+      cliente: true
+    },
+    orderBy: { fechaPago: 'desc' }
+  })
+
+  return abonos.map((a: any) => ({
+    id: String(a.id),
+    amount: Number(a.monto),
+    date: a.fechaPago?.toISOString() ?? '',
+    type: 'Abono Parcial',
+    method: a.metodoPago,
+    notes: a.notas ?? '',
+    reservationId: String(a.reservaId),
+    clientId: String(a.clienteId),
+    clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
+    reservationTotal: Number(a.reserva?.totalValor ?? 0),
+    newBalance: Number(a.nuevoSaldo ?? 0)
+  }))
+}
+
+export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
+  const reserva = await prisma.reserva.findUnique({
+    where: { id: reservaId },
+    include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
+  })
+
+  if (!reserva) throw new Error('Reserva no encontrada')
+  if (reserva.estado === 'ANULADA') throw new Error('No se puede registrar abono en una reserva anulada')
+
+  const monto = Number(data.amount)
+  if (isNaN(monto) || monto <= 0) throw new Error('Monto de abono inválido')
+
+  const saldoActual = Number(reserva.saldoPendiente)
+  if (monto > saldoActual) throw new Error('El monto de abono supera el saldo pendiente')
+
+  const metodoPagoRaw = String(data.method ?? '').trim().toUpperCase()
+  const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']
+  if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new Error('Método de pago inválido')
+
+  const nuevoSaldo = Number((saldoActual - monto).toFixed(2))
+
+  const clienteId = reserva.cotizacion?.clienteId
+  if (!clienteId) throw new Error('Reserva sin cliente asociado')
+
+  await prisma.abono.create({
+    data: {
+      reservaId,
+      clienteId,
+      monto,
+      fechaPago: new Date(data.date),
+      metodoPago: metodoPagoRaw as any,
+      notas: data.notes ?? null,
+      nuevoSaldo
+    }
+  })
+
+  await prisma.reserva.update({ where: { id: reservaId }, data: { saldoPendiente: nuevoSaldo } })
+
+  // ✅ Si el saldo llega a 0, crear automáticamente la venta
+  if (nuevoSaldo <= 0.01 && !reserva.venta) {
+    const totalValor = Number(reserva.totalValor)
+    const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
+
+    await prisma.venta.create({
+      data: {
+        reservaId,
+        clienteId,
+        tipo: 'RESERVA',
+        estado: 'FINALIZADO',
+        montoTotal: totalValor,
+        montoPagado: totalAbonos,
+        fechaVenta: new Date(),
+        metodoPago: metodoPagoRaw as any
+      }
+    })
+  }
 }

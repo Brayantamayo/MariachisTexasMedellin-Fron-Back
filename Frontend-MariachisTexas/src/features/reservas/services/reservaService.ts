@@ -50,6 +50,11 @@ export const reservaService = {
     await api.delete(`/reservas/${id}`)
   },
 
+  addPayment: async (reservationId: string, payment: { amount: number; method: string; date: string; notes?: string; type?: string }): Promise<Reservation> => {
+    const { data } = await api.post(`/reservas/${reservationId}/abonos`, payment)
+    return data
+  },
+
   finalizeReservation: async (id: string): Promise<Reservation> => {
     const { data } = await api.patch(`/reservas/${id}/confirmar`)
     return data

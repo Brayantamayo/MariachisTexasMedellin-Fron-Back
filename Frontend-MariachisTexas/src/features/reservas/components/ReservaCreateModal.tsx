@@ -18,6 +18,21 @@ interface Props {
   selectedTime?: string | null;
 }
 
+// ─── HELPER: mapear cliente del backend al shape del formulario ───────────────
+// El backend devuelve: { id, apellido, email, telefonoPrincipal,
+//   telefonoAlternativo, direccion, barrio, usuario: { nombre } }
+// El frontend necesita: clientName, clientPhone, secondaryPhone,
+//   clientEmail, address, neighborhood, clientId
+const mapClienteToForm = (cliente: any) => ({
+  clientId:       String(cliente.id),
+  clientName:     `${cliente.name ?? ''} ${cliente.lastName ?? ''}`.trim() || cliente.email,
+  clientPhone:    cliente.phone          ?? '',
+  secondaryPhone: cliente.secondaryPhone ?? '',
+  clientEmail:    cliente.email          ?? '',
+  address:        cliente.address        ?? '',
+  neighborhood:   cliente.neighborhood   ?? '',
+})
+
 export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, selectedDate, selectedTime }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -25,7 +40,7 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
   const INCLUDED_SONGS       = 7;
   const PRICE_PER_EXTRA_SONG = 10000;
 
-  const initialFormState = {
+  const getInitialFormState = () => ({
     clientName:       '',
     clientPhone:      '',
     secondaryPhone:   '',
@@ -44,49 +59,60 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
     selectedServices: [] as { serviceId: string; quantity: number }[],
     totalAmount:      0,
     clientId:         ''
-  };
+  });
 
-  const [formData,       setFormData]       = useState<any>(initialFormState);
-  const [clients,        setClients]        = useState<UserType[]>([]);
+  const [formData,       setFormData]       = useState<any>(getInitialFormState());
+  const [clients,        setClients]        = useState<any[]>([]);
   const [songs,          setSongs]          = useState<Song[]>([]);
   const [services,       setServices]       = useState<any[]>([]);
   const [availableHours, setAvailableHours] = useState<string[]>([]);
   const [blockStatus,    setBlockStatus]    = useState<any>({ isBlocked: false });
 
   useEffect(() => {
-    if (isOpen) {
-      // ✅ FIX: getSongsPublic() solo trae canciones con activa = true
-      // getSongs() traía TODAS incluyendo las desactivadas por el admin
-      repertoireService.getSongsPublic().then(setSongs)
-      servicesService.getServices().then(setServices)
-      if (isAdmin) clientService.getClients().then(setClients)
+  if (!isOpen) {
+    setFormData(getInitialFormState())
+    setClients([])
+    return
+  }
 
-      const dateToUse = selectedDate || new Date().toISOString().split('T')[0]
-      const timeToUse = selectedTime || ''
+  // ✅ Reset primero
+  setFormData(getInitialFormState())
 
-      let baseState = {
-        ...initialFormState,
-        eventDate: dateToUse,
-        eventTime: timeToUse,
-        startTime: timeToUse,
-      }
+  // ✅ Una sola vez cada carga
+  repertoireService.getSongsPublic().then(setSongs)
+  servicesService.getServices().then(setServices)
 
-      // Pre-llenar datos del cliente registrado
-      if (user && !isAdmin) {
-        baseState = {
-          ...baseState,
-          clientId:       user.id,
-          clientName:     `${user.name} ${user.lastName}`.trim(),
-          clientPhone:    user.phone          || '',
-          secondaryPhone: user.secondaryPhone || '',
-          clientEmail:    user.email,
-        }
-      }
+  if (isAdmin) {
+    // ✅ Sin duplicado, con limit 100
+    clientService.getClients(1, 100).then(({ clients }) => {
+      setClients(clients)
+    })
+  }
 
-      setFormData(baseState)
-      checkBlockAndHours(dateToUse)
+  const dateToUse = selectedDate || new Date().toISOString().split('T')[0]
+  const timeToUse = selectedTime || ''
+
+  let baseState = {
+    ...getInitialFormState(),
+    eventDate: dateToUse,
+    eventTime: timeToUse,
+    startTime: timeToUse,
+  }
+
+  if (user && !isAdmin) {
+    baseState = {
+      ...baseState,
+      clientId:       String(user.id),
+      clientName:     `${user.name} ${user.lastName}`.trim(),
+      clientPhone:    user.phone          || '',
+      secondaryPhone: user.secondaryPhone || '',
+      clientEmail:    user.email,
     }
-  }, [isOpen, selectedDate, user, isAdmin])
+  }
+
+  setFormData(baseState)
+  checkBlockAndHours(dateToUse)
+}, [isOpen, selectedDate, user, isAdmin])
 
   useEffect(() => {
     if (!isOpen) return
@@ -156,22 +182,26 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
     if (name === 'eventDate') checkBlockAndHours(value)
   }
 
-  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clientId = e.target.value
-    const client   = clients.find(c => c.id === clientId)
-    if (client) {
-      setFormData((prev: any) => ({
-        ...prev,
-        clientName:     `${client.name} ${client.lastName}`,
-        clientPhone:    client.phone,
-        secondaryPhone: client.secondaryPhone || '',
-        clientEmail:    client.email,
-        address:        client.address,
-        neighborhood:   client.neighborhood,
-        clientId:       client.id
-      }))
-    }
+const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const clientId = e.target.value  // ya es string
+
+  if (!clientId) { /* ... */ return }
+
+  // Asegura comparación string vs string
+  const cliente = clients.find(c => String(c.id) === String(clientId))
+
+  if (!cliente) {
+    console.warn('Cliente no encontrado', { 
+      clientId, 
+      tipo: typeof clientId,
+      ids: clients.map(c => ({ id: c.id, tipo: typeof c.id })) // 👈 agrega este log
+    })
+    return
   }
+
+  const mapped = mapClienteToForm(cliente)
+  setFormData((prev: any) => ({ ...prev, ...mapped }))
+}
 
   const toggleSong = (songId: string) => {
     setFormData((prev: any) => {
@@ -219,7 +249,10 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
       alert('Por favor selecciona una hora.')
       return
     }
-    onSave(formData)
+    onSave({
+    ...formData,
+    clienteId: formData.clientId  // ← mapear clientId → clienteId antes de enviar
+  })
   }
 
   if (!isOpen) return null

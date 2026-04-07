@@ -53,7 +53,9 @@ export const CotizacionCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave
     if (isOpen) {
       repertoireService.getSongs().then(setSongs);
       servicesService.getServices().then(setServices);
-      if (isAdmin) clientService.getClients().then(setClients);
+      if (isAdmin) clientService.getClients(1, 1000).then(({ clients }) => setClients(clients));if (isAdmin) clientService.getClients().then((res: any) => {
+      setClients(Array.isArray(res) ? res : res.clientes ?? []);
+});
 
       let baseData = { ...initialFormState };
 
@@ -123,16 +125,16 @@ export const CotizacionCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave
   const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id     = e.target.value;
     const client = clients.find(c => c.id === id);
-    if (client) {
-      setFormData((prev: any) => ({
-        ...prev,
-        clientId:       client.id,
-        clientName:     `${client.nombre} ${client.apellido}`,
-        clientPhone:    client.telefonoPrincipal,
-        secondaryPhone: client.telefonoAlternativo || '',
-        clientEmail:    client.email,
-        location:       client.direccion
-      }));
+if (client) {
+  setFormData((prev: any) => ({
+    ...prev,
+    clientId:       client.id,
+    clientName:     `${client.name} ${client.lastName}`,  // ← campos en español que NO existen en User
+    clientPhone:    client.phone,              // ← tampoco existe
+    secondaryPhone: client.secondaryPhone || '',       // ← tampoco
+    clientEmail:    client.email,
+    location:       client.address                       // ← tampoco
+  }));
       setIsManuallyOverridden(false);
     } else {
       setFormData((prev: any) => ({ ...prev, clientId: '' }));

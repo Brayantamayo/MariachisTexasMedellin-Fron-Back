@@ -172,7 +172,7 @@ export const CotizacionForm: React.FC<Props> = ({
                   <select name="clientId" value={formData.clientId} onChange={onClientSelect}
                     className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
                     <option value="">-- Buscar en base de datos --</option>
-                    {clients.map(c => (
+                    {(clients ?? []).map(c => (
                       <option key={c.id} value={c.id}>{c.name} {c.lastName} - {c.phone}</option>
                     ))}
                   </select>

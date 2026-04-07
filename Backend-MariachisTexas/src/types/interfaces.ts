@@ -104,6 +104,30 @@ export interface BloqueoCreateInput {
 
 export interface BloqueoUpdateInput extends Partial<BloqueoCreateInput> {}
 
+// ─── VENTA ────────────────────────────────────────────────────────────────────
+export interface VentaCreateInput {
+  reservaId?:   number | null
+  clienteId:    number
+  tipo:         'RESERVA' | 'DIRECTA'
+  estado:       'CONFIRMADO' | 'FINALIZADO' | 'VENTA_DIRECTA'
+  montoTotal:   number
+  montoPagado:  number
+  fechaVenta:   string
+  metodoPago:   'EFECTIVO' | 'TRANSFERENCIA' | 'NEQUI' | 'DAVIPLATA' | 'OTRO'
+}
+
+export interface VentaUpdateInput extends Partial<VentaCreateInput> {}
+
+// ─── ROL ─────────────────────────────────────────────────────────────────────
+export interface RolCreateInput {
+  nombre:      string
+  descripcion?: string
+  estado?:     boolean
+  permisos?:   number[]
+}
+
+export interface RolUpdateInput extends Partial<RolCreateInput> {}
+
 // ─── RESPUESTAS MAPEADAS ──────────────────────────────────────────────────────
 export interface RehearsalResponse {
   id:            string
