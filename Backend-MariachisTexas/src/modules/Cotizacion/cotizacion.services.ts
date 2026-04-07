@@ -4,6 +4,7 @@ import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../sch
 import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
 import { emailCotizacionAprobada } from '../../utils/email.templates'
+import { AppError } from '../../utils/AppError'
 import type { CotizacionCreateInput, CotizacionUpdateInput, ServicioSeleccionado } from '../../types/interfaces'
 
 interface QuotationResponse {
@@ -78,8 +79,9 @@ const validarDisponibilidad = async (
   const bloqueo = await prisma.bloqueoCalendario.findFirst({
     where: { fechaInicio: { lte: horaFin }, fechaFin: { gte: horaInicio } }
   })
-  if (bloqueo) throw new Error(
-    `Fecha bloqueada: ${bloqueo.motivo?.replace(/^[A-Z_]+:/, '').split('|')[0] || 'No disponible'}`
+  if (bloqueo) throw new AppError(
+    `Fecha bloqueada: ${bloqueo.motivo?.replace(/^[A-Z_]+:/, '').split('|')[0] || 'No disponible'}`,
+    400
   )
 
   const cotActivas = await prisma.cotizacion.findMany({
@@ -91,7 +93,7 @@ const validarDisponibilidad = async (
   })
   for (const cot of cotActivas)
     if (horaInicio < cot.horaFin && horaFin > cot.horaInicio)
-      throw new Error(`Conflicto con cotización existente (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`)
+      throw new AppError(`Conflicto con cotización existente (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`, 400)
 
   const bufferInicio = new Date(horaInicio.getTime() - 60 * 60 * 1000)
   const bufferFin    = new Date(horaFin.getTime()    + 60 * 60 * 1000)
@@ -102,14 +104,14 @@ const validarDisponibilidad = async (
       cotizacion: { fechaEvento: parseLocalDate(eventDate), horaInicio: { lt: bufferFin }, horaFin: { gt: bufferInicio } }
     }
   })
-  if (reservaSolapada) throw new Error('Conflicto con una reserva existente en ese horario.')
+  if (reservaSolapada) throw new AppError('Conflicto con una reserva existente en ese horario.', 400)
 
   const ensayos = await prisma.ensayo.findMany({ where: { fechaHora: { gte: dayStart, lte: dayEnd } } })
   for (const e of ensayos) {
     const ensayoBefore = new Date(e.fechaHora.getTime() - 60 * 60 * 1000)
     const ensayoAfter  = new Date(e.fechaHora.getTime() + 60 * 60 * 1000)
     if (horaInicio < ensayoAfter && horaFin > ensayoBefore)
-      throw new Error(`Conflicto con ensayo programado a las ${toLocalTime(e.fechaHora)}`)
+      throw new AppError(`Conflicto con ensayo programado a las ${toLocalTime(e.fechaHora)}`, 400)
   }
 }
 
@@ -130,14 +132,14 @@ export const getCotizaciones = async (): Promise<QuotationResponse[]> => {
 
 export const getCotizacionById = async (id: number): Promise<QuotationResponse> => {
   const c = await prisma.cotizacion.findUnique({ where: { id }, include: cotizacionInclude })
-  if (!c) throw new Error('Cotización no encontrada')
+  if (!c) throw new AppError('Cotización no encontrada', 404)
   return mapToQuotation(c)
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const createCotizacion = async (data: CotizacionCreateInput): Promise<QuotationResponse> => {
   const parsed = CotizacionCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) || 0 })
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
   const d = parsed.data
 
@@ -188,11 +190,11 @@ export const createCotizacion = async (data: CotizacionCreateInput): Promise<Quo
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 export const updateCotizacion = async (id: number, data: CotizacionUpdateInput): Promise<QuotationResponse> => {
   const exists = await prisma.cotizacion.findUnique({ where: { id } })
-  if (!exists) throw new Error('Cotización no encontrada')
-  if (exists.estado !== 'EN_ESPERA') throw new Error('Solo se pueden editar cotizaciones en estado En Espera')
+  if (!exists) throw new AppError('Cotización no encontrada', 404)
+  if (exists.estado !== 'EN_ESPERA') throw new AppError('Solo se pueden editar cotizaciones en estado En Espera', 400)
 
   const parsed = CotizacionUpdateSchema.safeParse(data)
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
   const d          = parsed.data
   const date       = d.eventDate ?? toLocalDate(exists.fechaEvento)
@@ -249,17 +251,17 @@ export const updateCotizacion = async (id: number, data: CotizacionUpdateInput):
 // ─── ANULAR / DELETE ──────────────────────────────────────────────────────────
 export const anularCotizacion = async (id: number): Promise<QuotationResponse> => {
   const exists = await prisma.cotizacion.findUnique({ where: { id } })
-  if (!exists) throw new Error('Cotización no encontrada')
-  if (exists.estado === 'ANULADA')    throw new Error('La cotización ya está anulada')
-  if (exists.estado === 'CONVERTIDA') throw new Error('No se puede anular una cotización ya convertida')
+  if (!exists) throw new AppError('Cotización no encontrada', 404)
+  if (exists.estado === 'ANULADA')    throw new AppError('La cotización ya está anulada', 400)
+  if (exists.estado === 'CONVERTIDA') throw new AppError('No se puede anular una cotización ya convertida', 400)
   await prisma.cotizacion.update({ where: { id }, data: { estado: 'ANULADA' } })
   return getCotizacionById(id)
 }
 
 export const deleteCotizacion = async (id: number) => {
   const exists = await prisma.cotizacion.findUnique({ where: { id } })
-  if (!exists) throw new Error('Cotización no encontrada')
-  if (exists.estado !== 'ANULADA') throw new Error('Solo se pueden eliminar cotizaciones anuladas')
+  if (!exists) throw new AppError('Cotización no encontrada', 404)
+  if (exists.estado !== 'ANULADA') throw new AppError('Solo se pueden eliminar cotizaciones anuladas', 400)
   await prisma.cotizacion.delete({ where: { id } })
   return { message: 'Cotización eliminada correctamente' }
 }
@@ -267,10 +269,10 @@ export const deleteCotizacion = async (id: number) => {
 // ─── CONVERTIR ────────────────────────────────────────────────────────────────
 export const convertirCotizacion = async (id: number) => {
   const cotizacion = await prisma.cotizacion.findUnique({ where: { id }, include: cotizacionInclude })
-  if (!cotizacion) throw new Error('Cotización no encontrada')
-  if (cotizacion.estado !== 'EN_ESPERA') throw new Error('Solo se pueden convertir cotizaciones En Espera')
+  if (!cotizacion) throw new AppError('Cotización no encontrada', 404)
+  if (cotizacion.estado !== 'EN_ESPERA') throw new AppError('Solo se pueden convertir cotizaciones En Espera', 400)
   if (!cotizacion.totalEstimado || Number(cotizacion.totalEstimado) === 0)
-    throw new Error('La cotización debe tener un valor estimado para convertirse')
+    throw new AppError('La cotización debe tener un valor estimado para convertirse', 400)
 
   await prisma.cotizacion.update({ where: { id }, data: { estado: 'CONVERTIDA' } })
   const reserva = await prisma.reserva.create({

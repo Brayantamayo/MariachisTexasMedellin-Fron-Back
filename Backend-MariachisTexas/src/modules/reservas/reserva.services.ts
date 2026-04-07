@@ -447,23 +447,23 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
   })
 
-  if (!reserva) throw new Error('Reserva no encontrada')
-  if (reserva.estado === 'ANULADA') throw new Error('No se puede registrar abono en una reserva anulada')
+  if (!reserva) throw new AppError('Reserva no encontrada', 404)
+  if (reserva.estado === 'ANULADA') throw new AppError('No se puede registrar abono en una reserva anulada', 400)
 
   const monto = Number(data.amount)
-  if (isNaN(monto) || monto <= 0) throw new Error('Monto de abono inválido')
+  if (isNaN(monto) || monto <= 0) throw new AppError('Monto de abono inválido', 400)
 
   const saldoActual = Number(reserva.saldoPendiente)
-  if (monto > saldoActual) throw new Error('El monto de abono supera el saldo pendiente')
+  if (monto > saldoActual) throw new AppError('El monto de abono supera el saldo pendiente', 400)
 
   const metodoPagoRaw = String(data.method ?? '').trim().toUpperCase()
   const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']
-  if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new Error('Método de pago inválido')
+  if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new AppError('Método de pago inválido', 400)
 
   const nuevoSaldo = Number((saldoActual - monto).toFixed(2))
 
   const clienteId = reserva.cotizacion?.clienteId
-  if (!clienteId) throw new Error('Reserva sin cliente asociado')
+  if (!clienteId) throw new AppError('Reserva sin cliente asociado', 400)
 
   await prisma.abono.create({
     data: {

@@ -175,7 +175,8 @@ export const useReservasManager = () => {
       showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000);
       setIsCreateOpen(false);
     } catch (error: any) {
-      showNotification(error?.response?.data?.message || error.message || 'Error al crear reserva.', 'error');
+      // Relanzar el error para que ReservaCreateModal lo maneje
+      throw error;
     }
   };
 
@@ -189,7 +190,8 @@ export const useReservasManager = () => {
       showNotification('Reserva actualizada.');
       setIsEditOpen(false);
     } catch (error: any) {
-      showNotification(error?.response?.data?.message || 'Error al actualizar.', 'error');
+      // Relanzar el error para que ReservaEditModal lo maneje
+      throw error;
     }
   };
 
