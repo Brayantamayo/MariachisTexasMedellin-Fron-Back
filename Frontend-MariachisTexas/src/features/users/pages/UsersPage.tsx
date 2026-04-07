@@ -61,6 +61,9 @@ export const UsersPage: React.FC = () => {
         setUsers(prev => [newUser, ...prev]);
         showNotification('Usuario creado exitosamente.');
         setIsCreateOpen(false);
+        // Abrir automáticamente el modal de detalles
+        setSelectedUser(newUser);
+        setIsDetailOpen(true);
     } catch (error) {
       console.error(error);
       showNotification("Error al crear el usuario.", "error");

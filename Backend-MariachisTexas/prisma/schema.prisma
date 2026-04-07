@@ -12,6 +12,7 @@ datasource db {
 enum TipoDocumento {
   CC
   CE
+  TI
   PAS
 }
 
@@ -82,10 +83,37 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cliente Cliente? 
-  rol       Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  cliente  Cliente? 
+  empleado Empleado?
+  rol      Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
 
   @@map("usuario")
+}
+
+// ─── EMPLEADO ────────────────────────────────────────────────────────────────
+
+model Empleado {
+  id                  Int           @id @default(autoincrement())
+  usuarioId           Int           @unique
+  tipoDocumento       TipoDocumento @default(CC)
+  numeroDocumento     String        @unique
+  fechaNacimiento     DateTime
+  telefonoPrincipal   String
+  telefonoAlternativo String?
+  ciudad              String        @default("Medellín")
+  barrio              String
+  direccion           String
+  zonaServicio        ZonaServicio  @default(URBANA)
+  instrumentoPrincipal String
+  otrosInstrumentos   String?
+  anosExperiencia     Int           @default(0)
+  foto                String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("empleado")
 }
 
 model Rol {

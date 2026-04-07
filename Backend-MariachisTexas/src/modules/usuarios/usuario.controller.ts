@@ -1,43 +1,33 @@
 import { Request, Response } from 'express'
-import * as roleService from './role.services'
+import * as usuarioService from './usuario.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 
-// ─── GET EMPLEADO ROLE ID (PÚBLICO) ───────────────────────────────────────────
-export const getEmpleadoRolId = asyncHandler(async (_req: Request, res: Response) => {
-  const rolId = await roleService.getRolIdByName('EMPLEADO')
-  res.json({ rolId })
-})
-
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (_req: Request, res: Response) => {
-  res.json(await roleService.getRoles())
-})
-
-// ─── GET PERMISOS ────────────────────────────────────────────────────────────
-export const getPermisos = asyncHandler(async (_req: Request, res: Response) => {
-  res.json(await roleService.getPermisos())
+  res.json(await usuarioService.getUsuarios())
 })
 
 // ─── GET BY ID ───────────────────────────────────────────────────────────────
 export const getById = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
-  res.json(await roleService.getRolById(id))
+  res.json(await usuarioService.getUsuarioById(id))
 })
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const create = asyncHandler(async (req: AuthRequest, res: Response) => {
-  res.status(201).json(await roleService.createRol(req.body))
+  res.status(201).json(await usuarioService.createUsuario(req.body))
 })
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 export const update = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
-  res.json(await roleService.updateRol(id, req.body))
+  res.json(await usuarioService.updateUsuario(id, req.body))
 })
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 export const remove = asyncHandler(async (req: Request, res: Response) => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
-  res.json(await roleService.deleteRol(id))
+  await usuarioService.deleteUsuario(id)
+  res.status(204).send()
 })

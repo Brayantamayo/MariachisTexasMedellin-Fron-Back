@@ -107,7 +107,73 @@ async function main() {
     }
   })
 
-  console.log('✅ Usuarios creados')
+  // ─── EMPLEADOS DE PRUEBA ───────────────────────────────────
+  const carlosUser = await prisma.usuario.upsert({
+    where: { email: 'carlos@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Carlos Guitarra',
+      email:    'carlos@mariachistexas.com',
+      password: await bcrypt.hash('Empleado-123456', 10),
+      rolId:    empleado.id
+    }
+  })
+
+  const pedroUser = await prisma.usuario.upsert({
+    where: { email: 'pedro@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Pedro Trompeta',
+      email:    'pedro@mariachistexas.com',
+      password: await bcrypt.hash('Empleado-123456', 10),
+      rolId:    empleado.id
+    }
+  })
+
+  // Crear registros de empleado
+  await prisma.empleado.upsert({
+    where: { usuarioId: carlosUser.id },
+    update: {},
+    create: {
+      usuarioId: carlosUser.id,
+      tipoDocumento: 'CC',
+      numeroDocumento: '123456789',
+      fechaNacimiento: new Date('1985-05-15'),
+      telefonoPrincipal: '3001234567',
+      telefonoAlternativo: '3019876543',
+      ciudad: 'Medellín',
+      barrio: 'Laureles',
+      direccion: 'Calle 10 # 20-30',
+      zonaServicio: 'URBANA',
+      instrumentoPrincipal: 'Guitarra',
+      otrosInstrumentos: 'Violín, Piano',
+      anosExperiencia: 15,
+      foto: null
+    }
+  })
+
+  await prisma.empleado.upsert({
+    where: { usuarioId: pedroUser.id },
+    update: {},
+    create: {
+      usuarioId: pedroUser.id,
+      tipoDocumento: 'CC',
+      numeroDocumento: '987654321',
+      fechaNacimiento: new Date('1980-03-22'),
+      telefonoPrincipal: '3107654321',
+      telefonoAlternativo: null,
+      ciudad: 'Medellín',
+      barrio: 'Poblado',
+      direccion: 'Carrera 15 # 45-67',
+      zonaServicio: 'URBANA',
+      instrumentoPrincipal: 'Trompeta',
+      otrosInstrumentos: 'Saxofón',
+      anosExperiencia: 20,
+      foto: null
+    }
+  })
+
+  console.log('✅ Usuarios y empleados creados')
 
   // ─── USUARIO PARA CLIENTE DIRECTA ─────────────────────────
   await prisma.usuario.upsert({
@@ -136,6 +202,37 @@ async function main() {
       ciudad:              'Medellín',
       barrio:              'Centro',
       direccion:           'Venta Directa',
+      zonaServicio:        'URBANA',
+      activo:              true
+    }
+  })
+
+  // ─── CLIENTE DE PRUEBA ────────────────────────────────────
+  await prisma.usuario.upsert({
+    where: { email: 'cliente@mariachistexas.com' },
+    update: {},
+    create: {
+      nombre:   'Cliente Prueba',
+      email:    'cliente@mariachistexas.com',
+      password: await bcrypt.hash('Cliente-123456', 10),
+      rolId:    cliente.id
+    }
+  })
+
+  await prisma.cliente.upsert({
+    where: { email: 'cliente@mariachistexas.com' },
+    update: {},
+    create: {
+      email:               'cliente@mariachistexas.com',
+      apellido:            'Prueba',
+      tipoDocumento:       'CC',
+      numeroDocumento:     '111111111',
+      fechaNacimiento:     new Date('1990-01-01'),
+      telefonoPrincipal:   '3111111111',
+      telefonoAlternativo: null,
+      ciudad:              'Medellín',
+      barrio:              'Poblado',
+      direccion:           'Calle 123',
       zonaServicio:        'URBANA',
       activo:              true
     }

@@ -14,3 +14,4 @@ export const requireRole = (roles: string[]) => {
     next()
   }
 }
+export const roleMiddleware = requireRole

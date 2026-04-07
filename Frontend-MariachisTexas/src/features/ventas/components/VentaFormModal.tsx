@@ -18,7 +18,7 @@ export const VentaFormModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
   const [clientName, setClientName] = useState('');
   const [concept, setConcept] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [method, setMethod] = useState('Efectivo');
+  const [method, setMethod] = useState('EFECTIVO');
   const [amount, setAmount] = useState('');
 
   // Datos auxiliares
@@ -67,7 +67,7 @@ export const VentaFormModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
           clientName,
           concept,
           date,
-          method,
+          method: String(method).toUpperCase(),
           amount
       });
   };
@@ -199,10 +199,12 @@ export const VentaFormModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
                                 onChange={e => setMethod(e.target.value)}
                                 className="input-form pl-10 appearance-none cursor-pointer"
                             >
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Transferencia">Transferencia</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Nequi">Nequi</option>
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="TRANSFERENCIA">Transferencia</option>
+                                <option value="TARJETA">Tarjeta</option>
+                                <option value="NEQUI">Nequi</option>
+                                <option value="DAVIPLATA">Daviplata</option>
+                                <option value="OTRO">Otro</option>
                             </select>
                         </div>
                     </div>

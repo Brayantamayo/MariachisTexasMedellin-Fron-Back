@@ -672,6 +672,35 @@ export const RolUpdateSchema = z.object({
   permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional()
 })
 
+export const UsuarioCreateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido'),
+  email: email,
+  password: password,
+  rolId: z.number().int().positive('El ID del rol debe ser un número positivo'),
+  clienteData: z.any().optional(),
+  empleadoData: z.any().optional()
+})
+
+export const UsuarioUpdateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido')
+    .optional(),
+  email: email.optional(),
+  estado: z.boolean().optional(),
+  rolId: z.number().int().positive('El ID del rol debe ser un número positivo').optional(),
+  clienteData: z.any().optional(),
+  empleadoData: z.any().optional()
+})
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── HELPER ───────────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════

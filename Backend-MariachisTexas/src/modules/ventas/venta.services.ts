@@ -5,7 +5,7 @@ import type { VentaCreateInput, VentaUpdateInput } from '../../types/interfaces'
 const mapToSale = (v: any) => ({
   id: String(v.id),
   date: v.fechaVenta?.toISOString() ?? '',
-  type: v.tipo,
+  type: v.tipo === 'DIRECTA' ? 'Directa' : 'Por Reserva',
   clientName: v.cliente ? `${v.cliente.usuario?.nombre ?? ''} ${v.cliente.apellido ?? ''}`.trim() : '',
   clientId: String(v.clienteId),
   concept: v.reservaId ? `Reserva #${v.reservaId}` : 'Venta Directa',

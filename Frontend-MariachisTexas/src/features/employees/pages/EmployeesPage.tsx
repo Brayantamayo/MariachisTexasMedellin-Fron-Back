@@ -61,9 +61,10 @@ export const EmployeesPage: React.FC = () => {
         setEmployees(prev => [newEmp, ...prev]);
         showNotification('Nuevo empleado registrado exitosamente.');
         setIsCreateOpen(false);
-    } catch (error) {
-      console.error(error);
-      showNotification("Error al guardar el empleado.", "error");
+    } catch (error: any) {
+      console.error('Error al crear empleado:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido al guardar el empleado.';
+      showNotification(errorMessage, "error");
     }
   };
 
@@ -74,9 +75,10 @@ export const EmployeesPage: React.FC = () => {
         setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
         showNotification('Empleado actualizado exitosamente.');
         setIsEditOpen(false);
-    } catch (error) {
-        console.error(error);
-        showNotification("Error al actualizar el empleado.", "error");
+    } catch (error: any) {
+        console.error('Error al actualizar empleado:', error);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido al actualizar el empleado.';
+        showNotification(errorMessage, "error");
     }
   };
 

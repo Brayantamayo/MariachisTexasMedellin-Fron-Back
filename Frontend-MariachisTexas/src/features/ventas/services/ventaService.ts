@@ -40,7 +40,7 @@ export const ventaService = {
         if (data.type === 'Por Reserva' && data.reservationId) {
             await api.post(`/reservas/${data.reservationId}/abonos`, {
                 amount: Number(data.amount),
-                method: data.method,
+                method: String(data.method).toUpperCase(),
                 date: new Date().toISOString(),
                 notes: 'Generado desde módulo Ventas'
             });
@@ -55,7 +55,7 @@ export const ventaService = {
             montoTotal: Number(data.amount),
             montoPagado: Number(data.amount),
             fechaVenta: data.date,
-            metodoPago: data.method
+            metodoPago: String(data.method).toUpperCase()
         }
 
         const { data: newSale } = await api.post('/ventas', payload)
@@ -78,7 +78,7 @@ export const ventaService = {
             montoTotal: saleData.amount,
             montoPagado: saleData.amount,
             fechaVenta: saleData.date,
-            metodoPago: saleData.method
+            metodoPago: String(saleData.method).toUpperCase()
         }
 
         const { data } = await api.post('/ventas', payload)

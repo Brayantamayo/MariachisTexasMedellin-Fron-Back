@@ -4,11 +4,13 @@ import { createPortal } from 'react-dom';
 import {
 User, Mail, Phone, MapPin, FileText, Hash, Calendar,
 Home, Map, CheckCircle, AlertCircle, X, Loader2,
-Edit2, Save, ChevronRight, Shield
+Edit2, Save, ChevronRight, Shield, CreditCard, TrendingDown,
+TrendingUp
 } from 'lucide-react';
 import { profileService, PerfilData } from '@/shared/services/perfilservices.ts';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
+import { abonoService, EnrichedPayment } from '@/features/abonos/services/abonoService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,8 @@ const [isLoadingGet, setIsLoadingGet] = useState(true);
 const [isEditing,    setIsEditing]    = useState(false);
 const [isLoading,    setIsLoading]    = useState(false);
 const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+const [abonos,       setAbonos]       = useState<EnrichedPayment[]>([]);
+const [isLoadingAbonos, setIsLoadingAbonos] = useState(false);
 
 const [formData, setFormData] = useState({
     nombre:              '',
