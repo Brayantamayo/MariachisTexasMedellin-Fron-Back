@@ -12,9 +12,9 @@ const mapToUsuario = (u: any): UsuarioResponse => ({
   estado: u.estado,
   rolId: u.rolId,
   rol: {
-    id: u.rol.id,
-    nombre: u.rol.nombre,
-    descripcion: u.rol.descripcion
+  id: u.rol.id,
+  nombre: u.rol.nombre,
+  descripcion: u.rol.descripcion
   },
   cliente: u.cliente || undefined,
   empleado: u.empleado || undefined,
