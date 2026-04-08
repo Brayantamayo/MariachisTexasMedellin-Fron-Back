@@ -30,7 +30,7 @@ export const registrarCliente = async (data: unknown) => {
 
   const { passwordConfirmation, ...datosCliente } = parsed.data
 
-  // 2️⃣ Verificar unicidad: email (Usuario) y documento (Cliente)
+  // Verificar unicidad: email (Usuario) y documento (Cliente)
   const [correoExiste, cedulaExiste] = await Promise.all([
     prisma.usuario.findUnique({ where: { email: datosCliente.email } }),
     prisma.cliente.findUnique({ where: { numeroDocumento: datosCliente.numeroDocumento } }),
@@ -38,14 +38,14 @@ export const registrarCliente = async (data: unknown) => {
   if (correoExiste) throw new AppError('El correo ya está registrado', 409)
   if (cedulaExiste) throw new AppError('El número de documento ya está registrado', 409)
 
-  // 3️⃣ Hash de la contraseña
+  // Hash de la contraseña
   const passwordHash = await bcrypt.hash(datosCliente.password, 10)
 
-  // 4️⃣ Obtener rol CLIENTE
+  // Obtener rol CLIENTE
   const rolCliente = await prisma.rol.findUnique({ where: { nombre: 'CLIENTE' } })
   if (!rolCliente) throw new AppError('Rol CLIENTE no encontrado, ejecuta el seed', 500)
 
-  // 5️⃣ CREAR USUARIO (tabla principal)
+  // CREAR USUARIO (tabla principal)
   const usuario = await prisma.usuario.create({
     data: {
       nombre:   datosCliente.nombre,
@@ -55,7 +55,7 @@ export const registrarCliente = async (data: unknown) => {
     },
   })
 
-  // 6️⃣ CREAR CLIENTE (tabla dependiente) - Vinculado por usuarioId
+  // CREAR CLIENTE (tabla dependiente) - Vinculado por usuarioId
   const cliente = await prisma.cliente.create({
     data: {
       usuarioId:           usuario.id,                      // ← Clave: vinculación con Usuario
@@ -74,14 +74,14 @@ export const registrarCliente = async (data: unknown) => {
     },
   })
 
-  // 7️⃣ Vincular cotizaciones previas por email
+  // Vincular cotizaciones previas por email
   const cotizacionesVinculadas = await vincularCotizacionesPorEmail(cliente.email, cliente.id)
     .catch(err => {
       console.error('⚠️  Error vinculando cotizaciones:', err)
       return 0
     })
 
-  // 8️⃣ Enviar email de bienvenida
+  //  Enviar email de bienvenida
   const base = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
   const mail = emailBienvenida({
     nombre:                 usuario.nombre,
@@ -92,7 +92,7 @@ export const registrarCliente = async (data: unknown) => {
 
   await transporter.sendMail({ from: process.env.MAIL_FROM, to: usuario.email, ...mail })
 
-  // ✅ Retornar datos del usuario creado
+  // Retornar datos del usuario creado
   return {
     message: 'Registro exitoso. Inicia sesión para continuar',
     usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email },
@@ -104,12 +104,12 @@ export const registrarCliente = async (data: unknown) => {
  * Autentica un usuario y retorna JWT + datos
  * 
  * PASOS:
- * 1️⃣  Buscar USUARIO por email (incluir rol y cliente)
- * 2️⃣  Validar que usuario exista y esté activo
- * 3️⃣  Validar que password sea correcto
- * 4️⃣  Si es CLIENTE: verificar que cliente.activo = true
- * 5️⃣  Generar JWT con id, email, rol, permisos
- * 6️⃣  Retornar token + datos del usuario
+ * Buscar USUARIO por email (incluir rol y cliente)
+ * Validar que usuario exista y esté activo
+ * Validar que password sea correcto
+ * Si es CLIENTE: verificar que cliente.activo = true
+ * Generar JWT con id, email, rol, permisos
+ * Retornar token + datos del usuario
  */
 export const login = async (email: string, password: string) => {
   // 1️⃣ Buscar USUARIO (tabla principal) include relaciones
@@ -121,20 +121,20 @@ export const login = async (email: string, password: string) => {
     },
   })
 
-  // 2️⃣ Validar que usuario existe y está activo
+  // Validar que usuario existe y está activo
   if (!usuario || !usuario.estado) throw new AppError('Credenciales inválidas', 401)
 
-  // 3️⃣ Validar contraseña
+  // Validar contraseña
   const passwordValido = await bcrypt.compare(password, usuario.password)
   if (!passwordValido) throw new AppError('Credenciales inválidas', 401)
 
-  // 4️⃣ Si es CLIENTE: verificar que cliente existe y está activo
+  //Si es CLIENTE: verificar que cliente existe y está activo
   if (usuario.rol.nombre === 'CLIENTE') {
     if (!usuario.cliente || !usuario.cliente.activo)
       throw new AppError('Se requiere verificación del cliente. Contacta al soporte.', 401)
   }
 
-  // 5️⃣ Generar JWT
+  //  Generar JWT
   const permisos = usuario.rol.rolPermisos.map(rp => rp.permiso.nombre)
   const token    = jwt.sign(
     { id: usuario.id, email: usuario.email, rol: usuario.rol.nombre, permisos },
@@ -142,7 +142,7 @@ export const login = async (email: string, password: string) => {
     { expiresIn: '8h' }
   )
 
-  // 6️⃣ Retornar token + datos del usuario
+  //Retornar token + datos del usuario
   return {
     token,
     usuario: {
@@ -220,12 +220,12 @@ export const verificarOtp = async (email: string, otp: string) => {
  * Cambia la contraseña del usuario después de verificar OTP
  * 
  * PASOS:
- * 1️⃣  Validar datos con ResetPasswordSchema
- * 2️⃣  Verificar que OTP sea válido y no haya expirado
- * 3️⃣  Buscar usuario por email
- * 4️⃣  Validar que nueva contraseña sea diferente de la actual
- * 5️⃣  Hashear nueva contraseña
- * 6️⃣  Actualizar contraseña en USUARIO y marcar OTP como usado
+ * Validar datos con ResetPasswordSchema
+ * Verificar que OTP sea válido y no haya expirado
+ * Buscar usuario por email
+ * Validar que nueva contraseña sea diferente de la actual
+ * Hashear nueva contraseña
+ * Actualizar contraseña en USUARIO y marcar OTP como usado
  */
 export const resetearPassword = async (
   email:             string,
@@ -233,11 +233,11 @@ export const resetearPassword = async (
   nuevaPassword:     string,
   confirmarPassword: string
 ) => {
-  // 1️⃣ Validar datos con Zod
+  // Validar datos con Zod
   const parsed = ResetPasswordSchema.safeParse({ email, otp, nuevaPassword, confirmarPassword })
   if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
-  // 2️⃣ Verificar que OTP sea válido y no haya expirado
+  // Verificar que OTP sea válido y no haya expirado
   const registro = await prisma.passwordResetOtp.findFirst({
     where: {
       email,
@@ -248,18 +248,18 @@ export const resetearPassword = async (
   })
   if (!registro) throw new AppError('El código es inválido o ha expirado.', 400)
 
-  // 3️⃣ Buscar USUARIO
+  // Buscar USUARIO
   const usuario = await prisma.usuario.findUnique({ where: { email } })
   if (!usuario) throw new AppError('Usuario no encontrado', 404)
 
-  // 4️⃣ Validar que nueva contraseña sea diferente de la actual
+  // Validar que nueva contraseña sea diferente de la actual
   const mismaPassword = await bcrypt.compare(nuevaPassword, usuario.password)
   if (mismaPassword) throw new AppError('La nueva contraseña no puede ser igual a la actual', 400)
 
-  // 5️⃣ Hashear nueva contraseña
+  // Hashear nueva contraseña
   const passwordHash = await bcrypt.hash(nuevaPassword, 10)
 
-  // 6️⃣ Actualizar contraseña y marcar OTP como usado
+  // Actualizar contraseña y marcar OTP como usado
   await Promise.all([
     prisma.usuario.update({
       where: { email },
