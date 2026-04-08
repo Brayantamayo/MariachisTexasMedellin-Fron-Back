@@ -85,7 +85,18 @@ export const ventaService = {
         return data
     },
 
-    downloadInvoice: async (saleId: string): Promise<boolean> => {
-        return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
+    downloadInvoice: async (saleId: string): Promise<void> => {
+        const response = await api.get(`/ventas/${saleId}/download/pdf`, {
+            responseType: 'blob'
+        });
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `factura-${saleId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
     }
 };

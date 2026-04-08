@@ -8,6 +8,7 @@ import { ventaService } from '../../ventas/services/ventaService';
 export interface EnrichedPayment extends Payment {
     reservationId: string;
     clientId?: string;
+    clientEmail?: string;
     clientName: string;
     reservationTotal: number;
 }
@@ -35,6 +36,7 @@ export const abonoService = {
               ...p,
               reservationId: res.id,
               clientId: res.clientId,
+              clientEmail: res.clientEmail,
               clientName: res.clientName,
               reservationTotal: res.totalAmount
             });
@@ -82,6 +84,7 @@ export const abonoService = {
           ...lastPayment,
           reservationId: updatedReserva.id,
           clientId: updatedReserva.clientId,
+          clientEmail: updatedReserva.clientEmail,
           clientName: updatedReserva.clientName,
           reservationTotal: updatedReserva.totalAmount
       };
@@ -104,8 +107,19 @@ export const abonoService = {
       return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },
 
-  // Simular descarga de PDF
-  downloadComprobante: async (paymentId: string): Promise<boolean> => {
-      return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
+  // Descargar comprobante de abono
+  downloadComprobante: async (paymentId: string): Promise<void> => {
+    const response = await api.get(`/abonos/${paymentId}/download/pdf`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `abono-${paymentId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   }
 };

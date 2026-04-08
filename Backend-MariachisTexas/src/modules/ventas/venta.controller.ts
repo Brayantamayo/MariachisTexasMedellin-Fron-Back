@@ -73,3 +73,45 @@ export const downloadPdf = asyncHandler(async (req: AuthRequest, res: Response) 
 
   doc.end()
 })
+
+export const downloadVentaPdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const rol = req.user?.rol
+  let ventas: any[]
+  if (rol && ROLES_ADMIN.includes(rol)) {
+    ventas = await ventaService.getVentas()
+  } else {
+    const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+    ventas = await ventaService.getVentas(usuarioId)
+  }
+  const venta = ventas.find(v => v.id === id)
+
+  if (!venta) {
+    return res.status(404).json({ message: 'Venta no encontrada' })
+  }
+
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="factura-${id}.pdf"`)
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Factura de Venta', { align: 'center' })
+  doc.moveDown()
+
+  doc.fontSize(12).text(`Cliente: ${venta.clientName}`)
+  doc.moveDown(0.5)
+  doc.text(`Concepto: ${venta.concept}`)
+  doc.moveDown(0.5)
+  doc.text(`Monto: $${venta.amount}`)
+  doc.moveDown(0.5)
+  doc.text(`Fecha: ${venta.date}`)
+  doc.moveDown(0.5)
+  doc.text(`Método: ${venta.method}`)
+  doc.moveDown(0.5)
+  if (venta.reservationId) {
+    doc.text(`Reserva ID: ${venta.reservationId}`)
+    doc.moveDown(0.5)
+  }
+
+  doc.end()
+})

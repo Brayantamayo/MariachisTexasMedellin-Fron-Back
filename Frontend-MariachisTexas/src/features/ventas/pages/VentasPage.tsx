@@ -62,6 +62,7 @@ export const VentasPage: React.FC = () => {
                       type: 'Por Reserva',
                       clientName: r.clientName,
                       clientId: r.clientId,
+                      clientEmail: r.clientEmail,
                       concept: `Servicio: ${r.eventType} (#${r.id})`,
                       method: r.payments[r.payments.length - 1].method, // Método del último pago
                       amount: r.paidAmount, // Monto total pagado hasta ahora
@@ -85,6 +86,7 @@ export const VentasPage: React.FC = () => {
       // FILTRO DE SEGURIDAD: Si es cliente, solo ve sus compras
       if (user && user.role === UserRole.CLIENTE) {
           combinedData = combinedData.filter(s => 
+              s.clientEmail?.toLowerCase() === user.email.toLowerCase() ||
               s.clientId === user.id || 
               s.clientName.toLowerCase().includes(user.name.toLowerCase())
           );
@@ -136,6 +138,32 @@ export const VentasPage: React.FC = () => {
       } catch (error) {
           showNotification('Error al descargar.', 'error');
       }
+  };
+
+  const handleDownloadPdf = async () => {
+    showNotification('Generando PDF de ventas...', 'success');
+    try {
+      const response = await fetch('/api/ventas/download/pdf', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al descargar PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ventas.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showNotification('PDF descargado correctamente.');
+    } catch (error) {
+      console.error(error);
+      showNotification('Error al descargar PDF.', 'error');
+    }
   };
 
   const handleSaveAbono = async (data: any) => {

@@ -58,3 +58,39 @@ export const downloadPdf = asyncHandler(async (req: AuthRequest, res: Response) 
 
   doc.end()
 })
+
+export const downloadAbonoPdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  const abonos = await abonoService.getAbonos(req.user?.rol === 'CLIENTE' ? usuarioId : undefined)
+  const abono = abonos.find(a => a.id === id)
+
+  if (!abono) {
+    return res.status(404).json({ message: 'Abono no encontrado' })
+  }
+
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="abono-${id}.pdf"`)
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Comprobante de Abono', { align: 'center' })
+  doc.moveDown()
+
+  doc.fontSize(12).text(`Cliente: ${abono.clientName}`)
+  doc.moveDown(0.5)
+  doc.text(`Monto: $${abono.amount}`)
+  doc.moveDown(0.5)
+  doc.text(`Fecha: ${abono.date}`)
+  doc.moveDown(0.5)
+  doc.text(`Método: ${abono.method}`)
+  doc.moveDown(0.5)
+  doc.text(`Reserva ID: ${abono.reservationId}`)
+  doc.moveDown(0.5)
+  if (abono.notes) {
+    doc.text(`Notas: ${abono.notes}`)
+    doc.moveDown(0.5)
+  }
+
+  doc.end()
+})
