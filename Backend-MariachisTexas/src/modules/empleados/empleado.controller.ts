@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import * as empleadoService from './empleado.services'
+import { EmpleadoCreateSchema, zodError } from '../schemas'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 
@@ -16,34 +17,19 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const create = asyncHandler(async (req: AuthRequest, res: Response) => {
-  // Validar campos requeridos adicionales
-  const data = req.body
-
-  if (!data.numeroDocumento) {
-    return res.status(400).json({ message: 'Número de documento es requerido' })
+  // Validar con Zod schema
+  const parsed = EmpleadoCreateSchema.safeParse(req.body)
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors
+    const firstError = Object.entries(fieldErrors)[0]
+    if (firstError) {
+      const [field, errors] = firstError
+      return res.status(400).json({ message: `${field}: ${errors[0]}` })
+    }
+    return res.status(400).json({ message: 'Datos inválidos. Verifique los campos requeridos.' })
   }
 
-  if (!data.fechaNacimiento) {
-    return res.status(400).json({ message: 'Fecha de nacimiento es requerida' })
-  }
-
-  if (!data.telefonoPrincipal) {
-    return res.status(400).json({ message: 'Teléfono principal es requerido' })
-  }
-
-  if (!data.barrio) {
-    return res.status(400).json({ message: 'Barrio es requerido' })
-  }
-
-  if (!data.direccion) {
-    return res.status(400).json({ message: 'Dirección es requerida' })
-  }
-
-  if (!data.instrumentoPrincipal) {
-    return res.status(400).json({ message: 'Instrumento principal es requerido' })
-  }
-
-  res.status(201).json(await empleadoService.createEmpleado(data))
+  res.status(201).json(await empleadoService.createEmpleado(req.body))
 })
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────

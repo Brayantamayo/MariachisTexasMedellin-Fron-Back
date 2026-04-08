@@ -2,6 +2,7 @@ import prisma from '../../config/prisma'
 import { UsuarioCreateSchema, UsuarioUpdateSchema, zodError } from '../schemas'
 import type { UsuarioCreateInput, UsuarioUpdateInput, UsuarioResponse } from '../../types/interfaces'
 import bcrypt from 'bcryptjs'
+import { AppError } from '../../utils/AppError'
 
 // ─── INTERFACES PARA EMPLEADO ────────────────────────────────────────────────
 interface EmpleadoCreateInput {
@@ -69,7 +70,7 @@ const getEmpleadoRolId = async (): Promise<number> => {
   const rol = await prisma.rol.findUnique({
     where: { nombre: 'EMPLEADO' }
   })
-  if (!rol) throw new Error('Rol EMPLEADO no encontrado')
+  if (!rol) throw new AppError('Rol EMPLEADO no encontrado', 404)
   return rol.id
 }
 
@@ -103,7 +104,7 @@ export const getEmpleadoById = async (id: number): Promise<any> => {
     }
   })
 
-  if (!empleado) throw new Error('Empleado no encontrado')
+  if (!empleado) throw new AppError('Empleado no encontrado', 404)
 
   return mapToEmpleado(empleado)
 }
@@ -116,13 +117,13 @@ export const createEmpleado = async (data: EmpleadoCreateInput): Promise<any> =>
   const existingUser = await prisma.usuario.findUnique({
     where: { email: data.email }
   })
-  if (existingUser) throw new Error('El email ya está registrado')
+  if (existingUser) throw new AppError('El email ya está registrado', 409)
 
   // Verificar si el documento ya existe
   const existingDoc = await prisma.empleado.findUnique({
     where: { numeroDocumento: data.numeroDocumento }
   })
-  if (existingDoc) throw new Error('El número de documento ya está registrado')
+  if (existingDoc) throw new AppError('El número de documento ya está registrado', 409)
 
   // Hash de la contraseña
   const hashedPassword = await bcrypt.hash(data.password, 10)
@@ -185,7 +186,7 @@ export const updateEmpleado = async (id: number, data: EmpleadoUpdateInput): Pro
       }
     }
   })
-  if (!existing) throw new Error('Empleado no encontrado')
+  if (!existing) throw new AppError('Empleado no encontrado', 404)
 
   // Actualizar en transacción
   const result = await prisma.$transaction(async (tx) => {
@@ -251,7 +252,7 @@ export const deleteEmpleado = async (id: number): Promise<void> => {
       }
     }
   })
-  if (!existing) throw new Error('Empleado no encontrado')
+  if (!existing) throw new AppError('Empleado no encontrado', 404)
 
   // Eliminar en transacción (primero empleado, luego usuario por FK)
   await prisma.$transaction(async (tx) => {

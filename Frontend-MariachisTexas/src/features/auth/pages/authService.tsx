@@ -25,6 +25,7 @@ export const authService = {
     zonaServicio:         string
     password:             string
     passwordConfirmation: string
+    foto?:                string  // ← URL de Cloudinary
   }) => {
     const { data: res } = await api.post('/auth/registro', data)
     return res

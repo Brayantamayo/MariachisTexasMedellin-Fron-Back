@@ -2,6 +2,7 @@ import prisma from '../../config/prisma'
 import { UsuarioCreateSchema, UsuarioUpdateSchema, zodError } from '../schemas'
 import type { UsuarioCreateInput, UsuarioUpdateInput, UsuarioResponse } from '../../types/interfaces'
 import bcrypt from 'bcryptjs'
+import { AppError } from '../../utils/AppError'
 
 // ─── MAPEAR A USUARIO RESPONSE ───────────────────────────────────────────────
 const mapToUsuario = (u: any): UsuarioResponse => ({
@@ -46,7 +47,7 @@ export const getUsuarioById = async (id: number): Promise<UsuarioResponse> => {
     }
   })
 
-  if (!usuario) throw new Error('Usuario no encontrado')
+  if (!usuario) throw new AppError('Usuario no encontrado', 404)
 
   return mapToUsuario(usuario)
 }
@@ -54,7 +55,16 @@ export const getUsuarioById = async (id: number): Promise<UsuarioResponse> => {
 // ─── CREAR USUARIO ───────────────────────────────────────────────────────────
 export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioResponse> => {
   const parsed = UsuarioCreateSchema.safeParse(data)
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) {
+    // Obtener el primer error específico del campo
+    const fieldErrors = parsed.error.flatten().fieldErrors
+    const firstError = Object.entries(fieldErrors)[0]
+    if (firstError) {
+      const [field, errors] = firstError
+      throw new AppError(`${field}: ${errors[0]}`, 400)
+    }
+    throw new AppError('Datos inválidos. Verifique los campos requeridos.', 400)
+  }
 
   const { password, clienteData, empleadoData, ...d } = parsed.data
 
@@ -62,13 +72,13 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
   const existing = await prisma.usuario.findUnique({
     where: { email: d.email }
   })
-  if (existing) throw new Error('El email ya está registrado')
+  if (existing) throw new AppError('El email ya está registrado', 409)
 
   // Verificar si el rol existe
   const rol = await prisma.rol.findUnique({
     where: { id: d.rolId }
   })
-  if (!rol) throw new Error('Rol no encontrado')
+  if (!rol) throw new AppError('Rol no encontrado', 404)
 
   // Hash de la contraseña
   const hashedPassword = await bcrypt.hash(password, 10)
@@ -126,7 +136,7 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
 // ─── ACTUALIZAR USUARIO ──────────────────────────────────────────────────────
 export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promise<UsuarioResponse> => {
   const parsed = UsuarioUpdateSchema.safeParse(data)
-  if (!parsed.success) throw new Error(zodError(parsed.error))
+  if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
   const { clienteData, empleadoData, ...d } = parsed.data
 
@@ -135,14 +145,14 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
     where: { id },
     include: { rol: true, cliente: true, empleado: true }
   })
-  if (!existing) throw new Error('Usuario no encontrado')
+  if (!existing) throw new AppError('Usuario no encontrado', 404)
 
   // Si se actualiza email, verificar que no exista
   if (d.email && d.email !== existing.email) {
     const emailExists = await prisma.usuario.findUnique({
       where: { email: d.email }
     })
-    if (emailExists) throw new Error('El email ya está registrado')
+    if (emailExists) throw new AppError('El email ya está registrado', 409)
   }
 
   // Si se actualiza rolId, verificar que exista
@@ -150,7 +160,7 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
     const rol = await prisma.rol.findUnique({
       where: { id: d.rolId }
     })
-    if (!rol) throw new Error('Rol no encontrado')
+    if (!rol) throw new AppError('Rol no encontrado', 404)
   }
 
   // Actualizar en transacción
@@ -196,7 +206,7 @@ export const deleteUsuario = async (id: number): Promise<void> => {
   const existing = await prisma.usuario.findUnique({
     where: { id }
   })
-  if (!existing) throw new Error('Usuario no encontrado')
+  if (!existing) throw new AppError('Usuario no encontrado', 404)
 
   await prisma.usuario.delete({
     where: { id }

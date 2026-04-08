@@ -1,33 +1,24 @@
 import prisma from '../../config/prisma'
 import { TipoDocumento, ZonaServicio } from '../../generated/prisma'
 import { AppError } from '../../utils/AppError'
-import { z } from 'zod'
+import { ClienteCreateSchema, ClienteUpdateSchema } from '../schemas'
 
-// ─── ESQUEMAS ─────────────────────────────────────────────────────────────────
-
-const ClienteCreateSchema = z.object({
-  email: z.string().email('Email inválido').toLowerCase().trim(),
-  apellido: z.string().trim().min(2, 'Apellido requerido'),
-  tipoDocumento: z.enum(['CC', 'CE', 'PAS']),
-  numeroDocumento: z.string().trim().regex(/^\d{6,12}$/, 'Documento inválido'),
-  fechaNacimiento: z.string().refine(d => !isNaN(Date.parse(d)), 'Fecha inválida'),
-  telefonoPrincipal: z.string().trim().regex(/^3\d{9}$/, 'Teléfono inválido'),
-  telefonoAlternativo: z.string().optional(),
-  ciudad: z.string().trim().min(2, 'Ciudad requerida'),
-  barrio: z.string().trim().min(2, 'Barrio requerido'),
-  direccion: z.string().trim().min(5, 'Dirección requerida'),
-  zonaServicio: z.enum(['URBANA', 'RURAL']),
-  foto: z.string().url().optional(),
-})
-
-const ClienteUpdateSchema = ClienteCreateSchema.partial()
 
 // ─── FUNCIONES ───────────────────────────────────────────────────────────────
 
 // Registrar cliente (sin usuario, para admin)
 export const crearCliente = async (data: unknown) => {
   const parsed = ClienteCreateSchema.safeParse(data)
-  if (!parsed.success) throw new AppError('Datos inválidos', 400)
+  if (!parsed.success) {
+    // Obtener el primer error específico del campo
+    const fieldErrors = parsed.error.flatten().fieldErrors
+    const firstError = Object.entries(fieldErrors)[0]
+    if (firstError) {
+      const [field, errors] = firstError
+      throw new AppError(`${field}: ${errors[0]}`, 400)
+    }
+    throw new AppError('Datos inválidos. Verifique los campos requeridos.', 400)
+  }
 
   const { email, numeroDocumento } = parsed.data
 
