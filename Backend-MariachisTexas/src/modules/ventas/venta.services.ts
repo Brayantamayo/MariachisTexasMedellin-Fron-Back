@@ -8,6 +8,7 @@ const mapToSale = (v: any) => ({
   type: v.tipo === 'DIRECTA' ? 'Directa' : 'Por Reserva',
   clientName: v.cliente ? `${v.cliente.usuario?.nombre ?? ''} ${v.cliente.apellido ?? ''}`.trim() : '',
   clientId: String(v.clienteId),
+  clientEmail: v.cliente?.email ?? '',
   concept: v.reservaId ? `Reserva #${v.reservaId}` : 'Venta Directa',
   method: v.metodoPago,
   amount: Number(v.montoTotal),

@@ -11,6 +11,7 @@ router.use(verifyToken)
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/',    ventaController.getAll)
 router.get('/:id', ventaController.getById)
+router.get('/download/pdf', ventaController.downloadPdf)
 
 // Crear — Admin y Empleado
 router.post('/', requireRole(['ADMIN', 'EMPLEADO']), ventaController.create)

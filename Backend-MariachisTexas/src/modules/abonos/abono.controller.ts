@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as abonoService from './abono.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
+import PDFDocument from 'pdfkit'
 
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO', 'CLIENTE']
 
@@ -35,4 +36,25 @@ export const convertToVenta = asyncHandler(async (req: AuthRequest, res: Respons
     return res.status(201).json(venta)
   }
   return res.status(403).json({ message: 'No tienes permisos para convertir abonos a ventas' })
+})
+
+// ─── DOWNLOAD PDF ─────────────────────────────────────────────────────────────
+export const downloadPdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  const abonos = await abonoService.getAbonos(req.user?.rol === 'CLIENTE' ? usuarioId : undefined)
+
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', 'attachment; filename="abonos.pdf"')
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Reporte de Abonos', { align: 'center' })
+  doc.moveDown()
+
+  abonos.forEach((abono, index) => {
+    doc.fontSize(12).text(`${index + 1}. ${abono.clientName} - $${abono.amount} - ${abono.date} - Reserva #${abono.reservationId}`)
+    doc.moveDown(0.5)
+  })
+
+  doc.end()
 })
