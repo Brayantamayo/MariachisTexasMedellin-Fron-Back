@@ -181,7 +181,6 @@ export const ClientFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, init
                                 <select name="documentType" disabled={isViewOnly} value={formData.documentType} onChange={handleChange} className="input-form focus:border-emerald-400 focus:shadow-emerald-100 appearance-none cursor-pointer">
                                     <option value="CC">Cédula de Ciudadanía</option>
                                     <option value="CE">Cédula de Extranjería</option>
-                                    <option value="TI">Tarjeta Identidad</option>
                                     <option value="PAS">Pasaporte</option>
                                 </select>
                             </div>

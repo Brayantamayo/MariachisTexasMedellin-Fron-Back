@@ -29,7 +29,7 @@ const app = express()
 app.use(helmet())
 
 app.use(cors({
-  origin:         'http://localhost:3001',
+  origin:         ['http://localhost:3001', 'http://localhost:3002'],
   methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))

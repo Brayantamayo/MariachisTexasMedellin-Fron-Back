@@ -57,11 +57,13 @@ export const useClientsManager = () => {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchTerm.trim()) {
+      // Solo buscar si query tiene 2+ caracteres, sino mostrar todos
+      if (searchTerm.trim().length >= 2) {
         fetchClients(1, searchTerm);
-      } else {
+      } else if (searchTerm.trim().length === 0) {
         fetchClients(1);
       }
+      // Si tiene 1 carácter, no hacer nada (esperar a que escriban más)
     }, 500);
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);

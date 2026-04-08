@@ -25,6 +25,10 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('') // limpiar error anterior
+    if (!email.trim() || !password.trim()) {
+      setError('Por favor, ingresa tu correo y contraseña.')
+      return
+    }
     const success = await login(email, password);
     if (!success) {
       setError('Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.')

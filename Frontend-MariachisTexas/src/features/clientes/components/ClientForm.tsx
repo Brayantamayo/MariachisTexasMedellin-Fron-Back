@@ -113,7 +113,6 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                             >
                                 <option value="CC">Cédula de Ciudadanía</option>
                                 <option value="CE">Cédula de Extranjería</option>
-                                <option value="TI">Tarjeta Identidad</option>
                                 <option value="PAS">Pasaporte</option>
                             </select>
                         </div>
