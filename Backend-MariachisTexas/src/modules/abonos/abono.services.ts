@@ -7,6 +7,7 @@ export const getAbonos = async (usuarioId?: number) => {
 }
 
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
+  // Crear el abono normalmente
   return reservaService.createAbono(reservaId, data)
 }
 
@@ -48,8 +49,8 @@ export const convertAbonosToVenta = async (reservaId: number): Promise<any> => {
     clienteId: reserva.cotizacion.cliente.id,
     tipo: 'RESERVA',
     estado: 'FINALIZADO',
-    montoTotal: totalValor,
-    montoPagado: montoPagado,
+    montoTotal: Number(totalValor),
+    montoPagado: Number(montoPagado),
     fechaVenta: new Date().toISOString().split('T')[0],
     metodoPago
   })

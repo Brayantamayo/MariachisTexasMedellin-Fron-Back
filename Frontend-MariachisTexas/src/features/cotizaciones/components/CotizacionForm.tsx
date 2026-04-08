@@ -1,7 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+
+export interface CotizacionFormErrors {
+  clientName?:  string
+  clientPhone?: string
+  clientEmail?: string
+  startTime?:   string
+  baseService?: string
+  location?:    string
+}
 
 interface Props {
   formData: any;
@@ -13,6 +22,8 @@ interface Props {
   songs: Song[];
   services: Service[];
   availableHours?: string[];
+  fieldErrors?: CotizacionFormErrors;
+  isSaving?:    boolean;
   blockStatus?: {
     isBlocked: boolean;
     reason?: string;
@@ -34,6 +45,7 @@ export const CotizacionForm: React.FC<Props> = ({
   clients, songs, services,
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
+  fieldErrors = {} as CotizacionFormErrors, isSaving = false,
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
 }) => {
   const [searchTerm,      setSearchTerm]      = useState('');
@@ -172,7 +184,7 @@ export const CotizacionForm: React.FC<Props> = ({
                   <select name="clientId" value={formData.clientId} onChange={onClientSelect}
                     className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
                     <option value="">-- Buscar en base de datos --</option>
-                    {clients.map(c => (
+                    {(clients ?? []).map(c => (
                       <option key={c.id} value={c.id}>{c.name} {c.lastName} - {c.phone}</option>
                     ))}
                   </select>
@@ -189,25 +201,51 @@ export const CotizacionForm: React.FC<Props> = ({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Nombre Completo */}
               <div>
                 <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
-                <input type="text" name="clientName" required
+                <input
+                  type="text"
+                  name="clientName"
+                  required
                   value={formData.clientName || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={isEditing ? lockedInputClass : inputClass}
-                  placeholder="Tu nombre completo" />
+                  className={`${isEditing ? lockedInputClass : inputClass} ${
+                    fieldErrors.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                  }`}
+                  placeholder="Tu nombre completo"
+                />
+                {fieldErrors.clientName && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                    <AlertCircle size={12} /> {fieldErrors.clientName}
+                  </p>
+                )}
               </div>
+
+              {/* Teléfono Principal */}
               <div>
                 <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
-                <input type="tel" name="clientPhone" required
+                <input
+                  type="tel"
+                  name="clientPhone"
+                  required
                   value={formData.clientPhone || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={isEditing ? lockedInputClass : inputClass}
-                  placeholder="Ej: 300 123 4567" />
+                  className={`${isEditing ? lockedInputClass : inputClass} ${
+                    fieldErrors.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                  }`}
+                  placeholder="Ej: 300 123 4567"
+                />
+                {fieldErrors.clientPhone && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                    <AlertCircle size={12} /> {fieldErrors.clientPhone}
+                  </p>
+                )}
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
                 <label className={labelClass}>Teléfono Secundario</label>
@@ -218,14 +256,27 @@ export const CotizacionForm: React.FC<Props> = ({
                   className={isEditing ? lockedInputClass : inputClass}
                   placeholder="Opcional" />
               </div>
+
+              {/* Correo Electrónico */}
               <div>
                 <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
-                <input type="email" name="clientEmail" required
+                <input
+                  type="email"
+                  name="clientEmail"
+                  required
                   value={formData.clientEmail || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={isEditing ? lockedInputClass : inputClass}
-                  placeholder="tucorreo@ejemplo.com" />
+                  className={`${isEditing ? lockedInputClass : inputClass} ${
+                    fieldErrors.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                  }`}
+                  placeholder="tucorreo@ejemplo.com"
+                />
+                {fieldErrors.clientEmail && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                    <AlertCircle size={12} /> {fieldErrors.clientEmail}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -281,7 +332,6 @@ export const CotizacionForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
-                {/* ✅ Tipos de evento desde constante centralizada en @/types */}
                 <select name="eventType" value={formData.eventType} onChange={onChange}
                   className={`${inputClass} appearance-none cursor-pointer`}>
                   {TIPOS_EVENTO.map(tipo => (
@@ -301,7 +351,11 @@ export const CotizacionForm: React.FC<Props> = ({
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
                     <select name="startTime" required value={formData.startTime} onChange={onChange}
-                      className="w-full bg-white border border-orange-200 text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 cursor-pointer text-slate-700 appearance-none font-medium">
+                      className={`w-full bg-white border text-sm rounded-lg p-2.5 outline-none cursor-pointer text-slate-700 appearance-none font-medium ${
+                        fieldErrors.startTime
+                          ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                          : 'border-orange-200 focus:border-orange-400'
+                      }`}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
@@ -312,6 +366,11 @@ export const CotizacionForm: React.FC<Props> = ({
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
                   </div>
+                  {fieldErrors.startTime && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                      <AlertCircle size={12} /> {fieldErrors.startTime}
+                    </p>
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className={labelClass}>HORA FIN</label>
@@ -357,15 +416,35 @@ export const CotizacionForm: React.FC<Props> = ({
                 )
               })}
             </div>
+            {fieldErrors.baseService && (
+              <p className="text-red-500 text-xs mt-2 flex items-center gap-1 animate-pulse">
+                <AlertCircle size={12} /> {fieldErrors.baseService}
+              </p>
+            )}
           </div>
 
+          {/* Dirección */}
           <div className="mb-6">
             <label className={labelClass}>Dirección del Evento <span className="text-orange-500">*</span></label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input type="text" name="location" required value={formData.location} onChange={onChange}
-                className={`${inputClass} !pl-12`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+              <input
+                type="text"
+                name="location"
+                required
+                value={formData.location}
+                onChange={onChange}
+                className={`${inputClass} !pl-12 ${
+                  fieldErrors.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                }`}
+                placeholder="Dirección completa (Calle, Barrio, Ciudad)"
+              />
             </div>
+            {fieldErrors.location && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
+                <AlertCircle size={12} /> {fieldErrors.location}
+              </p>
+            )}
           </div>
 
           <div>
@@ -556,16 +635,16 @@ export const CotizacionForm: React.FC<Props> = ({
             ) : (
               <button
                 type="submit"
-                disabled={blockStatus.isBlocked || isSubmitting}
+                disabled={blockStatus.isBlocked || isSaving}
                 className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
-                  ${blockStatus.isBlocked || isSubmitting
+                  ${blockStatus.isBlocked || isSaving
                     ? 'bg-slate-400 cursor-not-allowed shadow-none'
                     : isPublic
                       ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
                       : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 hover:-translate-y-0.5'
                   }`}>
-                {isSubmitting ? 'Enviando...' : blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
-                {!blockStatus.isBlocked && !isSubmitting && <ArrowLeft className="rotate-180" size={18} />}
+                {isSaving ? 'Guardando...' : blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
+                {!blockStatus.isBlocked && !isSaving && <ArrowLeft className="rotate-180" size={18} />}
               </button>
             )}
           </div>

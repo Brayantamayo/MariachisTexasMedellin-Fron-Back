@@ -51,7 +51,8 @@ export const CotizacionesPage: React.FC = () => {
       showNotification('Cotización creada exitosamente.');
       setIsCreateOpen(false);
     } catch (error: any) {
-      showNotification(error?.response?.data?.message || 'Error al guardar la cotización.', 'error');
+      // Relanzar el error para que CotizacionCreateModal lo maneje
+      throw error;
     }
   };
 

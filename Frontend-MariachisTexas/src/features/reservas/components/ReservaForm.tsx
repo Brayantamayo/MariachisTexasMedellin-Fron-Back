@@ -33,7 +33,8 @@ interface Props {
   isPublic?: boolean;
   isEditing?: boolean;
   isClient?: boolean;
-  clients: UserType[];
+  // ✅ Tipado como any[] porque el shape real del backend es distinto a UserType
+  clients: any[];
   songs: Song[];
   services: Service[];
   availableHours?: string[];
@@ -51,6 +52,14 @@ interface Props {
   onServiceChange: (serviceId: string, quantity: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
+}
+
+// ─── HELPER: construir el label del cliente para el <option> ─────────────────
+// Backend: { id, apellido, telefonoPrincipal, usuario: { nombre } }
+const getClienteLabel = (cliente: any): string => {
+  const fullName = `${cliente.name ?? ''} ${cliente.lastName ?? ''}`.trim() || cliente.email
+  const telefono = cliente.phone ?? ''
+  return telefono ? `${fullName} - ${telefono}` : fullName
 }
 
 export const ReservaForm: React.FC<Props> = ({
@@ -74,9 +83,9 @@ export const ReservaForm: React.FC<Props> = ({
     str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
   const handleBaseServiceSelect = (serviceId: string) => {
-    const isCurrentlySelected = formData.selectedServices?.find(
+    const isCurrentlySelected = (formData.selectedServices?.find(
       s => String(s.serviceId) === String(serviceId)
-    )?.quantity > 0;
+    )?.quantity ?? 0) > 0;
     if (!isCurrentlySelected) {
       baseServices.forEach(bs => {
         if (String(bs.id) !== String(serviceId)) {
@@ -158,11 +167,18 @@ export const ReservaForm: React.FC<Props> = ({
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <select name="clientId" value={formData.clientId || ''} onChange={onClientSelect}
-                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium">
+                <select
+                  name="clientId"
+                  value={formData.clientId || ''}
+                  onChange={onClientSelect}
+                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium"
+                >
                   <option value="">-- Buscar en base de datos --</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} {c.lastName} - {c.phone}</option>
+                  {(clients ?? []).map(c => (
+                    // ✅ value usa String(c.id) para garantizar tipo consistente
+                    <option key={String(c.id)} value={String(c.id)}>
+                      {getClienteLabel(c)}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
@@ -276,7 +292,6 @@ export const ReservaForm: React.FC<Props> = ({
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
-                {/* ✅ Tipos de evento desde constante centralizada en @/types */}
                 <select name="eventType" value={formData.eventType || ''} onChange={onChange}
                   className={`${inputClass} appearance-none cursor-pointer`}>
                   {TIPOS_EVENTO.map(tipo => (
@@ -340,9 +355,9 @@ export const ReservaForm: React.FC<Props> = ({
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {baseServices.map(service => {
-                const isSelected = formData.selectedServices?.find(
+                const isSelected = (formData.selectedServices?.find(
                   s => String(s.serviceId) === String(service.id)
-                )?.quantity > 0;
+                )?.quantity ?? 0) > 0;
                 return (
                   <div key={service.id} onClick={() => handleBaseServiceSelect(service.id)}
                     className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}>

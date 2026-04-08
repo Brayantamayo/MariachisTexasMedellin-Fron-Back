@@ -94,19 +94,11 @@ return (
                 >
                   {/* Fecha y Hora */}
                   <td className="py-5 px-8">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar size={14} className="text-primary-500" />
-                        <span className="font-bold text-slate-700">
-                          {new Date(rehearsal.date).toLocaleDateString('es-ES', {
-                            weekday: 'short', day: 'numeric', month: 'short'
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Clock size={12} className="text-slate-400" />
-                        {rehearsal.time}
-                      </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Calendar size={14} className="text-slate-400" />
+                      {rehearsal.date}
+                      <Clock size={14} className="text-slate-400" />
+                      {rehearsal.time}
                     </div>
                   </td>
 
@@ -133,7 +125,7 @@ return (
                     </span>
                   </td>
 
-                  {/* Estado (Toggle) */}
+                  {/* Estado */}
                   <td className="py-5 px-6">
                     <div className="flex items-center justify-center gap-3">
                       {canManage ? (
@@ -164,6 +156,7 @@ return (
                     </div>
                   </td>
 
+
                   {/* Acciones */}
                   <td className="py-5 px-8">
                     <div className="flex items-center justify-center gap-2">
@@ -172,15 +165,11 @@ return (
                         icon={Eye}
                         onClick={() => onView(rehearsal)}
                         tooltip="Ver detalles"
+
                       />
 
                       {canManage && (
                         <>
-                          {/*
-                           * ✅ LÓGICA DE ESTADO:
-                           * - PENDIENTE → muestra Editar + Eliminar
-                           * - LISTO     → solo muestra Eliminar (no se puede editar)
-                           */}
                           {!isCompleted && (
                             <ActionButton
                               icon={Edit2}
@@ -192,7 +181,6 @@ return (
                             icon={Trash2}
                             onClick={() => onDelete(rehearsal.id)}
                             tooltip="Eliminar ensayo"
-                            variant="danger"
                           />
                         </>
                       )}
@@ -204,6 +192,7 @@ return (
           </tbody>
         </table>
       </div>
+
 
       <TablePagination
         currentPage={currentPage}

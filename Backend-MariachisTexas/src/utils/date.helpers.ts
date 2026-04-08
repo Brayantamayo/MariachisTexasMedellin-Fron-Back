@@ -1,3 +1,5 @@
+///aqui van todos los buffers de tiempo para reservas y ensayos, validaciones de fechas, etc.
+
 export const toLocalDate = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -16,10 +18,9 @@ export const dayRange = (dateStr: string) => ({
 })
 
 // ─── VALIDACIÓN 6 HORAS MISMO DÍA ────────────────────────────────────────────
-// Lanza error si se intenta crear un evento hoy con menos de 6h de anticipación
 export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
   const hoy = new Date().toISOString().split('T')[0]
-  if (dateStr !== hoy) return // Solo aplica para hoy
+  if (dateStr !== hoy) return
 
   const ahora      = new Date()
   const horaEvento = new Date(`${dateStr}T${time}:00`)
@@ -29,12 +30,17 @@ export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
     const horaMinima = new Date(ahora.getTime() + 6 * 60 * 60 * 1000)
     const hh = horaMinima.getHours().toString().padStart(2, '0')
     const mm = horaMinima.getMinutes().toString().padStart(2, '0')
-    throw new Error(`Para eventos el mismo día se requieren al menos 6 horas de anticipación. Hora mínima disponible hoy: ${hh}:${mm}`
+    throw new Error(
+      `Para eventos el mismo día se requieren al menos 6 horas de anticipación. Hora mínima disponible hoy: ${hh}:${mm}`
     )
   }
 }
 
 // ─── BLOQUEO DE HORAS ─────────────────────────────────────────────────────────
+// Bloquea:
+//   - 1h ANTES  del inicio  (preparación/llegada)
+//   - todas las horas entre inicio y fin (el evento en sí)
+//   - 1h DESPUÉS del fin    (cierre/transporte)  ← FIX
 export const bloquearRango = (
   allHours: string[],
   blocked:  Set<string>,
@@ -44,10 +50,15 @@ export const bloquearRango = (
   const [sh] = startTime.split(':').map(Number)
   const [eh] = endTime.split(':').map(Number)
 
+  // Buffer PRE: hora anterior al inicio
   blocked.add(`${((sh - 1 + 24) % 24).toString().padStart(2, '0')}:00`)
 
+  // Horas del evento
   allHours.forEach(h => {
     const [hh] = h.split(':').map(Number)
     if (hh >= sh && hh < eh) blocked.add(h)
   })
+
+  // Buffer POST: hora siguiente al fin (cierre/transporte) ← FIX
+  blocked.add(`${(eh % 24).toString().padStart(2, '0')}:00`)
 }

@@ -160,6 +160,7 @@ model Permiso {
 
 model Cliente {
   id                  Int           @id @default(autoincrement())
+  usuarioId           Int           @unique
   email               String        @unique
   foto                String?
   apellido            String
@@ -176,7 +177,7 @@ model Cliente {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  usuario      Usuario?     @relation(fields: [email], references: [email]) 
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   cotizaciones Cotizacion[]
   abonos       Abono[]
   ventas       Venta[]
@@ -389,4 +390,18 @@ model PasswordResetOtp {
   createdAt DateTime @default(now())
 
   @@map("password_reset_otp")
+}
+
+model RegistroToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @default(uuid())
+  email     String
+  nombre    String
+  telefono  String
+  telefono2 String?
+  usado     Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("registro_token")
 }

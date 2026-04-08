@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import * as usuarioService from './usuario.services'
+import * as usuarioService from '../Usuarios/usuario.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 

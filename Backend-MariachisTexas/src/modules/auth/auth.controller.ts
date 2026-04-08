@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { registrarCliente, login, recuperarPassword, verificarOtp, resetearPassword } from './auth.services'
+import { registrarCliente, login, recuperarPassword, verificarOtp, resetearPassword, getRegistroToken as getRegistroTokenService, marcarTokenUsado } from './auth.services'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 
 // POST /api/auth/registro
@@ -36,4 +36,12 @@ export const resetear = asyncHandler(async (req: Request, res: Response) => {
   if (!email || !otp || !nuevaPassword || !confirmarPassword)
     return res.status(400).json({ message: 'Todos los campos son requeridos' })
   res.json(await resetearPassword(email, otp, nuevaPassword, confirmarPassword))
+})
+
+export const getRegistroToken = asyncHandler(async (req: Request, res: Response) => {
+  res.json(await getRegistroTokenService(req.params.token as string))  
+})
+
+export const marcarToken = asyncHandler(async (req: Request, res: Response) => {
+  res.json(await marcarTokenUsado(req.params.token as string))  
 })

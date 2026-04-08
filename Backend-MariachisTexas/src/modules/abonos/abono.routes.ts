@@ -13,4 +13,5 @@ router.get('/:id/download/pdf', abonoController.downloadAbonoPdf)
 router.post('/', requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']), abonoController.create)
 router.post('/convert-to-venta', requireRole(['ADMIN', 'EMPLEADO']), abonoController.convertToVenta)
 
+
 export default router

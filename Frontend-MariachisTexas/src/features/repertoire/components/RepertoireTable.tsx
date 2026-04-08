@@ -3,6 +3,7 @@ import { Song, UserRole } from '@/types';
 import { Play, Pause, Eye, FileText, Edit2, Trash2, Music } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 
+{/*propiedades de */}
 interface Props {
   songs: Song[];
   loading: boolean;
@@ -17,6 +18,13 @@ interface Props {
   onToggleStatus: (song: Song) => void;
 }
 
+{/*componente de la tabla de canciones*/}
+{/*Recibe la lista de canciones (songs)
+Recibe funciones para acciones (reproducir, ver, editar, eliminar, etc.)
+Controla si está cargando (loading)
+Maneja cuál canción está sonando (playingId)
+Usa el rol del usuario (userRole) para permisos
+Maneja paginación (currentPage, 10 por página)*/}
 export const RepertoireTable: React.FC<Props> = ({ 
     songs, loading, playingId, userRole,
     onPlay, onView, onViewLyrics, onEdit, onDelete, onToggleStatus 
@@ -24,8 +32,10 @@ export const RepertoireTable: React.FC<Props> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  {/*si el usuario tiene permisos para administrar, se muestran los botones de acción*/}
   const canManage = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
 
+  
   {/* Boton de accion para cada una de las columnas de la tabla */}
   const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, active?: boolean }> = ({ icon: Icon, onClick, tooltip, active }) => (
     <button 

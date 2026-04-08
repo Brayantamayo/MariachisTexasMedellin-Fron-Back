@@ -77,7 +77,6 @@ export const useClientsManager = () => {
         setIsCreateOpen(false);
     } catch (error) {
         console.error(error);
-        showNotification("Error al crear el cliente.", "error");
     }
   };
 
@@ -90,7 +89,6 @@ export const useClientsManager = () => {
         setIsEditOpen(false);
     } catch (error) {
         console.error(error);
-        showNotification("Error al actualizar el cliente.", "error");
     }
   };
 

@@ -43,6 +43,12 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
 }
 
 // ─── CREAR VENTA ──────────────────────────────────────────────────────────────
+/**
+ * Crea una venta. Soporta:
+ * - Ventas por reserva (vinculadas a una reserva)
+ * - Ventas directas (sin reserva)
+ * - Múltiples registros por reserva (uno por cada abono)
+ */
 export const createVenta = async (data: VentaCreateInput): Promise<any> => {
   const parsed = VentaCreateSchema.safeParse(data)
   if (!parsed.success) throw new Error(zodError(parsed.error))
@@ -53,7 +59,7 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
   const cliente = await prisma.cliente.findUnique({ where: { id: Number(d.clienteId) } })
   if (!cliente) throw new Error('Cliente no encontrado')
 
-  // Si es por reserva, validar que existe y actualizar estado
+  // Si es por reserva, validar que existe
   let reserva = null
   if (d.reservaId) {
     reserva = await prisma.reserva.findUnique({ where: { id: Number(d.reservaId) } })
@@ -61,12 +67,13 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
     if (reserva.estado === 'ANULADA') throw new Error('No se puede crear venta para reserva anulada')
   }
 
+  // Permitir múltiples ventas por reserva (normalmente uno por cada pago/abono)
   const venta = await prisma.venta.create({
     data: {
       reservaId: d.reservaId ? Number(d.reservaId) : null,
       clienteId: Number(d.clienteId),
-      tipo: d.tipo,
-      estado: 'CONFIRMADO',
+      tipo: d.tipo || 'DIRECTA',
+      estado: d.estado || 'CONFIRMADO',
       montoTotal: d.montoTotal,
       montoPagado: d.montoPagado,
       fechaVenta: new Date(d.fechaVenta),
@@ -117,4 +124,34 @@ export const deleteVenta = async (id: number) => {
 
   await prisma.venta.delete({ where: { id } })
   return { message: 'Venta eliminada correctamente' }
+}
+
+/**
+ * Función auxiliar: Obtiene reservas pagables (no completamente pagadas)
+ * Usada para mostrar reservas disponibles para crear manuales ventas
+ */
+export const getPayableReservations = async (): Promise<any[]> => {
+  const reservas = await prisma.reserva.findMany({
+    where: {
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      saldoPendiente: { gt: 0 }
+    },
+    include: {
+      cotizacion: { include: { cliente: { include: { usuario: true } } } },
+      abonos: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return reservas.map(r => ({
+    id: String(r.id),
+    clientName: `${r.cotizacion?.cliente?.usuario?.nombre ?? ''} ${r.cotizacion?.cliente?.apellido ?? ''}`.trim(),
+    clientId: String(r.cotizacion?.clienteId ?? ''),
+    eventType: r.cotizacion?.tipoEvento ?? 'Evento',
+    totalAmount: Number(r.totalValor),
+    paidAmount: Number(r.totalValor) - Number(r.saldoPendiente),
+    pendingAmount: Number(r.saldoPendiente),
+    paymentCount: r.abonos.length,
+    lastPaymentDate: r.abonos.length > 0 ? r.abonos[r.abonos.length - 1].fechaPago : null
+  }))
 }

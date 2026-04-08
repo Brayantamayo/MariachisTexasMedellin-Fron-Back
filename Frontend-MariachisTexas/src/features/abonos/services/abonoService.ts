@@ -68,7 +68,7 @@ export const abonoService = {
       const methodKey = String(data.method ?? '').trim().toLowerCase();
       const normalizedMethod = methodMap[methodKey] || 'OTRO';
 
-      // 1. Crear abono a través del nuevo endpoint de módulo abonos
+      // 1. Crear ab ono a través del nuevo endpoint de módulo abonos
       const { data: updatedReserva } = await api.post(`/abonos`, {
           reservaId: data.reservationId,
           amount: data.amount,
@@ -88,21 +88,6 @@ export const abonoService = {
           clientName: updatedReserva.clientName,
           reservationTotal: updatedReserva.totalAmount
       };
-
-      // 3. SINCRONIZACIÓN: Registrar también en el módulo de Ventas (no interrumpe el abono si falla)
-      try {
-        await ventaService.registerExternalSale({
-            date: data.date,
-            type: 'Por Reserva',
-            clientName: updatedReserva.clientName,
-            concept: `Abono a Reserva #${updatedReserva.id} (${updatedReserva.eventType})`,
-            method: normalizedMethod,
-            amount: data.amount,
-            reservationId: updatedReserva.id
-        });
-      } catch (err) {
-        console.warn('No se pudo registrar venta automática de abono:', err);
-      }
 
       return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },

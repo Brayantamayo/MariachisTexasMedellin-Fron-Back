@@ -35,7 +35,7 @@ export const getDisponibilidadPublica = async () => {
 
 // ─── CREAR ───────────────────────────────────────────────────────────────────
 export const createEnsayo = async (data: EnsayoCreateInput): Promise<RehearsalResponse> => {
-  // ✅ Zod ya hace trim y valida vacío — no se necesita trim manual
+  //  Zod ya hace trim y valida vacío — no se necesita trim manual
   const parsed = EnsayoCreateSchema.safeParse(data)
   if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 

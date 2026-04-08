@@ -30,6 +30,12 @@ export const getById = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json(venta)
 })
 
+// ─── GET PAYABLE RESERVATIONS (reservas que pueden convertirse en venta) ─────
+export const getPayableReservations = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const reservas = await ventaService.getPayableReservations()
+  res.json(reservas)
+})
+
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 export const create = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.status(201).json(await ventaService.createVenta(req.body))

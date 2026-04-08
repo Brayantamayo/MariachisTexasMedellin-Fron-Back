@@ -1,19 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, Briefcase } from 'lucide-react';
+import { X, Save, Briefcase, Loader2 } from 'lucide-react';
 import { User } from '@/types';
 import { EmployeeForm } from './EmployeeForm';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void>;
   employee: User | null;
 }
 
 export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, employee }) => {
   const [formData, setFormData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -41,8 +44,10 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    
     const submission = { ...formData };
     
     // Array handling
@@ -55,7 +60,16 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
     }
     delete submission.confirmPassword;
 
-    onSave(submission);
+    setSaving(true);
+    try {
+      await onSave(submission);
+      setError(null);
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err, 'Error al actualizar el empleado.');
+      setError(errorMessage);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen || !formData) return null;
@@ -81,10 +95,14 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-900 font-medium">{error}</p>
+              </div>
+            )}
             <EmployeeForm 
                 formData={formData} 
                 onChange={handleChange} 
-                onImageUpload={handleImageUpload} 
                 onSubmit={handleSubmit}
                 showPasswordFields={false} 
             />
@@ -92,8 +110,8 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
 
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
              <button onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
-             <button onClick={handleSubmit} className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-primary-900/20 hover:shadow-primary-900/30 transition-all transform hover:-translate-y-0.5">
-                <Save size={16} /> Guardar Cambios
+             <button onClick={handleSubmit} disabled={saving} className="bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-primary-900/20 hover:shadow-primary-900/30 transition-all transform hover:-translate-y-0.5">
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : <><Save size={16} /> Guardar Cambios</>}
             </button>
         </div>
       </div>

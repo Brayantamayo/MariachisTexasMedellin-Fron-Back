@@ -63,8 +63,6 @@ export const EmployeesPage: React.FC = () => {
         setIsCreateOpen(false);
     } catch (error: any) {
       console.error('Error al crear empleado:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido al guardar el empleado.';
-      showNotification(errorMessage, "error");
     }
   };
 
@@ -77,8 +75,6 @@ export const EmployeesPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error: any) {
         console.error('Error al actualizar empleado:', error);
-        const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido al actualizar el empleado.';
-        showNotification(errorMessage, "error");
     }
   };
 

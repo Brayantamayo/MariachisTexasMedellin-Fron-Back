@@ -75,7 +75,7 @@ export const AbonosPage: React.FC = () => {
       try {
           const newAbono = await abonoService.createAbono(data);
           setAbonos(prev => [newAbono, ...prev]);
-          showNotification('Abono registrado con éxito.');
+          showNotification('✅ Abono registrado con éxito.');
           setIsCreateOpen(false);
       } catch (error) {
           console.error(error);
@@ -117,6 +117,19 @@ export const AbonosPage: React.FC = () => {
     } catch (error) {
       showNotification('Error al descargar comprobante.', 'error');
     }
+  };
+
+  const handleConvertToVenta = async (reservationId: string) => {
+      try {
+          showNotification('Procesando conversión...', 'success');
+          await abonoService.convertAbonosToVenta(reservationId);
+          showNotification('✅ ¡Reserva finalizada! Se creó una venta con todos los abonos registrados.');
+          await fetchAbonos(); // Recargar datos
+      } catch (error: any) {
+          console.error(error);
+          const errorMsg = error.message || 'Error al convertir abonos a venta';
+          showNotification(`❌ ${errorMsg}`, 'error');
+      }
   };
 
   const filteredAbonos = abonos.filter(a => 
@@ -200,6 +213,7 @@ export const AbonosPage: React.FC = () => {
             loading={loading}
             onView={(abono) => { setSelectedAbono(abono); setIsDetailOpen(true); }}
             onDownload={handleDownload}
+            onConvertToVenta={!isClient ? handleConvertToVenta : undefined}
         />
       </div>
 

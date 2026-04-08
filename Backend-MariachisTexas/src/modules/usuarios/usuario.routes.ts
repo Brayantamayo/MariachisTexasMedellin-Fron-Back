@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import * as usuarioController from './usuario.controller'
+import * as usuarioController from '../Usuarios/usuario.controller'
 import { authMiddleware } from '../../middlewares/Auth.middleware'
 import { roleMiddleware } from '../../middlewares/Role.middleware'
 

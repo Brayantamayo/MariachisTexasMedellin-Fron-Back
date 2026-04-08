@@ -66,7 +66,6 @@ export const UsersPage: React.FC = () => {
         setIsDetailOpen(true);
     } catch (error) {
       console.error(error);
-      showNotification("Error al crear el usuario.", "error");
     }
   };
 
@@ -79,7 +78,6 @@ export const UsersPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error) {
       console.error(error);
-      showNotification("Error al actualizar el usuario.", "error");
     }
   };
 
