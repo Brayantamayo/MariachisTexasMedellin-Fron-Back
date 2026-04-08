@@ -16,7 +16,9 @@ import abonoRoutes      from './modules/abonos/abono.routes'
 import bloqueoRoutes    from './modules/Bloqueos/bloqueos.routes'
 import ensayoRoutes     from './modules/Ensayo/ensayo.routes'
 import ventasRoutes     from './modules/ventas/ventas.routes'
-import rolesRoutes      from './modules/roles/roles.routes'
+import rolesRoutes      from './modules/Roles/roles.routes'
+import usuarioRoutes    from './modules/Usuarios/usuario.routes'
+import empleadoRoutes   from './modules/empleados/empleado.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -75,6 +77,8 @@ app.use('/api/ensayos',      ensayoRoutes)
 app.use('/api/bloqueos',     bloqueoRoutes)
 app.use('/api/ventas',       ventasRoutes)
 app.use('/api/roles',        rolesRoutes)
+app.use('/api/usuarios',     usuarioRoutes)
+app.use('/api/empleados',    empleadoRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)   // atrapa rutas inexistentes

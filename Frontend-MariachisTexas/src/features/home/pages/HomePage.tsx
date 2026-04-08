@@ -48,7 +48,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           let relevantEvents: Reservation[] = [];
           if (user) {
             relevantEvents = reservations.filter(r =>
-              (r.clientId === user.id || r.clientName.includes(user.name)) &&
+              (r.clientEmail?.toLowerCase() === user.email.toLowerCase() || r.clientId === user.id || r.clientName.includes(user.name)) &&
               (r.status === 'Confirmado' || r.status === 'Pendiente')
             );
           }

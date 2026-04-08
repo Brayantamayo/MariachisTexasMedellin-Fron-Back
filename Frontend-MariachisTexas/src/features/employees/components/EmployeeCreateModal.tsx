@@ -51,17 +51,94 @@ export const EmployeeCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-        alert("Las contraseñas no coinciden");
-        return;
+    
+    // Validar campos requeridos
+    if (!formData.name || !formData.lastName || !formData.email || !formData.password) {
+      alert("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    // Validar campos adicionales requeridos
+    if (!formData.documentNumber) {
+      alert("Número de documento es requerido");
+      return;
+    }
+
+    if (!formData.birthDate) {
+      alert("Fecha de nacimiento es requerida");
+      return;
+    }
+
+    if (!formData.phone) {
+      alert("Teléfono principal es requerido");
+      return;
+    }
+
+    if (!formData.neighborhood) {
+      alert("Barrio es requerido");
+      return;
+    }
+
+    if (!formData.address) {
+      alert("Dirección es requerida");
+      return;
+    }
+
+    if (!formData.mainInstrument) {
+      alert("Instrumento principal es requerido");
+      return;
     }
     
-    // Preparar datos
-    const submission = { ...formData };
-    if (submission.otherInstruments && typeof submission.otherInstruments === 'string') {
-        submission.otherInstruments = submission.otherInstruments.split(',').map((i: string) => i.trim());
+    // Validar que nombre y apellido tengan al menos 2 caracteres
+    if (formData.name.trim().length < 2) {
+      alert("El nombre debe tener al menos 2 caracteres");
+      return;
     }
-    delete submission.confirmPassword;
+    
+    if (formData.lastName.trim().length < 2) {
+      alert("El apellido debe tener al menos 2 caracteres");
+      return;
+    }
+
+    // Validar que nombre y apellido solo contengan letras y espacios
+    const nombreCompleto = `${formData.name} ${formData.lastName}`;
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombreCompleto)) {
+      alert("El nombre solo puede contener letras y espacios");
+      return;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      alert("Las contraseñas no coinciden");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    
+    // Preparar datos para enviar al backend
+    const submission = {
+      name: formData.name.trim(),
+      lastName: formData.lastName.trim(),
+      email: formData.email.trim(),
+      password: formData.password,
+      // Datos adicionales del empleado
+      documentType: formData.documentType,
+      documentNumber: formData.documentNumber.trim(),
+      birthDate: formData.birthDate,
+      phone: formData.phone.trim(),
+      secondaryPhone: formData.secondaryPhone?.trim() || null,
+      city: formData.city.trim(),
+      neighborhood: formData.neighborhood.trim(),
+      address: formData.address.trim(),
+      serviceZone: 'URBANA', // Default por ahora
+      mainInstrument: formData.mainInstrument.trim(),
+      otherInstruments: formData.otherInstruments?.trim() || null,
+      experienceYears: formData.experienceYears || 0,
+      avatar: formData.avatar,
+      role: formData.role,
+    };
 
     onSave(submission);
     setFormData(emptyEmployee);
@@ -100,8 +177,8 @@ export const EmployeeCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }
         </div>
 
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-             <button onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
-             <button onClick={handleSubmit} className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-primary-900/20 hover:shadow-primary-900/30 transition-all transform hover:-translate-y-0.5">
+             <button type="button" onClick={onClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
+             <button type="submit" form="employee-form" className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg shadow-primary-900/20 hover:shadow-primary-900/30 transition-all transform hover:-translate-y-0.5">
                 <Save size={16} /> Crear Empleado
             </button>
         </div>

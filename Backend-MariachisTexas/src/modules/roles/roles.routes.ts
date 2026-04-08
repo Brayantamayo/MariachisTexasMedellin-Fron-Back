@@ -5,6 +5,10 @@ import { requireRole } from '../../middlewares/Role.middleware'
 
 const router = Router()
 
+// ─── PÚBLICAS ──────────────────────────────────────────────────────────────────
+// Endpoint público para obtener el ID del rol EMPLEADO
+router.get('/public/empleado-rol-id', roleController.getEmpleadoRolId)
+
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 

@@ -420,8 +420,8 @@ export const getAbonos = async (usuarioId?: number) => {
   const abonos = await prisma.abono.findMany({
     where,
     include: {
-      reserva: { include: { cotizacion: { include: { cliente: true } } } },
-      cliente: true
+      reserva: { include: { cotizacion: { include: { cliente: { include: { usuario: true } } } } } },
+      cliente: { include: { usuario: true } }
     },
     orderBy: { fechaPago: 'desc' }
   })
@@ -435,6 +435,7 @@ export const getAbonos = async (usuarioId?: number) => {
     notes: a.notas ?? '',
     reservationId: String(a.reservaId),
     clientId: String(a.clienteId),
+    clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
     clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
     reservationTotal: Number(a.reserva?.totalValor ?? 0),
     newBalance: Number(a.nuevoSaldo ?? 0)

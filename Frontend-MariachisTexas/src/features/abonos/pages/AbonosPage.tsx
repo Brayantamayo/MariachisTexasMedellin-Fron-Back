@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Plus, Search, CheckCircle, AlertCircle, X, FileText } from 'lucide-react';
 import { EnrichedPayment } from '../services/abonoService';
 import { abonoService } from '../services/abonoService';
 import { reservaService } from '../../reservas/services/reservaService';
@@ -45,8 +45,16 @@ export const AbonosPage: React.FC = () => {
       let filteredReservations = reservationsData;
 
       if (user && user.role === UserRole.CLIENTE) {
-          filteredAbonos = abonosData.filter(a => a.clientId === user.id || a.clientName.toLowerCase().includes(user.name.toLowerCase()));
-          filteredReservations = reservationsData.filter(r => r.clientId === user.id || r.clientName.toLowerCase().includes(user.name.toLowerCase()));
+          filteredAbonos = abonosData.filter(a =>
+            a.clientEmail?.toLowerCase() === user.email.toLowerCase() ||
+            a.clientId === user.id ||
+            a.clientName.toLowerCase().includes(user.name.toLowerCase())
+          );
+          filteredReservations = reservationsData.filter(r =>
+            r.clientEmail?.toLowerCase() === user.email.toLowerCase() ||
+            r.clientId === user.id ||
+            r.clientName.toLowerCase().includes(user.name.toLowerCase())
+          );
       }
 
       setAbonos(filteredAbonos);
@@ -75,14 +83,40 @@ export const AbonosPage: React.FC = () => {
       }
   };
 
+  const handleDownloadPdf = async () => {
+    showNotification('Generando PDF de abonos...', 'success');
+    try {
+      const response = await fetch('/api/abonos/download/pdf', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al descargar PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'abonos.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showNotification('PDF descargado correctamente.');
+    } catch (error) {
+      console.error(error);
+      showNotification('Error al descargar PDF.', 'error');
+    }
+  };
+
   const handleDownload = async (id: string) => {
-      showNotification('Generando comprobante...', 'success');
-      try {
-          await abonoService.downloadComprobante(id);
-          showNotification('Comprobante descargado correctamente.');
-      } catch (error) {
-          showNotification('Error en la descarga.', 'error');
-      }
+    showNotification('Descargando comprobante...', 'success');
+    try {
+      await abonoService.downloadComprobante(id);
+      showNotification('Comprobante descargado correctamente.');
+    } catch (error) {
+      showNotification('Error al descargar comprobante.', 'error');
+    }
   };
 
   const handleConvertToVenta = async (reservationId: string) => {

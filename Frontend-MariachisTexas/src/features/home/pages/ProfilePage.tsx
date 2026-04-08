@@ -4,11 +4,13 @@ import { createPortal } from 'react-dom';
 import {
 User, Mail, Phone, MapPin, FileText, Hash, Calendar,
 Home, Map, CheckCircle, AlertCircle, X, Loader2,
-Edit2, Save, ChevronRight, Shield
+Edit2, Save, ChevronRight, Shield, CreditCard, TrendingDown,
+TrendingUp
 } from 'lucide-react';
 import { profileService, PerfilData } from '@/shared/services/perfilservices.ts';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
+import { abonoService, EnrichedPayment } from '@/src/features/abonos/services/abonoService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,8 @@ const [isLoadingGet, setIsLoadingGet] = useState(true);
 const [isEditing,    setIsEditing]    = useState(false);
 const [isLoading,    setIsLoading]    = useState(false);
 const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+const [abonos,       setAbonos]       = useState<EnrichedPayment[]>([]);
+const [isLoadingAbonos, setIsLoadingAbonos] = useState(false);
 
 const [formData, setFormData] = useState({
     nombre:              '',
@@ -132,7 +136,22 @@ useEffect(() => {
         setIsLoadingGet(false);
     }
     };
+
+    const cargarAbonos = async () => {
+    setIsLoadingAbonos(true);
+    try {
+        const data = await abonoService.getAbonos();
+        setAbonos(data);
+    } catch (err) {
+        console.error(err);
+        showNotification('Error cargando los abonos.', 'error');
+    } finally {
+        setIsLoadingAbonos(false);
+    }
+    };
+
     cargar();
+    cargarAbonos();
 }, []);
 
 const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -525,6 +544,55 @@ return (
                     <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider">Verificado</span>
                 </div>
                 </div>
+            </div>
+            </div>
+
+            {/* ── Historial de Abonos ── */}
+            <div className="bg-slate-900/50 border border-white/6 rounded-2xl overflow-hidden backdrop-blur-sm">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
+                <CreditCard size={13} className="text-emerald-400" />
+                </div>
+                <div>
+                <h3 className="font-black text-white text-sm tracking-tight">Historial de Abonos</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Tus pagos registrados en reservas.</p>
+                </div>
+            </div>
+            <div className="p-6 space-y-3">
+                {isLoadingAbonos ? (
+                <div className="flex items-center justify-center gap-3 py-10 text-slate-400">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Cargando abonos...</span>
+                </div>
+                ) : abonos.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 italic border border-dashed border-slate-700 rounded-2xl bg-slate-900/40">
+                    No se han registrado abonos para tu perfil.
+                </div>
+                ) : (
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-[11px] uppercase tracking-widest text-slate-500 font-bold">
+                    <span>Total abonos</span>
+                    <span className="text-right">${abonos.reduce((sum, pago) => sum + pago.amount, 0).toLocaleString('es-CO')}</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 text-[11px] uppercase tracking-widest text-slate-500">
+                    <span>Fecha</span>
+                    <span>Monto</span>
+                    <span className="text-right">Método</span>
+                    </div>
+                    <div className="space-y-2">
+                    {abonos.map((abono) => (
+                        <div key={abono.id} className="grid grid-cols-[1fr_1fr_1fr] gap-3 p-4 rounded-2xl bg-slate-900/70 border border-white/5">
+                        <span className="text-sm text-slate-300">{new Date(abono.date).toLocaleDateString('es-CO')}</span>
+                        <span className="text-sm text-emerald-300">${abono.amount.toLocaleString('es-CO')}</span>
+                        <span className="text-right text-slate-400 uppercase text-[11px] font-semibold">{abono.method}</span>
+                        <div className="md:col-span-3 text-[11px] text-slate-500 mt-2">
+                            Reserva #{abono.reservationId}{abono.notes ? ` • ${abono.notes}` : ''}
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                )}
             </div>
             </div>
 

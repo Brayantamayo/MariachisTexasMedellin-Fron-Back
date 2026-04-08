@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as abonoService from './abono.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
+import PDFDocument from 'pdfkit'
 
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO', 'CLIENTE']
 
@@ -44,4 +45,61 @@ export const convertToVenta = asyncHandler(async (req: AuthRequest, res: Respons
 
   const venta = await abonoService.convertAbonosToVenta(reservaId)
   res.status(201).json(venta)
+})
+
+// ─── DOWNLOAD PDF ─────────────────────────────────────────────────────────────
+export const downloadPdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  const abonos = await abonoService.getAbonos(req.user?.rol === 'CLIENTE' ? usuarioId : undefined)
+
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', 'attachment; filename="abonos.pdf"')
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Reporte de Abonos', { align: 'center' })
+  doc.moveDown()
+
+  abonos.forEach((abono, index) => {
+    doc.fontSize(12).text(`${index + 1}. ${abono.clientName} - $${abono.amount} - ${abono.date} - Reserva #${abono.reservationId}`)
+    doc.moveDown(0.5)
+  })
+
+  doc.end()
+})
+
+export const downloadAbonoPdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  const abonos = await abonoService.getAbonos(req.user?.rol === 'CLIENTE' ? usuarioId : undefined)
+  const abono = abonos.find(a => a.id === id)
+
+  if (!abono) {
+    return res.status(404).json({ message: 'Abono no encontrado' })
+  }
+
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="abono-${id}.pdf"`)
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Comprobante de Abono', { align: 'center' })
+  doc.moveDown()
+
+  doc.fontSize(12).text(`Cliente: ${abono.clientName}`)
+  doc.moveDown(0.5)
+  doc.text(`Monto: $${abono.amount}`)
+  doc.moveDown(0.5)
+  doc.text(`Fecha: ${abono.date}`)
+  doc.moveDown(0.5)
+  doc.text(`Método: ${abono.method}`)
+  doc.moveDown(0.5)
+  doc.text(`Reserva ID: ${abono.reservationId}`)
+  doc.moveDown(0.5)
+  if (abono.notes) {
+    doc.text(`Notas: ${abono.notes}`)
+    doc.moveDown(0.5)
+  }
+
+  doc.end()
 })

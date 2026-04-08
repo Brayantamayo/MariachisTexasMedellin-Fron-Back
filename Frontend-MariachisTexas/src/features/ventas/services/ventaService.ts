@@ -56,7 +56,7 @@ export const ventaService = {
         if (data.type === 'Por Reserva' && data.reservationId) {
             await api.post(`/reservas/${data.reservationId}/abonos`, {
                 amount: Number(data.amount),
-                method: normalizedMethod,
+                method: String(data.method).toUpperCase(),
                 date: new Date().toISOString(),
                 notes: 'Generado desde módulo Ventas'
             });
@@ -71,7 +71,7 @@ export const ventaService = {
             montoTotal: Number(data.amount),
             montoPagado: Number(data.amount),
             fechaVenta: data.date,
-            metodoPago: normalizedMethod
+            metodoPago: String(data.method).toUpperCase()
         }
 
         const { data: newSale } = await api.post('/ventas', payload)
@@ -94,14 +94,25 @@ export const ventaService = {
             montoTotal: saleData.amount,
             montoPagado: saleData.amount,
             fechaVenta: saleData.date,
-            metodoPago: saleData.method
+            metodoPago: String(saleData.method).toUpperCase()
         }
 
         const { data } = await api.post('/ventas', payload)
         return data
     },
 
-    downloadInvoice: async (saleId: string): Promise<boolean> => {
-        return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
+    downloadInvoice: async (saleId: string): Promise<void> => {
+        const response = await api.get(`/ventas/${saleId}/download/pdf`, {
+            responseType: 'blob'
+        });
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `factura-${saleId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
     }
 };

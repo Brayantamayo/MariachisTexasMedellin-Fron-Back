@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Check, DollarSign } from 'lucide-react';
 import { Reservation } from '@/types';
 import { ventaService } from '../services/ventaService';
+import { clienteService, Cliente } from '@/features/clientes/services/clienteService';
 import { VentaForm } from './VentaForm';
 
 interface Props {
@@ -15,8 +16,10 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
   const [saleType, setSaleType] = useState<'Por Reserva' | 'Directa'>('Por Reserva');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedReserva, setSelectedReserva] = useState<Reservation | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   
-  // CLIENTE EXCLUSIVO PARA VENTAS DIRECTAS
+  // CLIENTE EXCLUSIVO PARA VENTAS DIRECTAS (solo si no se selecciona uno registrado)
   const EXCLUSIVE_DIRECT_CLIENT_ID = 1; // ID del cliente directa creado en seed
   const EXCLUSIVE_DIRECT_CLIENT_NAME = "Cliente Directa";
 
@@ -26,7 +29,7 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
       clientName: '',
       concept: '',
       date: new Date().toISOString().split('T')[0],
-      method: 'Efectivo',
+      method: 'EFECTIVO',
       amount: ''
   };
 

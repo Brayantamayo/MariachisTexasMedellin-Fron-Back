@@ -14,6 +14,8 @@ router.get('/payable/reservations', ventaController.getPayableReservations)
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/',    ventaController.getAll)
 router.get('/:id', ventaController.getById)
+router.get('/download/pdf', ventaController.downloadPdf)
+router.get('/:id/download/pdf', ventaController.downloadVentaPdf)
 
 // Crear — Admin y Empleado
 router.post('/', requireRole(['ADMIN', 'EMPLEADO']), ventaController.create)
