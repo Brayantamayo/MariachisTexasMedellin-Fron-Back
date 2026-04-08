@@ -8,7 +8,7 @@ export const getEmpleadoRolId = asyncHandler(async (_req: Request, res: Response
   const rolId = await roleService.getRolIdByName('EMPLEADO')
   res.json({ rolId })
 })
-
+                
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (_req: Request, res: Response) => {
   res.json(await roleService.getRoles())
