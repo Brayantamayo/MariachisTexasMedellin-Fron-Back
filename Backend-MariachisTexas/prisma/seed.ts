@@ -176,7 +176,7 @@ async function main() {
   console.log('✅ Usuarios y empleados creados')
 
   // ─── USUARIO PARA CLIENTE DIRECTA ─────────────────────────
-  await prisma.usuario.upsert({
+  const directaUser = await prisma.usuario.upsert({
     where: { email: 'directa@mariachistexas.com' },
     update: {},
     create: {
@@ -192,6 +192,7 @@ async function main() {
     where: { email: 'directa@mariachistexas.com' },
     update: {},
     create: {
+      usuarioId:           directaUser.id,
       email:               'directa@mariachistexas.com',
       apellido:            'Directa',
       tipoDocumento:       'CC',
@@ -204,11 +205,11 @@ async function main() {
       direccion:           'Venta Directa',
       zonaServicio:        'URBANA',
       activo:              true
-    }
+    } as any
   })
 
   // ─── CLIENTE DE PRUEBA ────────────────────────────────────
-  await prisma.usuario.upsert({
+  const clienteUser = await prisma.usuario.upsert({
     where: { email: 'cliente@mariachistexas.com' },
     update: {},
     create: {
@@ -223,6 +224,7 @@ async function main() {
     where: { email: 'cliente@mariachistexas.com' },
     update: {},
     create: {
+      usuarioId:           clienteUser.id,
       email:               'cliente@mariachistexas.com',
       apellido:            'Prueba',
       tipoDocumento:       'CC',
@@ -235,7 +237,7 @@ async function main() {
       direccion:           'Calle 123',
       zonaServicio:        'URBANA',
       activo:              true
-    }
+    } as any
   })
 
   console.log('✅ Cliente para ventas directas creado')

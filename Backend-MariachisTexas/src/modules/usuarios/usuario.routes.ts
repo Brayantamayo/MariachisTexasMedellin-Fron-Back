@@ -1,9 +1,13 @@
 import { Router } from 'express'
-import * as usuarioController from '../Usuarios/usuario.controller'
+import * as usuarioController from '../usuarios/usuario.controller'
 import { authMiddleware } from '../../middlewares/Auth.middleware'
 import { roleMiddleware } from '../../middlewares/Role.middleware'
 
 const router = Router()
+
+// ─── RUTA PÚBLICA PARA REGISTRO ──────────────────────────────────────────────
+// POST /api/usuarios/register
+router.post('/register', usuarioController.register)
 
 // ─── RUTAS PROTEGIDAS ─────────────────────────────────────────────────────────
 // Todas las rutas requieren autenticación y permisos de admin

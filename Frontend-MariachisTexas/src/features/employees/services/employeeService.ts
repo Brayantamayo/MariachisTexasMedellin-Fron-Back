@@ -62,6 +62,12 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
     throw new Error('Contraseña es requerida');
   }
 
+  const otrosInstrumentos = Array.isArray(user.otherInstruments)
+    ? user.otherInstruments.join(', ')
+    : typeof user.otherInstruments === 'string'
+      ? user.otherInstruments.trim() || null
+      : null;
+
   return {
     nombre,
     email: user.email,
@@ -72,13 +78,13 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
     numeroDocumento: user.documentNumber,
     fechaNacimiento: user.birthDate,
     telefonoPrincipal: user.phone,
-    telefonoAlternativo: user.secondaryPhone || null,
+    telefonoAlternativo: user.secondaryPhone?.trim() || undefined,
     ciudad: user.city || 'Medellín',
     barrio: user.neighborhood,
     direccion: user.address,
     zonaServicio: user.serviceZone || 'URBANA',
     instrumentoPrincipal: user.mainInstrument,
-    otrosInstrumentos: user.otherInstruments ? user.otherInstruments.join(', ') : null,
+    otrosInstrumentos,
     anosExperiencia: user.experienceYears || 0,
     foto: user.avatar || null
   };

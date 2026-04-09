@@ -37,10 +37,17 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones))
 }
 
-export const getReservasCalendario = async () => {
+export const getReservasCalendario = async (usuarioId?: number) => {
+  const reservaWhere = usuarioId
+    ? {
+        estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] },
+        cotizacion: { cliente: { usuario: { id: usuarioId } } }
+      }
+    : { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
+
   const [reservas, ensayos, cotizaciones] = await Promise.all([
     prisma.reserva.findMany({
-      where: { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } },
+      where: reservaWhere,
       include: {
         cotizacion: {
           select: {
@@ -145,8 +152,10 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   )
 
   // 4. Buscar cliente → usuario
+  const clienteNumerico = Number(d.clienteId)
+  
   const cliente = await prisma.cliente.findUnique({
-    where:   { id: Number(d.clienteId) },
+    where:   { id: clienteNumerico },
     include: { usuario: true },
   })
   if (!cliente)         throw new AppError('Cliente no encontrado', 404)
@@ -407,6 +416,11 @@ export const deleteReserva = async (id: number) => {
 }
 // ─── ABONOS ────────────────────────────────────────────────────────────────────
 export const getAbonos = async (usuarioId?: number) => {
+  // Validate usuarioId
+  if (usuarioId !== undefined && (typeof usuarioId !== 'number' || isNaN(usuarioId) || usuarioId <= 0)) {
+    throw new Error('ID de usuario inválido')
+  }
+
   const where: any = {}
 
   if (usuarioId) {
@@ -422,24 +436,31 @@ export const getAbonos = async (usuarioId?: number) => {
     include: {
       reserva: { include: { cotizacion: { include: { cliente: { include: { usuario: true } } } } } },
       cliente: { include: { usuario: true } }
-    },
+  },
     orderBy: { fechaPago: 'desc' }
   })
 
-  return abonos.map((a: any) => ({
-    id: String(a.id),
-    amount: Number(a.monto),
-    date: a.fechaPago?.toISOString() ?? '',
-    type: 'Abono Parcial',
-    method: a.metodoPago,
-    notes: a.notas ?? '',
-    reservationId: String(a.reservaId),
-    clientId: String(a.clienteId),
-    clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
-    clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
-    reservationTotal: Number(a.reserva?.totalValor ?? 0),
-    newBalance: Number(a.nuevoSaldo ?? 0)
-  }))
+  return abonos.map((a: any) => {
+    // Validate required fields
+    if (!a.id) {
+      throw new Error('Abono sin ID válido')
+    }
+
+    return {
+      id: String(a.id),
+      amount: Number(a.monto || 0),
+      date: a.fechaPago?.toISOString() ?? '',
+      type: 'Abono Parcial',
+      method: a.metodoPago || '',
+      notes: a.notas ?? '',
+      reservationId: String(a.reservaId || ''),
+      clientId: String(a.clienteId || ''),
+      clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
+      clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
+      reservationTotal: Number(a.reserva?.totalValor ?? 0),
+      newBalance: Number(a.nuevoSaldo ?? 0)
+    }
+  })
 }
 
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {

@@ -7,7 +7,18 @@ import PDFDocument from 'pdfkit'
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO', 'CLIENTE']
 
 export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+  const userId = req.user?.id
+
+  let usuarioId: number | undefined
+  if (userId !== undefined && userId !== null) {
+    const numId = Number(userId)
+    if (!isNaN(numId) && numId > 0) {
+      usuarioId = numId
+    } else {
+      return res.status(400).json({ message: 'ID de usuario inválido' })
+    }
+  }
+
   if (req.user?.rol && ROLES_ADMIN.includes(req.user.rol)) {
     return res.json(await abonoService.getAbonos(req.user.rol === 'CLIENTE' ? usuarioId : undefined))
   }

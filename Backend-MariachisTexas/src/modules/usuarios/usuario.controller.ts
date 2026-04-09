@@ -1,7 +1,12 @@
 import { Request, Response } from 'express'
-import * as usuarioService from '../Usuarios/usuario.services'
+import * as usuarioService from '../usuarios/usuario.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
+
+// ─── REGISTER (PÚBLICO) ──────────────────────────────────────────────────────
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  res.status(201).json(await usuarioService.registerUsuario(req.body))
+})
 
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (_req: Request, res: Response) => {

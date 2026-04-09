@@ -30,8 +30,12 @@ export interface ReservaFormErrors {
 }
 
 // ─── Validación ───────────────────────────────────────────────────────────────
-const validate = (data: any, services: any[]): ReservaFormErrors => {
+const validate = (data: any, services: any[], isAdmin?: boolean): ReservaFormErrors => {
   const errors: ReservaFormErrors = {};
+
+  if (isAdmin && !data.clientId?.trim()) {
+    errors.clientName = 'Debes seleccionar un cliente de la base de datos';
+  }
 
   if (!data.clientName?.trim())
     errors.clientName = 'El nombre del cliente es requerido';
@@ -128,7 +132,7 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
     servicesService.getServices().then(setServices);
 
     if (isAdmin) {
-      clientService.getClients(1, 100).then(({ clients }) => setClients(clients));
+      clientService.getClients().then(({ clients }) => setClients(clients));
     }
 
     const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
@@ -286,7 +290,7 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
       }
     }
 
-    const validationErrors = validate(formData, services);
+    const validationErrors = validate(formData, services, isAdmin);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       const firstMessage = Object.values(validationErrors)[0];

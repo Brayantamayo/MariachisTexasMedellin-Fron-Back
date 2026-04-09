@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { EnrichedPayment } from '../services/abonoService';
-import { Eye, Download, FileText, Calendar, CreditCard, User, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Eye, Download, FileText, Calendar, CreditCard, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { Reservation } from '@/types';
 
@@ -11,10 +11,9 @@ interface Props {
   loading: boolean;
   onView: (abono: EnrichedPayment) => void;
   onDownload: (id: string) => void;
-  onConvertToVenta?: (reservationId: string) => void;
 }
 
-export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, onView, onDownload, onConvertToVenta }) => {
+export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, onView, onDownload }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedResId, setExpandedResId] = useState<string | null>(null);
   const itemsPerPage = 10;
@@ -133,22 +132,12 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                                   {/* Acciones */}
                                   <td className="py-5 px-8">
                                       <div className="flex items-center justify-center gap-2">
-                                          {pending === 0 && onConvertToVenta ? (
-                                              <button 
-                                                onClick={(e) => { e.stopPropagation(); onConvertToVenta(res.id); }}
-                                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-sm"
-                                                title="Convertir abonos a venta final"
-                                              >
-                                                  <ArrowRight size={12} /> A Venta
-                                              </button>
-                                          ) : (
-                                              <button 
-                                                onClick={(e) => { e.stopPropagation(); toggleExpand(res.id); }}
-                                                className="text-xs font-bold text-primary-600 hover:text-primary-700 underline underline-offset-4"
-                                              >
-                                                  {isExpanded ? 'Ocultar' : 'Ver Abonos'}
-                                              </button>
-                                          )}
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); toggleExpand(res.id); }}
+                                            className="text-xs font-bold text-primary-600 hover:text-primary-700 underline underline-offset-4"
+                                          >
+                                              {isExpanded ? 'Ocultar' : 'Ver Abonos'}
+                                          </button>
                                       </div>
                                   </td>
                               </tr>

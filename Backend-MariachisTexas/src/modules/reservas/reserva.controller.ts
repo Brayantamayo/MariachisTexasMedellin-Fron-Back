@@ -16,7 +16,16 @@ export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {c
 })
 
 // ─── GET CALENDARIO ───────────────────────────────────────────────────────────
-export const getCalendario = asyncHandler(async (_req: Request, res: Response) => {res.json(await reservaService.getReservasCalendario())})
+export const getCalendario = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const rol = req.user?.rol
+  const usuarioId = req.user?.id ? Number(req.user.id) : undefined
+
+  // Si es cliente, solo mostrar sus propias reservas
+  // Si es admin/empleado, mostrar todas las reservas activas
+  const isCliente = rol === 'CLIENTE'
+
+  res.json(await reservaService.getReservasCalendario(isCliente ? usuarioId : undefined))
+})
 
 // ─── GET ABONOS ───────────────────────────────────────────────────────────────
 export const getAbonos = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -67,8 +76,15 @@ const reserva = await reservaService.getReservaById(Number(id))
 })
 
 // ─── CREAR ───────────────────────────────────────────────────────────────────
-export const create = asyncHandler(async (req: AuthRequest, res: Response) => {const data = { ...req.body, clienteId: req.body.clienteId || req.user?.id }
-res.status(201).json(await reservaService.createReserva(data))})
+export const create = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // Admin envía clienteId explícitamente; Cliente solo puede crear para sí mismo
+  const clienteId = req.body.clienteId || (req.user?.rol === 'CLIENTE' ? req.user?.id : undefined)
+  if (!clienteId) {
+    return res.status(400).json({ message: 'clienteId es requerido' })
+  }
+  const data = { ...req.body, clienteId }
+  res.status(201).json(await reservaService.createReserva(data))
+})
 
 // ─── ACTUALIZAR ───────────────────────────────────────────────────────────────────
 export const update = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id

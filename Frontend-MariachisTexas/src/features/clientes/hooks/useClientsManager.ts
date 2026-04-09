@@ -39,7 +39,7 @@ export const useClientsManager = () => {
         setClients(data);
         setPagination({ page: 1, limit: data.length, total: data.length, pages: 1 });
       } else {
-        const data = await clientService.getClients(page, pagination.limit);
+        const data = await clientService.getClients();
         setClients(data.clients);
         setPagination(data.pagination);
       }

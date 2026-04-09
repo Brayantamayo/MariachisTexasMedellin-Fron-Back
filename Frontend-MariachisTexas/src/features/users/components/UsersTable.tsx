@@ -117,8 +117,12 @@ export const UsersTable: React.FC<Props> = ({ users, loading, onView, onEdit, on
                       {/* Actions */}
                       <div className="col-span-2 flex justify-center gap-3">
                           <ActionButton icon={Eye} onClick={() => onView(user)} tooltip="Ver detalle" />
-                          <ActionButton icon={Edit2} onClick={() => onEdit(user)} tooltip="Editar usuario" />
-                          <ActionButton icon={Trash2} onClick={() => onDelete(user.id)} tooltip="Eliminar usuario" />
+                          {user.isActive && (
+                            <>
+                              <ActionButton icon={Edit2} onClick={() => onEdit(user)} tooltip="Editar usuario" />
+                              <ActionButton icon={Trash2} onClick={() => onDelete(user.id)} tooltip="Eliminar usuario" />
+                            </>
+                          )}
                       </div>
                   </div>
               ))}

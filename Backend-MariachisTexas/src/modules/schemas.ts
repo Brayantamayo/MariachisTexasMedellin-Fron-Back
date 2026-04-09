@@ -889,6 +889,7 @@ export const EmpleadoUpdateSchema = z.object({
 
 
 export const ClienteCreateSchema = z.object({
+  nombre: z.string().trim().min(2, 'Nombre requerido'),
   email: z.string().email('Email inválido').toLowerCase().trim(),
   apellido: z.string().trim().min(2, 'Apellido requerido'),
   tipoDocumento: z.enum(['CC', 'CE', 'TI', 'PAS']),
@@ -903,7 +904,9 @@ export const ClienteCreateSchema = z.object({
   foto: z.string().url().optional().or(z.literal('')).transform(val => val || undefined),
 })
 
-export const ClienteUpdateSchema = ClienteCreateSchema.partial()
+export const ClienteUpdateSchema = ClienteCreateSchema.partial().extend({
+  activo: z.boolean().optional(),
+})
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── HELPER ───────────────────────────────────────────────────────────────────

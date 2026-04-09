@@ -64,6 +64,7 @@ export const ClientCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSa
     documentType: 'CC', documentNumber: '',
     birthDate: '', phone: '', secondaryPhone: '',
     city: 'Medellín', neighborhood: '', address: '',
+    serviceZone: 'Urbano',
     gender: 'O', isActive: true,
     avatar: ''   // ← URL Cloudinary
   };

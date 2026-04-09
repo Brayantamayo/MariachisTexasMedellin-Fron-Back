@@ -100,7 +100,7 @@ export const CotizacionCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave
     if (isOpen) {
       repertoireService.getSongs().then(setSongs);
       servicesService.getServices().then(setServices);
-      if (isAdmin) clientService.getClients(1, 100).then(({ clients }) => setClients(clients));
+      if (isAdmin) clientService.getClients().then(({ clients }) => setClients(clients));
 
       let baseData = { ...initialFormState };
 

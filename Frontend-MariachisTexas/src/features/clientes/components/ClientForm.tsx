@@ -273,7 +273,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onSubmit, erro
                     <div className="relative">
                         <select 
                             name="serviceZone" 
-                            value={formData.serviceZone || 'Urbano'} 
+                            value={formData.serviceZone} 
                             onChange={onChange} 
                             required
                             className="input-form appearance-none cursor-pointer"

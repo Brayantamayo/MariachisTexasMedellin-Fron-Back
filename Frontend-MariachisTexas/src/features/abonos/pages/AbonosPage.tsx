@@ -119,19 +119,6 @@ export const AbonosPage: React.FC = () => {
     }
   };
 
-  const handleConvertToVenta = async (reservationId: string) => {
-      try {
-          showNotification('Procesando conversión...', 'success');
-          await abonoService.convertAbonosToVenta(reservationId);
-          showNotification('✅ ¡Reserva finalizada! Se creó una venta con todos los abonos registrados.');
-          await fetchAbonos(); // Recargar datos
-      } catch (error: any) {
-          console.error(error);
-          const errorMsg = error.message || 'Error al convertir abonos a venta';
-          showNotification(`❌ ${errorMsg}`, 'error');
-      }
-  };
-
   const filteredAbonos = abonos.filter(a => 
       a.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       a.id.includes(searchTerm) ||
@@ -207,13 +194,12 @@ export const AbonosPage: React.FC = () => {
         </div>
 
         {/* Modular Table */}
-        <AbonosTable 
+        <AbonosTable
             abonos={abonos}
             reservations={reservations}
             loading={loading}
             onView={(abono) => { setSelectedAbono(abono); setIsDetailOpen(true); }}
             onDownload={handleDownload}
-            onConvertToVenta={!isClient ? handleConvertToVenta : undefined}
         />
       </div>
 

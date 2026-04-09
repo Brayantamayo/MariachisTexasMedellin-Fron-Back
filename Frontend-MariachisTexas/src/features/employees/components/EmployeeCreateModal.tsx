@@ -49,6 +49,8 @@ const validate = (data: any): EmployeeFormErrors => {
     errors.documentNumber = 'El número de documento es requerido';
   } else if (!/^\d{6,12}$/.test(data.documentNumber.trim())) {
     errors.documentNumber = 'El documento debe tener 6-12 dígitos';
+  } else if (/^0+$/.test(data.documentNumber.trim())) {
+    errors.documentNumber = 'El documento no puede ser solo ceros';
   }
 
   if (!data.password) {
@@ -135,13 +137,15 @@ export const EmployeeCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, on
         documentNumber:   formData.documentNumber.trim(),
         birthDate:        formData.birthDate,
         phone:            formData.phone.trim(),
-        secondaryPhone:   formData.secondaryPhone?.trim() || null,
+        secondaryPhone:   formData.secondaryPhone?.trim() || undefined,
         city:             formData.city.trim(),
         neighborhood:     formData.neighborhood.trim(),
         address:          formData.address.trim(),
         serviceZone:      'URBANA',
         mainInstrument:   formData.mainInstrument.trim(),
-        otherInstruments: formData.otherInstruments?.trim() || null,
+        otherInstruments: typeof formData.otherInstruments === 'string'
+          ? formData.otherInstruments.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0)
+          : formData.otherInstruments,
         experienceYears:  formData.experienceYears || 0,
         avatar:           formData.avatar,
         role:             formData.role,

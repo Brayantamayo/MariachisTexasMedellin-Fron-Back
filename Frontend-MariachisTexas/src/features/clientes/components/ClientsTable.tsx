@@ -2,7 +2,6 @@
 import React from 'react';
 import { User } from '@/types';
 import { User as UserIcon, MapPin, Phone, Eye, Edit2, Trash2, Mail, Hash } from 'lucide-react';
-import { TablePagination } from '@/shared/components/TablePagination';
 
 interface Props {
   clients: User[];
@@ -12,7 +11,6 @@ interface Props {
   onEdit: (client: User) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (client: User) => void;
-  onPageChange: (page: number) => void;
 }
 
 export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, onView, onEdit, onDelete, onToggleStatus, onPageChange }) => {
@@ -120,8 +118,12 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, on
                           <td className="py-5 px-8">
                               <div className="flex items-center justify-center gap-2">
                                   <ActionButton icon={Eye} onClick={() => onView(client)} tooltip="Ver detalle" />
-                                  <ActionButton icon={Edit2} onClick={() => onEdit(client)} tooltip="Editar cliente" />
-                                  <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                  {client.isActive && (
+                                    <>
+                                      <ActionButton icon={Edit2} onClick={() => onEdit(client)} tooltip="Editar cliente" />
+                                      <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                    </>
+                                  )}
                               </div>
                           </td>
                       </tr>
@@ -129,13 +131,6 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, on
               </tbody>
           </table>
       </div>
-      <TablePagination 
-        currentPage={pagination.page}
-        totalPages={pagination.pages}
-        onPageChange={onPageChange}
-        totalItems={pagination.total}
-        itemsPerPage={pagination.limit}
-      />
     </div>
   );
 };

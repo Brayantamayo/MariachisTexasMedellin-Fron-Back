@@ -112,8 +112,12 @@ export const EmployeesTable: React.FC<Props> = ({ employees, loading, onView, on
                       {/* Actions */}
                       <div className="col-span-2 flex justify-center gap-3">
                           <ActionButton icon={Eye} onClick={() => onView(emp)} tooltip="Ver detalle" />
-                          <ActionButton icon={Edit2} onClick={() => onEdit(emp)} tooltip="Editar empleado" />
-                          <ActionButton icon={Trash2} onClick={() => onDelete(emp.id)} tooltip="Eliminar empleado" />
+                          {emp.isActive && (
+                            <>
+                              <ActionButton icon={Edit2} onClick={() => onEdit(emp)} tooltip="Editar empleado" />
+                              <ActionButton icon={Trash2} onClick={() => onDelete(emp.id)} tooltip="Eliminar empleado" />
+                            </>
+                          )}
                       </div>
                   </div>
               ))}

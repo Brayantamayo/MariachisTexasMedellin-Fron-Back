@@ -41,6 +41,10 @@ interface ListResponse {
   }
 }
 
+interface SearchResponse {
+  clientes: ClienteAPI[]
+}
+
 // ─── MAPPERS ──────────────────────────────────────────────────────────────────
 
 // API → User (frontend)
@@ -68,6 +72,7 @@ const mapClienteToUser = (cliente: ClienteAPI): User => ({
 const mapUserToCliente = (user: Partial<Omit<User, 'id'>>) => {
   const data: Record<string, any> = {}
 
+  if (user.name !== undefined)         data.nombre            = user.name
   if (user.email !== undefined)        data.email             = user.email
   if (user.lastName !== undefined)     data.apellido          = user.lastName
   if (user.documentType !== undefined) data.tipoDocumento     = user.documentType
@@ -78,8 +83,13 @@ const mapUserToCliente = (user: Partial<Omit<User, 'id'>>) => {
   if (user.neighborhood !== undefined) data.barrio            = user.neighborhood
   if (user.address !== undefined)      data.direccion         = user.address
 
-  if (user.serviceZone !== undefined)
-    data.zonaServicio = user.serviceZone === 'Urbano' ? 'URBANA' : 'RURAL'
+  if (user.serviceZone !== undefined && user.serviceZone !== null && user.serviceZone.trim() !== '') {
+    const zone = user.serviceZone.trim()
+    data.zonaServicio = zone === 'Urbano' ? 'URBANA' : zone === 'Rural' ? 'RURAL' : 'URBANA'
+  } else {
+    // Valor por defecto si no hay zona especificada
+    data.zonaServicio = 'URBANA'
+  }
 
   // Opcionales — solo se envían si tienen valor real
   if (user.secondaryPhone?.trim())
@@ -95,21 +105,21 @@ const mapUserToCliente = (user: Partial<Omit<User, 'id'>>) => {
 
 export const clientService = {
 
-  // GET /clientes?page=&limit=  →  { clientes: [...], pagination: {...} }
-  getClients: async (page = 1, limit = 10): Promise<{ clients: User[]; pagination: any }> => {
-    const response = await api.get<ListResponse>(`/clientes?page=${page}&limit=${limit}`)
+  // GET /clientes  →  { clientes: [...], pagination: {...} }
+  getClients: async (): Promise<{ clients: User[]; pagination: any }> => {
+    const response = await api.get<ListResponse>('/clientes')
     return {
       clients: response.data.clientes.map(mapClienteToUser),
       pagination: response.data.pagination,
     }
   },
 
-  // GET /clientes/buscar?query=  →  ClienteAPI[]  (retorna array directo)
+  // GET /clientes/buscar?query=  →  ClienteAPI[]  (retorna wrapper)
   searchClients: async (query: string): Promise<User[]> => {
-    const response = await api.get<ClienteAPI[]>(
+    const response = await api.get<SearchResponse>(
       `/clientes/buscar?query=${encodeURIComponent(query)}`
     )
-    return response.data.map(mapClienteToUser)
+    return response.data.clientes.map(mapClienteToUser)
   },
 
   // GET /clientes/:id  →  ClienteAPI  (retorna objeto directo)
@@ -120,14 +130,16 @@ export const clientService = {
 
   // POST /clientes  →  ClienteAPI  (retorna objeto directo)
   createClient: async (client: Omit<User, 'id'>): Promise<User> => {
-    const response = await api.post<ClienteAPI>('/clientes', mapUserToCliente(client))
-    return mapClienteToUser(response.data)
+    const response = await api.post<ClienteAPI | { message: string; cliente: ClienteAPI }>('/clientes', mapUserToCliente(client))
+    const result = 'cliente' in response.data ? response.data.cliente : response.data
+    return mapClienteToUser(result)
   },
 
   // PUT /clientes/:id  →  ClienteAPI  (retorna objeto directo)
   updateClient: async (id: string, updates: Partial<User>): Promise<User> => {
-    const response = await api.put<ClienteAPI>(`/clientes/${id}`, mapUserToCliente(updates))
-    return mapClienteToUser(response.data)
+    const response = await api.put<ClienteAPI | { message: string; cliente: ClienteAPI }>(`/clientes/${id}`, mapUserToCliente(updates))
+    const result = 'cliente' in response.data ? response.data.cliente : response.data
+    return mapClienteToUser(result)
   },
 
   // DELETE /clientes/:id  →  { message: string }
@@ -136,12 +148,13 @@ export const clientService = {
     return true
   },
 
-  // PATCH /clientes/:id/estado  →  ClienteAPI  (retorna objeto directo)
+  // PATCH /clientes/:id/estado  →  ClienteAPI  (retorna objeto directo o wrapper)
   toggleClientStatus: async (id: string, active: boolean): Promise<User> => {
-    const response = await api.patch<ClienteAPI>(
+    const response = await api.patch<ClienteAPI | { message: string; cliente: ClienteAPI }>(
       `/clientes/${id}/estado`,
       { activo: active }
     )
-    return mapClienteToUser(response.data)
+    const result = 'cliente' in response.data ? response.data.cliente : response.data
+    return mapClienteToUser(result)
   },
 }
