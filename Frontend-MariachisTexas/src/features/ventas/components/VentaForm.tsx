@@ -177,11 +177,12 @@ export const VentaForm: React.FC<Props> = ({
                         onChange={onChange}
                         className="input-form pl-9 appearance-none cursor-pointer text-xs text-slate-700"
                     >
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Transferencia">Transferencia</option>
-                        <option value="Tarjeta">Tarjeta</option>
-                        <option value="Nequi">Nequi</option>
-                        <option value="Daviplata">Daviplata</option>
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="TRANSFERENCIA">Transferencia</option>
+                        <option value="TARJETA">Tarjeta</option>
+                        <option value="NEQUI">Nequi</option>
+                        <option value="DAVIPLATA">Daviplata</option>
+                        <option value="OTRO">Otro</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                 </div>

@@ -8,10 +8,11 @@ import { reservaService } from '../../reservas/services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
+///esta es la interfaz de props para el modal de edición de ensayo. Recibe el estado de apertura, funciones de cierre y guardado, y los datos del ensayo a editar.  
 interface Props {
 isOpen:    boolean;
 onClose:   () => void;
-onSave:    (data: any) => Promise<void>; // ✅ ahora es Promise
+onSave:    (data: any) => Promise<void>; 
 rehearsal: Rehearsal | null;
 }
 
@@ -22,6 +23,7 @@ date?:     string;
 time?:     string;
 }
 
+///esta función valida los datos del formulario y devuelve un objeto de errores si hay alguno.
 const validate = (formData: any, blockStatus: any): FormErrors => {
 const errors: FormErrors = {};
 if (!formData.title?.trim())    errors.title    = 'El nombre del ensayo es obligatorio.';
@@ -32,6 +34,7 @@ if (!formData.time)             errors.time     = 'Selecciona una hora válida.'
 return errors;
 };
 
+///esta es la función de renderizado del modal de edición de ensayo. Recibe el estado de apertura, funciones de cierre y guardado, y los datos del ensayo a editar.
 export const RehearsalEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, rehearsal }) => {
 const [formData,       setFormData]       = useState<any>(null);
 const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
@@ -41,6 +44,7 @@ const [errors,         setErrors]         = useState<FormErrors>({});
 const [globalError,    setGlobalError]    = useState<string | null>(null);
 const [saving,         setSaving]         = useState(false);
 
+///esta función se ejecuta cuando el modal se abre y carga los datos del ensayo a editar.
 useEffect(() => {
     if (rehearsal && isOpen) {
     setFormData({ ...rehearsal });
@@ -55,6 +59,7 @@ useEffect(() => {
     }
 }, [rehearsal, isOpen]);
 
+///esta función verifica si el evento está bloqueado y si hay horas disponibles para reservar.
 const checkBlockAndHours = async (date: string) => {
     const status = await blockService.checkDateStatus(date);
     setBlockStatus(status);
@@ -67,18 +72,21 @@ const checkBlockAndHours = async (date: string) => {
     setAvailableHours(hours);
 };
 
+///esta función actualiza los datos del formulario cuando cambia el valor de un campo.
 const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormErrors]) setErrors(prev => ({ ...prev, [name]: undefined }));
 };
 
+///esta función actualiza los datos del formulario cuando cambia el valor de una fecha.
 const handleDateChange = (name: string, value: string) => {
     setFormData((prev: any) => ({ ...prev, [name]: value, time: '' }));
     if (name === 'date') checkBlockAndHours(value);
     if (errors.date || errors.time) setErrors(prev => ({ ...prev, date: undefined, time: undefined }));
 };
 
+///esta función activa o desactiva la selección de una canción en el repertorio.
 const toggleSongSelection = (songId: string) => {
     setFormData((prev: any) => {
     const exists = prev.repertoireIds.includes(songId);
@@ -91,6 +99,7 @@ const toggleSongSelection = (songId: string) => {
     });
 };
 
+///esta función valida los datos del formulario y, si son válidos, guarda los cambios.
 const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setGlobalError(null);
@@ -106,12 +115,13 @@ const handleSubmit = async (e?: React.FormEvent) => {
     await onSave(formData);
     setErrors({});
     } catch (err) {
-      setGlobalError(getErrorMessage(err, 'Error al actualizar el ensayo.')); // ✅ Error del backend
+    setGlobalError(getErrorMessage(err, 'Error al actualizar el ensayo.')); 
     } finally {
     setSaving(false);
     }
 };
 
+///esta función cierra el modal.
 const handleClose = () => {
     setErrors({});
     setGlobalError(null);
@@ -120,6 +130,7 @@ const handleClose = () => {
 
 if (!isOpen || !formData) return null;
 
+/// esta es la vista al editar 
 return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleClose} />
@@ -141,14 +152,14 @@ return createPortal(
         </button>
         </div>
 
-        {/* ✅ Error global del backend */}
+        {/* error en el backend */}
         {globalError && (
         <div className="mx-8 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
         </div>
         )}
 
-        {/* Form */}
+        {/* Formulario */}
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
         <RehearsalForm
             formData={formData}
@@ -159,16 +170,18 @@ return createPortal(
             onDateChange={handleDateChange}
             onToggleSong={toggleSongSelection}
             onSubmit={handleSubmit}
-            errors={errors}  // ✅ pasamos errores al form
+            errors={errors}  
         />
         </div>
 
-        {/* Footer */}
+        {/* Pie de página */}
         <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4">
         <button onClick={handleClose} disabled={saving}
             className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest px-4 py-2 disabled:opacity-50">
             Cancelar
         </button>
+
+        {/* Botón de guardar */}
         <button
             onClick={() => handleSubmit()}
             disabled={blockStatus.isBlocked || saving}
@@ -183,6 +196,7 @@ return createPortal(
             : <><Save size={18} /> {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Cambios'}</>
             }
         </button>
+        
         </div>
     </div>
     </div>,

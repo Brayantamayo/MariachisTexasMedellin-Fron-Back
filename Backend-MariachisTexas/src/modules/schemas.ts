@@ -106,19 +106,30 @@ const AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.mp4', '.mpeg']
 
 const urlImagen = z.union([
   z.string().trim()
-  .url('URL de imagen inválida')
-  .max(500, 'URL demasiado larga')
-  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-  .refine(u => u.includes(CLOUDINARY) || IMG_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'),
+    .url('URL de imagen inválida')
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u =>
+      u.includes(CLOUDINARY) ||
+      u.includes('i.scdn.co') ||          
+      u.includes('mosaic.scdn.co') ||     
+      IMG_EXTS.some(e => u.toLowerCase().includes(e)),
+    'URL de imagen no válida (JPG, PNG, WEBP o Cloudinary)'
+    ),
   z.literal(''), z.null(), z.undefined(),
 ])
 
 const urlAudio = z.union([
   z.string().trim()
-  .url('URL de audio inválida')
-  .max(500, 'URL demasiado larga')
-  .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
-  .refine(u => u.includes(CLOUDINARY) || AUDIO_EXTS.some(e => u.toLowerCase().includes(e)), 'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'),
+    .url('URL de audio inválida')
+    .max(500, 'URL demasiado larga')
+    .refine(u => u.startsWith('https://'), 'La URL debe usar HTTPS')
+    .refine(u =>
+      u.includes(CLOUDINARY) ||
+      u.includes('p.scdn.co') ||       
+      AUDIO_EXTS.some(e => u.toLowerCase().includes(e)),
+    'URL de audio no válida (MP3, WAV, OGG o Cloudinary)'
+    ),
   z.literal(''), z.null(), z.undefined(),
 ])
 
@@ -161,7 +172,7 @@ export const RegistroSchema = z.object({
     .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
     .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido'),
     tipoDocumento: z.string().trim().refine(
-    v => ['CC', 'CE', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, PAS'
+    v => ['CC', 'CE', 'TI', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
   ),
 
   numeroDocumento: z.string()
@@ -462,7 +473,36 @@ export const EnsayoCreateSchema = z.object({
     repertoireIds: z.array(repertorioId).max(20).optional(),
 })
 
-export const EnsayoUpdateSchema = EnsayoCreateSchema.partial()
+export const EnsayoUpdateSchema = z.object({
+  title: z.string()
+    .trim()
+    .min(2,   'El título debe tener al menos 2 caracteres')
+    .max(100, 'El título no puede superar 100 caracteres')
+    .refine(t => t.trim().length > 0,      'El título no puede ser solo espacios')
+    .refine(t => !/^\d+$/.test(t.trim()),  'El título no puede ser solo números')
+    .refine(t => !/[<>{}[\]\\]/.test(t),   'El título contiene caracteres no permitidos')
+    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido')
+    .refine(t => t.length <= 50,          'El título no puede superar 50 caracteres')
+    .refine(t => t.length >= 2,           'El título no puede ser menor a 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).every(p => p.length >= 2), 'Cada palabra del título debe tener al menos 2 caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 3), 'El título debe contener al menos una palabra de 3 o más caracteres')
+    .refine(t => t.trim().split(/\s+/).some(p => p.length >= 4), 'El título debe contener al menos una palabra de 4 o más caracteres')
+    .optional(),
+  location: z.string()
+    .trim()
+    .min(2,   'El lugar debe tener al menos 2 caracteres')
+    .max(50, 'El lugar no puede superar 50 caracteres')
+    .refine(l => l.trim().length > 0,    'El lugar no puede ser solo espacios')
+    .refine(l => !/[<>{}[\]\\]/.test(l), 'El lugar contiene caracteres no permitidos')
+    .refine(l => !esGibberish(l),        'El lugar parece contener texto sin sentido')
+    .refine(t => t.length <= 200,        'El lugar no puede superar 200 caracteres')
+    .optional(),
+  address: z.string().trim().max(200).optional().nullable(),
+  date: fechaFutura.optional(),
+  time: hora.optional(),
+  status: z.enum(['PENDIENTE', 'LISTO']).optional(),
+  repertoireIds: z.array(repertorioId).max(20).optional()
+})
 
 
 
@@ -522,8 +562,348 @@ export const RepertorioCreateSchema = z.object({
   audioUrl:   urlAudio,
   isActive:   z.boolean().optional(),
 })
+.refine(d => {
+  const [min, sec] = d.duration.split(':').map(Number)
+  const totalSeconds = min * 60 + sec
+  return totalSeconds >= 30 && totalSeconds <= 600
+}, { message: 'La duración debe estar entre 0:30 y 10:00 minutos', path: ['duration'] })
+.refine(d => d.title.toLowerCase().trim() !== d.artist.toLowerCase().trim(), {
+  message: 'El título no puede ser igual al artista', path: ['artist']
+})
 
-export const RepertorioUpdateSchema = RepertorioCreateSchema.partial()
+export const RepertorioUpdateSchema = z.object({
+  title: z.string()
+    .trim()
+    .min(2,   'El título debe tener al menos 2 caracteres')
+    .max(100, 'El título no puede superar 100 caracteres')
+    .refine(t => t.trim().length > 0,      'El título no puede ser solo espacios')
+    .refine(t => !/^\d+$/.test(t.trim()),  'El título no puede ser solo números')
+    .refine(t => !esGibberish(t),          'El título parece contener texto sin sentido')
+    .refine(t => !/\s{2,}/.test(t.trim()), 'El título no puede tener espacios consecutivos')
+    .optional(),
+  artist: z.string()
+    .trim()
+    .min(2,  'El artista debe tener al menos 2 caracteres')
+    .max(80, 'El artista no puede superar 80 caracteres')
+    .refine(a => a.trim().length > 0,      'El artista no puede ser solo espacios')
+    .refine(a => !/^\d+$/.test(a.trim()),  'El artista no puede ser solo números')
+    .refine(a => !esGibberish(a),          'El artista parece contener texto sin sentido')
+    .refine(a => !/\s{2,}/.test(a.trim()), 'El artista no puede tener espacios consecutivos')
+    .optional(),
+  genre: z.string()
+    .trim()
+    .min(2,  'El género debe tener al menos 2 caracteres')
+    .max(50, 'El género no puede superar 50 caracteres')
+    .refine(g => g.replace(/\s+/g, '').length >= 2, 'El género debe tener al menos 2 caracteres reales')
+    .refine(g => g.trim().length > 0,      'El género no puede ser solo espacios')
+    .refine(g => !/^\d+$/.test(g.trim()),  'El género no puede ser solo números')
+    .refine(g => !esGibberish(g),          'El género parece contener texto sin sentido')
+    .refine(g => !/\s{2,}/.test(g.trim()), 'El género no puede tener espacios consecutivos')
+    .optional(),
+  category: z.string().trim().refine(
+    c => (CATEGORIAS as readonly string[]).includes(c),`Categoría inválida. Opciones: ${CATEGORIAS.join(', ')}`
+  ).optional(),
+  duration: duracion.optional(),
+  difficulty: z.string().trim().refine(
+    d => (DIFICULTADES as readonly string[]).includes(d),
+    `Dificultad inválida. Opciones: ${DIFICULTADES.join(', ')}`
+  ).optional(),
+  lyrics: z.string()
+    .trim()
+    .max(5000, 'La letra no puede superar 5000 caracteres')
+    .refine(l => !/^\d+$/.test(l),       'La letra no puede ser solo números')
+    .refine(l => !esGibberish(l),         'La letra parece contener texto sin sentido')
+    .refine(l => !/[<>{}[\]\\]/.test(l),  'La letra contiene caracteres no permitidos')
+    .optional()
+    .nullable(),
+  coverImage: urlImagen.optional(),
+  audioUrl: urlAudio.optional(),
+  isActive: z.boolean().optional()
+})
+.refine(d => {
+  if (!d.duration) return true
+  const [min, sec] = d.duration.split(':').map(Number)
+  const totalSeconds = min * 60 + sec
+  return totalSeconds >= 30 && totalSeconds <= 600
+}, { message: 'La duración debe estar entre 0:30 y 10:00 minutos', path: ['duration'] })
+.refine(d => {
+  if (!d.title || !d.artist) return true
+  return d.title.toLowerCase().trim() !== d.artist.toLowerCase().trim()
+}, { message: 'El título no puede ser igual al artista', path: ['artist'] })
+
+// ─── VENTA ────────────────────────────────────────────────────────────────────
+
+export const VentaCreateSchema = z.object({
+  reservaId: z.union([z.number().int().positive(), z.null()]).optional(),
+  clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo'),
+  tipo: z.enum(['RESERVA', 'DIRECTA']),
+  estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional().default('CONFIRMADO'),
+  montoTotal: z.number()
+    .positive('El monto total debe ser mayor a 0')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
+  montoPagado: z.number()
+    .min(0, 'El monto pagado no puede ser negativo')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
+  fechaVenta: fecha,
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']),
+})
+.refine(d => d.montoPagado <= d.montoTotal, {
+  message: 'El monto pagado no puede ser mayor al total', path: ['montoPagado']
+})
+
+export const VentaUpdateSchema = z.object({
+  reservaId: z.union([z.number().int().positive(), z.null()]).optional(),
+  clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo').optional(),
+  tipo: z.enum(['RESERVA', 'DIRECTA']).optional(),
+  estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional(),
+  montoTotal: z.number()
+    .positive('El monto total debe ser mayor a 0')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+    .optional(),
+  montoPagado: z.number()
+    .min(0, 'El monto pagado no puede ser negativo')
+    .max(10_000_000, 'El monto parece demasiado alto')
+    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+    .optional(),
+  fechaVenta: fecha.optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']).optional()
+})
+
+export const RolCreateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre del rol debe tener al menos 2 caracteres')
+    .max(50, 'El nombre del rol no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido'),
+  descripcion: textoLibre('descripción', 200).optional(),
+  estado: z.boolean().optional().default(true),
+  permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional().default([])
+})
+
+export const RolUpdateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2, 'El nombre del rol debe tener al menos 2 caracteres')
+    .max(50, 'El nombre del rol no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios')
+    .refine(n => !esGibberish(n), 'El nombre parece contener texto sin sentido')
+    .optional(),
+  descripcion: textoLibre('descripción', 200).optional(),
+  estado: z.boolean().optional(),
+  permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional()
+})
+
+export const UsuarioCreateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2,  'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
+    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
+    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
+    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
+    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido'),
+  email: email,
+  password: password,
+  rolId: z.number().int().positive('El ID del rol debe ser un número positivo'),
+  clienteData: z.any().optional(),
+  empleadoData: z.any().optional()
+})
+
+export const UsuarioUpdateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2,  'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
+    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
+    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
+    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
+    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido')
+    .optional(),
+  email: email.optional(),
+  password: password.optional(),
+  estado: z.boolean().optional(),
+  rolId: z.number().int().positive('El ID del rol debe ser un número positivo').optional(),
+  clienteData: z.any().optional(),
+  empleadoData: z.any().optional()
+})
+
+export const EmpleadoCreateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2,  'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
+    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
+    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
+    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
+    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido'),
+  email: email,
+  password: password,
+  tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'TI', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
+  ),
+  numeroDocumento: z.string()
+    .trim()
+    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
+    .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
+    .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .refine(n => n !== '123456789',        'El documento no puede ser una secuencia obvia'),
+  fechaNacimiento: z.string()
+    .trim()
+    .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
+    .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
+    .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
+    .refine(d => {
+      const nac  = new Date(d)
+      const hoy  = new Date()
+      const edad = hoy.getFullYear() - nac.getFullYear()
+      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+      return (hoy >= cumple ? edad : edad - 1) >= 18}, 'Debes ser mayor de 18 años para trabajar con nosotros')
+    .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años'),
+  telefonoPrincipal: telefono,
+  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+  ciudad: z.string()
+    .trim()
+    .min(2,  'La ciudad es requerida')
+    .max(60, 'Ciudad demasiado larga')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-\.]+$/, 'La ciudad solo puede contener letras')
+    .refine(c => c.trim().length > 0, 'La ciudad no puede ser solo espacios')
+    .optional(),
+  barrio: z.string()
+    .trim()
+    .min(2,  'El barrio es requerido')
+    .max(80, 'Barrio demasiado largo')
+    .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
+    .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números'),
+  direccion: z.string()
+    .trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(150, 'Dirección demasiado larga')
+    .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
+    .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
+    .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .refine(d => !/^\d+$/.test(d.trim()),   'La dirección no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos'),
+  zonaServicio: z.string().trim().refine(
+    v => ['URBANA', 'RURAL'].includes(v),'La zona de servicio debe be URBANA o RURAL'
+  ).optional(),
+  instrumentoPrincipal: z.string()
+    .trim()
+    .min(2, 'El instrumento debe tener al menos 2 caracteres')
+    .max(50, 'El instrumento no puede superar 50 caracteres')
+    .refine(i => !esGibberish(i), 'El instrumento parece contener texto sin sentido'),
+  otrosInstrumentos: z.string()
+    .trim()
+    .max(200, 'Otros instrumentos no pueden superar 200 caracteres')
+    .optional(),
+  anosExperiencia: z.number().min(0).max(100).optional(),
+  foto: urlImagen.optional(),
+})
+.refine(d => !d.telefonoAlternativo || d.telefonoPrincipal !== d.telefonoAlternativo, {
+  message: 'El teléfono alternativo no puede ser igual al principal', path: ['telefonoAlternativo']
+})
+
+export const EmpleadoUpdateSchema = z.object({
+  nombre: z.string()
+    .trim()
+    .min(2,  'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
+    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
+    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
+    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
+    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
+    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido')
+    .optional(),
+  email: email.optional(),
+  password: password.optional(),
+  estado: z.boolean().optional(),
+  tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'TI', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
+  ).optional(),
+  numeroDocumento: z.string()
+    .trim()
+    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
+    .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
+    .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .optional(),
+  fechaNacimiento: z.string()
+    .trim()
+    .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
+    .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
+    .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
+    .optional(),
+  telefonoPrincipal: telefono.optional(),
+  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+  ciudad: z.string()
+    .trim()
+    .min(2,  'La ciudad es requerida')
+    .max(60, 'Ciudad demasiado larga')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-\.]+$/, 'La ciudad solo puede contener letras')
+    .refine(c => c.trim().length > 0, 'La ciudad no puede ser solo espacios')
+    .optional(),
+  barrio: z.string()
+    .trim()
+    .min(2,  'El barrio es requerido')
+    .max(80, 'Barrio demasiado largo')
+    .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
+    .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números')
+    .optional(),
+  direccion: z.string()
+    .trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(150, 'Dirección demasiado larga')
+    .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
+    .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
+    .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .optional(),
+  zonaServicio: z.string().trim().refine(
+    v => ['URBANA', 'RURAL'].includes(v),'La zona de servicio debe ser URBANA o RURAL'
+  ).optional(),
+  instrumentoPrincipal: z.string()
+    .trim()
+    .min(2, 'El instrumento debe tener al menos 2 caracteres')
+    .max(50, 'El instrumento no puede superar 50 caracteres')
+    .refine(i => !esGibberish(i), 'El instrumento parece contener texto sin sentido')
+    .optional(),
+  otrosInstrumentos: z.string()
+    .trim()
+    .max(200, 'Otros instrumentos no pueden superar 200 caracteres')
+    .optional(),
+  anosExperiencia: z.number().min(0).max(100).optional(),
+  foto: urlImagen.optional(),
+})
+
+
+export const ClienteCreateSchema = z.object({
+  email: z.string().email('Email inválido').toLowerCase().trim(),
+  apellido: z.string().trim().min(2, 'Apellido requerido'),
+  tipoDocumento: z.enum(['CC', 'CE', 'TI', 'PAS']),
+  numeroDocumento: z.string().trim().regex(/^\d{6,12}$/, 'Documento inválido'),
+  fechaNacimiento: z.string().refine(d => !isNaN(Date.parse(d)), 'Fecha inválida'),
+  telefonoPrincipal: z.string().trim().regex(/^3\d{9}$/, 'Teléfono inválido'),
+  telefonoAlternativo: z.string().optional(),
+  ciudad: z.string().trim().min(2, 'Ciudad requerida'),
+  barrio: z.string().trim().min(2, 'Barrio requerido'),
+  direccion: z.string().trim().min(5, 'Dirección requerida'),
+  zonaServicio: z.enum(['URBANA', 'RURAL']),
+  foto: z.string().url().optional().or(z.literal('')).transform(val => val || undefined),
+})
+
+export const ClienteUpdateSchema = ClienteCreateSchema.partial()
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── HELPER ───────────────────────────────────────────────────────────────────

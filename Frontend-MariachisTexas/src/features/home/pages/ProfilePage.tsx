@@ -4,11 +4,14 @@ import { createPortal } from 'react-dom';
 import {
 User, Mail, Phone, MapPin, FileText, Hash, Calendar,
 Home, Map, CheckCircle, AlertCircle, X, Loader2,
-Edit2, Save, ChevronRight, Shield
+Edit2, Save, ChevronRight, Shield, CreditCard, TrendingDown,
+TrendingUp, Camera
 } from 'lucide-react';
 import { profileService, PerfilData } from '@/shared/services/perfilservices.ts';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
+import { usePhotoUpload } from '@/shared/hooks/Usephotoupload .ts';
+import { abonoService, EnrichedPayment } from '@/src/features/abonos/services/abonoService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,11 +94,13 @@ const [isLoadingGet, setIsLoadingGet] = useState(true);
 const [isEditing,    setIsEditing]    = useState(false);
 const [isLoading,    setIsLoading]    = useState(false);
 const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+const [abonos,       setAbonos]       = useState<EnrichedPayment[]>([]);
+const [isLoadingAbonos, setIsLoadingAbonos] = useState(false);
 
 const [formData, setFormData] = useState({
     nombre:              '',
     apellido:            '',
-    tipoDocumento:       'CC' as 'CC' | 'CE' | 'PAS',
+    tipoDocumento:       'CC' as 'CC' | 'CE' | 'TI' | 'PAS',
     numeroDocumento:     '',
     fechaNacimiento:     '',
     email:               '',
@@ -105,6 +110,12 @@ const [formData, setFormData] = useState({
     barrio:              '',
     direccion:           '',
     zonaServicio:        'URBANA' as 'URBANA' | 'RURAL',
+    foto:                ''  // ← URL Cloudinary
+});
+
+const photo = usePhotoUpload({
+    folder: 'usuarios/fotos',
+    onSuccess: (url) => setFormData((prev) => ({ ...prev, foto: url })),
 });
 
 useEffect(() => {
@@ -125,6 +136,7 @@ useEffect(() => {
         barrio:              data.barrio,
         direccion:           data.direccion,
         zonaServicio:        data.zonaServicio,
+        foto:                data.foto || '',  // ← Cargar foto existente
         });
     } catch (err) {
         showNotification(getErrorMessage(err), 'error');
@@ -132,7 +144,22 @@ useEffect(() => {
         setIsLoadingGet(false);
     }
     };
+
+    const cargarAbonos = async () => {
+    setIsLoadingAbonos(true);
+    try {
+        const data = await abonoService.getAbonos();
+        setAbonos(data);
+    } catch (err) {
+        console.error(err);
+        showNotification('Error cargando los abonos.', 'error');
+    } finally {
+        setIsLoadingAbonos(false);
+    }
+    };
+
     cargar();
+    cargarAbonos();
 }, []);
 
 const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -158,7 +185,9 @@ const handleCancel = () => {
     barrio:              perfil.barrio,
     direccion:           perfil.direccion,
     zonaServicio:        perfil.zonaServicio,
+    foto:                perfil.foto || '',  // ← Restaurar foto original
     });
+    photo.reset();  // ← Limpiar preview de foto
     setIsEditing(false);
 };
 
@@ -175,6 +204,7 @@ const handleSave = async () => {
         direccion:           formData.direccion,
         zonaServicio:        formData.zonaServicio,
         fechaNacimiento:     formData.fechaNacimiento,
+        foto:                formData.foto || undefined,  // ← Enviar foto
     });
 
     setPerfil(actualizado);
@@ -191,6 +221,7 @@ const handleSave = async () => {
 
     showNotification('Perfil actualizado correctamente', 'success');
     setIsEditing(false);
+    photo.reset();  // ← Limpiar preview de foto después de guardar
     } catch (err) {
     showNotification(getErrorMessage(err), 'error');
     } finally {
@@ -289,12 +320,20 @@ return (
 
             {/* Identity card */}
             <div className="bg-slate-900/50 border border-white/6 rounded-2xl p-6 backdrop-blur-sm">
-              {/* Avatar — initials based, no photo */}
+              {/* Avatar — Photo upload widget */}
             <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/20 flex items-center justify-center mb-4 shadow-lg shadow-amber-900/10">
-                <span className="text-2xl font-black text-amber-400 tracking-tight">{initials}</span>
-                </div>
-                <h2 className="text-base font-black text-white tracking-tight">
+                {isEditing ? (
+                  <PhotoUploadWidget photo={photo} currentUrl={formData.foto} size="md" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/20 flex items-center justify-center mb-4 shadow-lg shadow-amber-900/10 overflow-hidden">
+                    {formData.foto ? (
+                      <img src={formData.foto} alt="Perfil" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl font-black text-amber-400 tracking-tight">{initials}</span>
+                    )}
+                  </div>
+                )}
+                <h2 className="text-base font-black text-white tracking-tight mt-4">
                 {formData.nombre} {formData.apellido}
                 </h2>
                 <div className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/8 border border-amber-500/15">
@@ -528,11 +567,129 @@ return (
             </div>
             </div>
 
+            {/* ── Historial de Abonos ── */}
+            <div className="bg-slate-900/50 border border-white/6 rounded-2xl overflow-hidden backdrop-blur-sm">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
+                <CreditCard size={13} className="text-emerald-400" />
+                </div>
+                <div>
+                <h3 className="font-black text-white text-sm tracking-tight">Historial de Abonos</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Tus pagos registrados en reservas.</p>
+                </div>
+            </div>
+            <div className="p-6 space-y-3">
+                {isLoadingAbonos ? (
+                <div className="flex items-center justify-center gap-3 py-10 text-slate-400">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Cargando abonos...</span>
+                </div>
+                ) : abonos.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 italic border border-dashed border-slate-700 rounded-2xl bg-slate-900/40">
+                    No se han registrado abonos para tu perfil.
+                </div>
+                ) : (
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-[11px] uppercase tracking-widest text-slate-500 font-bold">
+                    <span>Total abonos</span>
+                    <span className="text-right">${abonos.reduce((sum, pago) => sum + pago.amount, 0).toLocaleString('es-CO')}</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 text-[11px] uppercase tracking-widest text-slate-500">
+                    <span>Fecha</span>
+                    <span>Monto</span>
+                    <span className="text-right">Método</span>
+                    </div>
+                    <div className="space-y-2">
+                    {abonos.map((abono) => (
+                        <div key={abono.id} className="grid grid-cols-[1fr_1fr_1fr] gap-3 p-4 rounded-2xl bg-slate-900/70 border border-white/5">
+                        <span className="text-sm text-slate-300">{new Date(abono.date).toLocaleDateString('es-CO')}</span>
+                        <span className="text-sm text-emerald-300">${abono.amount.toLocaleString('es-CO')}</span>
+                        <span className="text-right text-slate-400 uppercase text-[11px] font-semibold">{abono.method}</span>
+                        <div className="md:col-span-3 text-[11px] text-slate-500 mt-2">
+                            Reserva #{abono.reservationId}{abono.notes ? ` • ${abono.notes}` : ''}
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                )}
+            </div>
+            </div>
+
         </div>
         </div>
 </div>
     </div>
 );
+};
+
+// ─── PhotoUploadWidget Component ──────────────────────────────────────────────
+
+interface PhotoWidgetProps {
+  photo: ReturnType<typeof usePhotoUpload>;
+  currentUrl?: string;
+  size?: 'sm' | 'md';
+}
+
+const PhotoUploadWidget: React.FC<PhotoWidgetProps> = ({ photo, currentUrl, size = 'md' }) => {
+  const dim = size === 'sm' ? 'w-20 h-20' : 'w-24 h-24';
+  const displayUrl = photo.preview || currentUrl;
+
+  return (
+    <div className="flex flex-col items-center gap-2 mb-6">
+      <input
+        ref={photo.inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={photo.handleFileChange}
+      />
+      <div
+        onClick={photo.triggerPick}
+        className={`relative group ${dim} rounded-full border-2 border-dashed overflow-hidden flex items-center justify-center transition-colors
+          ${photo.uploading
+            ? 'border-amber-300 cursor-wait opacity-70'
+            : 'border-slate-200 hover:border-amber-400 cursor-pointer'
+          }`}
+      >
+        {photo.uploading ? (
+          <Loader2 size={24} className="animate-spin text-amber-400" />
+        ) : displayUrl ? (
+          <>
+            <img src={displayUrl} alt="Foto" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Camera size={20} className="text-white" />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-slate-300 group-hover:text-amber-400 transition-colors">
+            <Camera size={24} />
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        {photo.uploading ? 'Subiendo...' : displayUrl ? 'Cambiar foto' : 'Subir foto'}
+      </p>
+
+      {currentUrl && !photo.uploading && !photo.preview && (
+        <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+          <CheckCircle size={10} /> Foto guardada
+        </span>
+      )}
+      {photo.preview && !photo.uploading && (
+        <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+          <CheckCircle size={10} /> Foto lista
+        </span>
+      )}
+      {photo.error && (
+        <span className="text-[10px] text-red-500 flex items-center gap-1">
+          <AlertCircle size={10} /> {photo.error}
+        </span>
+      )}
+      <p className="text-[10px] text-slate-300">JPG, PNG, WEBP · Máx 5MB</p>
+    </div>
+  );
 };
 
 export default ProfilePage;

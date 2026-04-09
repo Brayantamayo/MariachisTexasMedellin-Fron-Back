@@ -104,6 +104,30 @@ export interface BloqueoCreateInput {
 
 export interface BloqueoUpdateInput extends Partial<BloqueoCreateInput> {}
 
+// ─── VENTA ────────────────────────────────────────────────────────────────────
+export interface VentaCreateInput {
+  reservaId?:   number | null
+  clienteId:    number
+  tipo:         'RESERVA' | 'DIRECTA'
+  estado:       'CONFIRMADO' | 'FINALIZADO' | 'VENTA_DIRECTA'
+  montoTotal:   number
+  montoPagado:  number
+  fechaVenta:   string
+  metodoPago:   'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA' | 'OTRO'
+}
+
+export interface VentaUpdateInput extends Partial<VentaCreateInput> {}
+
+// ─── ROL ─────────────────────────────────────────────────────────────────────
+export interface RolCreateInput {
+  nombre:      string
+  descripcion?: string
+  estado?:     boolean
+  permisos?:   number[]
+}
+
+export interface RolUpdateInput extends Partial<RolCreateInput> {}
+
 // ─── RESPUESTAS MAPEADAS ──────────────────────────────────────────────────────
 export interface RehearsalResponse {
   id:            string
@@ -202,4 +226,40 @@ export interface ActualizarPerfilDatos {
   zonaServicio?:        string
   fechaNacimiento?:     string
   foto?:                string | null
+}
+
+// ─── USUARIO ──────────────────────────────────────────────────────────────────
+export interface UsuarioCreateInput {
+  nombre:  string
+  email:   string
+  password: string
+  rolId:   number
+  clienteData?: any // Optional data for cliente
+  empleadoData?: any // Optional data for empleado
+}
+
+export interface UsuarioUpdateInput {
+  nombre?: string
+  email?:  string
+  estado?: boolean
+  rolId?:  number
+  clienteData?: any
+  empleadoData?: any
+}
+
+export interface UsuarioResponse {
+  id:        number
+  nombre:    string
+  email:     string
+  estado:    boolean
+  rolId:     number
+  rol:       {
+    id:          number
+    nombre:      string
+    descripcion: string | null
+  }
+  cliente?:  any // Optional cliente data
+  empleado?: any // Optional empleado data
+  createdAt: string
+  updatedAt: string
 }

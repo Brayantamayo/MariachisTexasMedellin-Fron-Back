@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/shared/contexts/AuthContext';
@@ -40,12 +39,11 @@ import {
 
 // Componente Interno para Tarjetas KPI
 const KpiCard: React.FC<{ title: string, value: string, icon: any, color: string, trend: string }> = ({ title, value, icon: Icon, color, trend }) => {
-    // Definimos solo colores de la paleta permitida
     const colorClasses: Record<string, string> = {
-        emerald: 'bg-secondary-50 text-secondary-600', // Verde
-        red: 'bg-primary-50 text-primary-600',         // Rojo
-        dark: 'bg-dark-900 text-white',                // Negro
-        gray: 'bg-slate-100 text-slate-600',           // Gris neutro (aceptable como soporte)
+        emerald: 'bg-secondary-50 text-secondary-600',
+        red: 'bg-primary-50 text-primary-600',
+        dark: 'bg-dark-900 text-white',
+        gray: 'bg-slate-100 text-slate-600',
     };
 
     return (
@@ -54,7 +52,6 @@ const KpiCard: React.FC<{ title: string, value: string, icon: any, color: string
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${colorClasses[color]}`}>
                     <Icon size={22} />
                 </div>
-                {/* Arrow icon simulated */}
                 <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-slate-100">
                     <ArrowRight size={12} className="text-slate-400 -rotate-45" />
                 </div>
@@ -90,12 +87,21 @@ export const DashboardPage: React.FC = () => {
     const loadDashboardData = async () => {
       setLoading(true);
       
+<<<<<<< HEAD
       const [reservations, sales, clients, apiStats] = await Promise.all([
         reservaService.getReservations(),
         ventaService.getSales(),
         clientService.getClients(),
         dashboardService.getStats().catch(() => null)
       ]);
+=======
+      const reservations = await reservaService.getReservations();
+      const sales = await ventaService.getSales();
+
+      // ✅ CORRECCIÓN: getClients() puede retornar { clients: User[], pagination: any }
+      const clientsResponse = await clientService.getClients();
+      const clients = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.clients;
+>>>>>>> origin/brayan
 
       const activeRes = reservations.filter(r => r.status === 'Confirmado' || r.status === 'Pendiente');
       const totalIncome = sales.reduce((acc, curr) => acc + curr.amount, 0);
@@ -104,12 +110,10 @@ export const DashboardPage: React.FC = () => {
       let relevantEvents = [...activeRes];
       relevantEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
-      // --- Procesamiento de Datos para Gráficos ---
-
       // 1. Ingresos Mensuales (Últimos 6 meses)
       const last6Months = Array.from({ length: 6 }, (_, i) => {
           const d = new Date();
-          d.setDate(1); // Evitar problemas de días (ej: 31 de marzo -> febrero)
+          d.setDate(1);
           d.setMonth(d.getMonth() - i);
           return {
             label: d.toLocaleString('es-CO', { month: 'short' }),
@@ -138,7 +142,7 @@ export const DashboardPage: React.FC = () => {
           value: eventTypesCount[type]
       }));
 
-      // 3. Estado de Reservas (Tendencia Semanal - Últimas 4 semanas)
+      // 3. Tendencia Semanal (Últimas 4 semanas)
       const weeklyTrendData = [];
       for (let i = 3; i >= 0; i--) {
           const startOfWeek = new Date();
@@ -162,6 +166,7 @@ export const DashboardPage: React.FC = () => {
       }
 
       setStats({
+<<<<<<< HEAD
         income: apiStats?.totalRevenue ?? totalIncome,
         activeReservations: apiStats?.confirmedReservas ?? activeRes.length,
         pendingBalance: apiStats?.totalPendingBalance ?? pending,
@@ -175,6 +180,13 @@ export const DashboardPage: React.FC = () => {
           createdAt: r.eventDate,
           eventType: 'N/A'
         })) ?? relevantEvents.slice(0, 5),
+=======
+        income: totalIncome,
+        activeReservations: activeRes.length,
+        pendingBalance: pending,
+        totalClients: clients.length, // ✅ Ahora clients siempre es un array
+        upcomingEvents: relevantEvents.slice(0, 5),
+>>>>>>> origin/brayan
         recentActivity: reservations.slice(0, 5),
         monthlyIncomeData: monthlyIncome,
         eventTypeData: eventTypeData,
@@ -231,7 +243,7 @@ export const DashboardPage: React.FC = () => {
           </div>
       </div>
 
-      {/* KPI Cards (Colors updated) */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <KpiCard 
               title="Ingresos Mes" 
@@ -263,7 +275,7 @@ export const DashboardPage: React.FC = () => {
           />
       </div>
 
-      {/* --- SECCIÓN DE GRÁFICOS --- */}
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Gráfico 1: Ingresos Mensuales */}
@@ -281,30 +293,16 @@ export const DashboardPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.monthlyIncomeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis 
-                              dataKey="name" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fill: '#94a3b8', fontSize: 12 }} 
-                              dy={10}
-                          />
-                          <YAxis 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fill: '#94a3b8', fontSize: 12 }} 
-                              tickFormatter={(value) => `$${value / 1000}k`}
-                          />
-                          <Tooltip 
-                              cursor={{ fill: '#f8fafc' }}
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                          />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(value) => `$${value / 1000}k`} />
+                          <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
                           <Bar dataKey="ingresos" fill="#ce1126" radius={[6, 6, 0, 0]} barSize={40} />
                       </BarChart>
                   </ResponsiveContainer>
               </div>
           </div>
 
-          {/* Gráfico 2: Distribución de Eventos */}
+          {/* Gráfico 2: Tipos de Evento */}
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                   <div>
@@ -318,15 +316,7 @@ export const DashboardPage: React.FC = () => {
               <div className="h-[300px] w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                          <Pie
-                              data={stats.eventTypeData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              paddingAngle={5}
-                              dataKey="value"
-                          >
+                          <Pie data={stats.eventTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
                               {stats.eventTypeData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                               ))}
@@ -338,7 +328,7 @@ export const DashboardPage: React.FC = () => {
               </div>
           </div>
 
-          {/* Gráfico 3: Tendencia de Reservas (Full Width opcional, o en grid) */}
+          {/* Gráfico 3: Tendencia de Reservas */}
           <div className="lg:col-span-2 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                   <div>
@@ -375,10 +365,10 @@ export const DashboardPage: React.FC = () => {
 
       </div>
 
-      {/* Main Content Grid (Activity & Shortcuts) */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Left: Recent Activity */}
+          {/* Actividad Reciente */}
           <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden p-6">
               <div className="flex justify-between items-center mb-6">
                   <h3 className="font-serif font-bold text-slate-800 text-lg">Actividad Reciente</h3>
@@ -408,10 +398,8 @@ export const DashboardPage: React.FC = () => {
               </div>
           </div>
 
-          {/* Right: Quick Actions & Status */}
+          {/* Top Repertorio */}
           <div className="space-y-6">
-              
-              {/* Top Repertoire Widget */}
               <div className="bg-dark-900 rounded-[2rem] p-6 text-white shadow-xl shadow-dark-900/10">
                   <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-full bg-primary-600/20 flex items-center justify-center border border-primary-600/30">
@@ -421,7 +409,6 @@ export const DashboardPage: React.FC = () => {
                   </div>
                   
                   <div className="space-y-5">
-                      {/* Song 1 */}
                       <div className="space-y-2">
                           <div className="flex justify-between items-end">
                               <div>
@@ -435,7 +422,6 @@ export const DashboardPage: React.FC = () => {
                           </div>
                       </div>
 
-                      {/* Song 2 */}
                       <div className="space-y-2">
                           <div className="flex justify-between items-end">
                               <div>
@@ -449,7 +435,6 @@ export const DashboardPage: React.FC = () => {
                           </div>
                       </div>
 
-                      {/* Song 3 */}
                       <div className="space-y-2">
                           <div className="flex justify-between items-end">
                               <div>
@@ -464,7 +449,6 @@ export const DashboardPage: React.FC = () => {
                       </div>
                   </div>
               </div>
-
           </div>
       </div>
     </div>

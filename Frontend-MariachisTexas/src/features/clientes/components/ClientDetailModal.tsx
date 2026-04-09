@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User as UserIcon, MapPin, Phone, Calendar, Mail, Hash, Building, Flag } from 'lucide-react';
+import { X, User as UserIcon, MapPin, Phone, Calendar, Mail, Hash, Building, Flag, DollarSign } from 'lucide-react';
 import { User } from '@/types';
+import { abonoService, EnrichedPayment } from '../../abonos/services/abonoService';
 
 interface Props {
   isOpen: boolean;
@@ -11,7 +12,33 @@ interface Props {
 }
 
 export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) => {
-  if (!isOpen || !client) return null;
+  const [abonos, setAbonos] = useState<EnrichedPayment[]>([]);
+  const [loadingAbonos, setLoadingAbonos] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && client) {
+      loadAbonos();
+    }
+  }, [isOpen, client]);
+
+  const loadAbonos = async () => {
+    setLoadingAbonos(true);
+    try {
+      const allAbonos = await abonoService.getAbonos();
+      const clientAbonos = allAbonos.filter(abono =>
+        client?.email ? abono.clientEmail?.toLowerCase() === client.email.toLowerCase() : abono.clientId === client?.id
+      );
+      setAbonos(clientAbonos);
+    } catch (error) {
+      console.error('Error loading abonos:', error);
+    } finally {
+      setLoadingAbonos(false);
+    }
+  };
+
+  if (!isOpen || !client) {
+    return null;
+  }
 
   const DetailItem = ({ icon: Icon, label, value }) => (
       <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
@@ -78,6 +105,55 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
                 <DetailItem icon={Building} label="Ciudad" value={client.city} />
                 <DetailItem icon={MapPin} label="Dirección" value={client.address} />
                 <DetailItem icon={MapPin} label="Barrio" value={client.neighborhood} />
+            </div>
+
+            {/* Sección de Abonos */}
+            <div className="mt-8">
+                <h3 className="text-lg font-serif font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <DollarSign size={20} className="text-emerald-600" />
+                    Historial de Abonos
+                </h3>
+                {loadingAbonos ? (
+                    <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
+                        <p className="text-sm text-slate-500 mt-2">Cargando abonos...</p>
+                    </div>
+                ) : abonos.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-xl border border-slate-100">
+                        <DollarSign size={48} className="text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500">No hay abonos registrados</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {abonos.map((abono) => (
+                            <div key={abono.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-700">
+                                            ${abono.amount.toLocaleString('es-CO')}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            Reserva #{abono.reservationId}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-medium text-slate-600">
+                                            {new Date(abono.date).toLocaleDateString('es-CO')}
+                                        </p>
+                                        <p className="text-xs text-slate-500 uppercase">
+                                            {abono.method}
+                                        </p>
+                                    </div>
+                                </div>
+                                {abono.notes && (
+                                    <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded">
+                                        {abono.notes}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
         </div>

@@ -38,7 +38,7 @@ export interface User {
   // Personales
   name:           string
   lastName:       string
-  documentType:   'CC' | 'CE' | 'TI' | 'PAS' | 'NIT'
+  documentType:   'CC' | 'CE' | 'TI' | 'PAS'
   documentNumber: string
   gender:         'M' | 'F' | 'O'
   birthDate:      string

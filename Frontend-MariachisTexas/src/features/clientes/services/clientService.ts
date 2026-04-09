@@ -1,129 +1,147 @@
+import api from '@/shared/api/api'
+import { User } from '@/types'
 
-import { User, UserRole } from '@/types';
+// ─── INTERFACES ───────────────────────────────────────────────────────────────
 
-// Datos simulados para clientes
-let mockClients: User[] = [
-  {
-    id: '3', // ID debe coincidir o ser único respecto a usuarios
-    name: 'María',
-    lastName: 'González',
-    email: 'maria.g@gmail.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '43215678',
-    gender: 'F',
-    birthDate: '1990-11-05',
-    phone: '3205556677',
-    secondaryPhone: '6044445566',
-    city: 'Envigado',
-    neighborhood: 'Jardines',
-    address: 'Cra 43A # 25S-10',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '5',
-    name: 'Roberto',
-    lastName: 'Martínez',
-    email: 'roberto.m@hotmail.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '70809010',
-    gender: 'M',
-    birthDate: '1985-02-14',
-    phone: '3112223344',
-    city: 'Medellín',
-    neighborhood: 'Poblado',
-    address: 'Calle 10 # 30-50',
-    avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '6',
-    name: 'Finca La Florida',
-    lastName: '(Eventos)',
-    email: 'admin@laflorida.com',
-    role: UserRole.CLIENTE,
-    isActive: false,
-    documentType: 'CE',
-    documentNumber: '900123123',
-    gender: 'O',
-    birthDate: '2000-01-01',
-    phone: '3156667788',
-    city: 'Rionegro',
-    neighborhood: 'Vereda Cabeceras',
-    address: 'Km 5 Vía Llanogrande',
-  },
-  {
-    id: '4',
-    name: 'Brayan',
-    lastName: 'Castañeda',
-    email: 'brayan@texas.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '1152433654',
-    gender: 'M',
-    birthDate: '1998-11-20',
-    phone: '3219876543',
-    city: 'Medellín',
-    neighborhood: 'Robledo',
-    address: 'Calle 65 # 80-20',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: 'cli-directa',
-    name: 'Cliente',
-    lastName: 'Directa',
-    email: 'ventas_mostrador@texas.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'NIT',
-    documentNumber: '222222222',
-    gender: 'O',
-    birthDate: '2000-01-01',
-    phone: '0000000000',
-    city: 'Medellín',
-    neighborhood: 'Sede Principal',
-    address: 'Venta por Mostrador',
-    avatar: 'https://ui-avatars.com/api/?name=Cliente+Directa&background=dc2626&color=fff&bold=true'
+interface ClienteAPI {
+  id: number
+  email: string
+  apellido: string
+  tipoDocumento: 'CC' | 'CE' | 'TI' | 'PAS'
+  numeroDocumento: string
+  fechaNacimiento: string
+  telefonoPrincipal: string
+  telefonoAlternativo?: string
+  ciudad: string
+  barrio: string
+  direccion: string
+  zonaServicio: 'URBANA' | 'RURAL'
+  activo: boolean
+  foto?: string
+  createdAt: string
+  updatedAt: string
+  usuario?: {
+    nombre: string
+    email: string
   }
-];
+  _count?: {
+    cotizaciones: number
+    abonos: number
+    ventas: number
+  }
+}
+
+interface ListResponse {
+  clientes: ClienteAPI[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+  }
+}
+
+// ─── MAPPERS ──────────────────────────────────────────────────────────────────
+
+// API → User (frontend)
+const mapClienteToUser = (cliente: ClienteAPI): User => ({
+  id: cliente.id.toString(),
+  name: cliente.usuario?.nombre || 'Sin nombre',
+  lastName: cliente.apellido,
+  email: cliente.email,
+  role: 'CLIENTE' as any,
+  isActive: cliente.activo,
+  documentType: cliente.tipoDocumento,
+  documentNumber: cliente.numeroDocumento,
+  gender: 'O' as any,
+  birthDate: cliente.fechaNacimiento.split('T')[0],
+  phone: cliente.telefonoPrincipal,
+  secondaryPhone: cliente.telefonoAlternativo,
+  city: cliente.ciudad,
+  neighborhood: cliente.barrio,
+  address: cliente.direccion,
+  serviceZone: cliente.zonaServicio === 'URBANA' ? 'Urbano' : 'Rural',
+  avatar: cliente.foto,
+})
+
+// User (frontend) → API
+const mapUserToCliente = (user: Partial<Omit<User, 'id'>>) => {
+  const data: Record<string, any> = {}
+
+  if (user.email !== undefined)        data.email             = user.email
+  if (user.lastName !== undefined)     data.apellido          = user.lastName
+  if (user.documentType !== undefined) data.tipoDocumento     = user.documentType
+  if (user.documentNumber !== undefined) data.numeroDocumento = user.documentNumber
+  if (user.birthDate !== undefined)    data.fechaNacimiento   = user.birthDate
+  if (user.phone !== undefined)        data.telefonoPrincipal = user.phone
+  if (user.city !== undefined)         data.ciudad            = user.city
+  if (user.neighborhood !== undefined) data.barrio            = user.neighborhood
+  if (user.address !== undefined)      data.direccion         = user.address
+
+  if (user.serviceZone !== undefined)
+    data.zonaServicio = user.serviceZone === 'Urbano' ? 'URBANA' : 'RURAL'
+
+  // Opcionales — solo se envían si tienen valor real
+  if (user.secondaryPhone?.trim())
+    data.telefonoAlternativo = user.secondaryPhone
+
+  if (user.avatar?.startsWith('http'))
+    data.foto = user.avatar
+
+  return data
+}
+
+// ─── SERVICE ──────────────────────────────────────────────────────────────────
 
 export const clientService = {
-  getClients: async (): Promise<User[]> => {
-    return new Promise((resolve) => setTimeout(() => resolve([...mockClients]), 500));
+
+  // GET /clientes?page=&limit=  →  { clientes: [...], pagination: {...} }
+  getClients: async (page = 1, limit = 10): Promise<{ clients: User[]; pagination: any }> => {
+    const response = await api.get<ListResponse>(`/clientes?page=${page}&limit=${limit}`)
+    return {
+      clients: response.data.clientes.map(mapClienteToUser),
+      pagination: response.data.pagination,
+    }
   },
 
+  // GET /clientes/buscar?query=  →  ClienteAPI[]  (retorna array directo)
+  searchClients: async (query: string): Promise<User[]> => {
+    const response = await api.get<ClienteAPI[]>(
+      `/clientes/buscar?query=${encodeURIComponent(query)}`
+    )
+    return response.data.map(mapClienteToUser)
+  },
+
+  // GET /clientes/:id  →  ClienteAPI  (retorna objeto directo)
+  getClientById: async (id: string): Promise<User> => {
+    const response = await api.get<ClienteAPI>(`/clientes/${id}`)
+    return mapClienteToUser(response.data)
+  },
+
+  // POST /clientes  →  ClienteAPI  (retorna objeto directo)
   createClient: async (client: Omit<User, 'id'>): Promise<User> => {
-    return new Promise((resolve) => {
-      const newClient = { 
-        ...client, 
-        id: Math.random().toString(36).substr(2, 9),
-        role: UserRole.CLIENTE, // Asegurar rol
-        isActive: true 
-      };
-      mockClients = [newClient, ...mockClients];
-      setTimeout(() => resolve(newClient), 500);
-    });
+    const response = await api.post<ClienteAPI>('/clientes', mapUserToCliente(client))
+    return mapClienteToUser(response.data)
   },
 
+  // PUT /clientes/:id  →  ClienteAPI  (retorna objeto directo)
   updateClient: async (id: string, updates: Partial<User>): Promise<User> => {
-    return new Promise((resolve, reject) => {
-      const index = mockClients.findIndex(c => c.id === id);
-      if (index === -1) {
-        reject(new Error('Cliente no encontrado'));
-        return;
-      }
-      mockClients[index] = { ...mockClients[index], ...updates };
-      setTimeout(() => resolve(mockClients[index]), 500);
-    });
+    const response = await api.put<ClienteAPI>(`/clientes/${id}`, mapUserToCliente(updates))
+    return mapClienteToUser(response.data)
   },
 
+  // DELETE /clientes/:id  →  { message: string }
   deleteClient: async (id: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      mockClients = mockClients.filter(c => c.id !== id);
-      setTimeout(() => resolve(true), 500);
-    });
-  }
-};
+    await api.delete(`/clientes/${id}`)
+    return true
+  },
+
+  // PATCH /clientes/:id/estado  →  ClienteAPI  (retorna objeto directo)
+  toggleClientStatus: async (id: string, active: boolean): Promise<User> => {
+    const response = await api.patch<ClienteAPI>(
+      `/clientes/${id}/estado`,
+      { activo: active }
+    )
+    return mapClienteToUser(response.data)
+  },
+}

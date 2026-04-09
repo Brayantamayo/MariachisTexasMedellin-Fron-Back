@@ -46,38 +46,45 @@ export const VentasPage: React.FC = () => {
           reservaService.getReservations()
       ]);
       
-      // 1. Mapear cada reserva confirmada/finalizada como una entrada única
-      const reservationSales: Sale[] = [];
+      // 1. Procesar TODAS las ventas del backend (directas y por reserva)
+      const backendSales: Sale[] = salesData.map(s => ({
+          ...s,
+          status: 'Completado'
+      }));
+
+      // 2. Si hay reservas SIN venta asociada y tienen pagos, mostrarlas como "en proceso"
+      // (Las que ya tienen venta ya están en backendSales)
+      const reservationSalesInProgress: Sale[] = [];
       reservationsData
-          .filter(r => r.status === 'Confirmado' || r.status === 'Finalizado')
+          .filter(r => r.status === 'Confirmado' && r.paidAmount > 0 && r.paidAmount < r.totalAmount)
           .forEach(r => {
-              if (r.payments.length > 0) {
-                  const isFullyPaid = r.paidAmount >= r.totalAmount || r.status === 'Finalizado';
-                  // Tomamos la fecha del último abono como fecha de la "venta"
-                  const lastPaymentDate = r.payments[r.payments.length - 1].date.split('T')[0];
+              // Verificar si ya existe en ventas del backend
+              const alreadyExists = backendSales.some(s => s.reservationId === r.id);
+              if (!alreadyExists) {
+                  const lastPaymentDate = r.payments.length > 0 
+                      ? r.payments[r.payments.length - 1].date.split('T')[0]
+                      : new Date().toISOString().split('T')[0];
                   
-                  reservationSales.push({
+                  reservationSalesInProgress.push({
                       id: `V-RES-${r.id}`,
                       date: lastPaymentDate,
                       type: 'Por Reserva',
                       clientName: r.clientName,
                       clientId: r.clientId,
+                      clientEmail: r.clientEmail,
                       concept: `Servicio: ${r.eventType} (#${r.id})`,
-                      method: r.payments[r.payments.length - 1].method, // Método del último pago
-                      amount: r.paidAmount, // Monto total pagado hasta ahora
+                      method: r.payments.length > 0 ? r.payments[r.payments.length - 1].method : 'Pendiente',
+                      amount: r.paidAmount,
                       totalAmount: r.totalAmount,
-                      pendingAmount: isFullyPaid ? 0 : (r.totalAmount - r.paidAmount),
+                      pendingAmount: r.totalAmount - r.paidAmount,
                       reservationId: r.id,
-                      reservationStatus: r.status as any,
+                      reservationStatus: 'Confirmado' as any,
                       status: 'Completado'
                   });
               }
           });
-
-      // 2. Filtrar ventas directas de ventaService (evitamos duplicados de reservas que ya procesamos arriba)
-      const directSales = salesData.filter(s => s.type === 'Directa');
       
-      let combinedData = [...directSales, ...reservationSales];
+      let combinedData = [...backendSales, ...reservationSalesInProgress];
       
       // Ordenar por fecha descendente
       combinedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -85,6 +92,7 @@ export const VentasPage: React.FC = () => {
       // FILTRO DE SEGURIDAD: Si es cliente, solo ve sus compras
       if (user && user.role === UserRole.CLIENTE) {
           combinedData = combinedData.filter(s => 
+              s.clientEmail?.toLowerCase() === user.email.toLowerCase() ||
               s.clientId === user.id || 
               s.clientName.toLowerCase().includes(user.name.toLowerCase())
           );
@@ -105,13 +113,28 @@ export const VentasPage: React.FC = () => {
 
   const handleCreateSale = async (data: any) => {
       try {
+          // Validación básica
+          if (!data.clienteId || data.clienteId === '0') {
+              showNotification("❌ Debes seleccionar un cliente válido", "error");
+              return;
+          }
+          if (!data.amount || Number(data.amount) <= 0) {
+              showNotification("❌ El monto debe ser mayor a 0", "error");
+              return;
+          }
+          if (data.type === 'Por Reserva' && !data.reservationId) {
+              showNotification("❌ Debes seleccionar una reserva", "error");
+              return;
+          }
+          
           await ventaService.createSale(data);
           await fetchSales(); // Re-fetch all to sync reservations and sales
-          showNotification('Venta registrada exitosamente.');
+          showNotification('✅ Venta registrada exitosamente.');
           setIsCreateOpen(false);
-      } catch (error) {
+      } catch (error: any) {
           console.error(error);
-          showNotification("Error al registrar la venta.", "error");
+          const errorMsg = error?.response?.data?.message || error?.message || "Error al registrar la venta";
+          showNotification(`❌ ${errorMsg}`, "error");
       }
   };
 
@@ -138,12 +161,38 @@ export const VentasPage: React.FC = () => {
       }
   };
 
+  const handleDownloadPdf = async () => {
+    showNotification('Generando PDF de ventas...', 'success');
+    try {
+      const response = await fetch('/api/ventas/download/pdf', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al descargar PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ventas.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showNotification('PDF descargado correctamente.');
+    } catch (error) {
+      console.error(error);
+      showNotification('Error al descargar PDF.', 'error');
+    }
+  };
+
   const handleSaveAbono = async (data: any) => {
       try {
           await abonoService.createAbono(data);
           // Reutilizamos fetchSales para actualizar todo
           await fetchSales();
-          showNotification('Abono registrado exitosamente.');
+          showNotification('✅ Abono registrado exitosamente.');
           setIsAbonoModalOpen(false);
       } catch (error) {
           console.error(error);

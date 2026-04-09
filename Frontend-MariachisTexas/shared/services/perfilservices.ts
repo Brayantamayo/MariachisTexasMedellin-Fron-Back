@@ -9,7 +9,7 @@ export interface PerfilData {
   email:               string
   rol:                 string
   apellido:            string
-  tipoDocumento:       'CC' | 'CE' | 'PAS'
+  tipoDocumento:       'CC' | 'CE' | 'TI' | 'PAS'
   numeroDocumento:     string
   fechaNacimiento:     string          // 'YYYY-MM-DD'
   telefonoPrincipal:   string

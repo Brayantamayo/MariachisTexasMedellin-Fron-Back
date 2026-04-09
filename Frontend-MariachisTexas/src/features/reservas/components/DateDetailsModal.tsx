@@ -23,7 +23,6 @@ const timeToMinutes = (t: string): number => {
   return h * 60 + m
 }
 
-// Suma 1 hora a un string HH:MM
 const addOneHour = (t: string): string => {
   const [h, m] = t.split(':').map(Number)
   const newH = (h + 1) % 24
@@ -56,13 +55,13 @@ export const DateDetailsModal: React.FC<Props> = ({
     const prevMin = hMin - 60
     const prevTime = prevMin >= 0
       ? `${Math.floor(prevMin / 60).toString().padStart(2,'0')}:${String(prevMin % 60).padStart(2,'0')}`
-      : `${(23).toString().padStart(2,'0')}:00`
+      : `${(23).toString().padStart(2,'00')}:00`
 
     // 1. Reserva — hora exacta de inicio
     const reservation = reservations.find(r => r.startTime === time || r.eventTime === time)
     if (reservation) return { status: 'reserved', data: reservation }
 
-    // 2. Horas intermedias de una reserva
+    // 2. Horas intermedias de una reserva (entre inicio y fin, sin incluir fin)
     const reservaEnRango = reservations.find(r => {
       const start = timeToMinutes(r.startTime || r.eventTime || '00:00')
       const end   = timeToMinutes(r.endTime   || '00:00')
@@ -70,22 +69,19 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-  //y este igual 
-  // 3. Buffer DESPUÉS de una reserva
-  const bufferPostReserva = reservations.find(r => {
-    const end = timeToMinutes(r.endTime || '00:00') 
-    return hMin > end && hMin < end + 60
-})  
-  if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
+    // 3. Buffer POST-reserva: la hora exacta de fin es cierre/transporte ← FIX
+    //    Ej: reserva 10:00–13:00 → 13:00 es buffer
+    const bufferPostReserva = reservations.find(r => {
+      const end = timeToMinutes(r.endTime || '00:00')
+      return hMin === end  // ← exactamente la hora de fin
+    })
+    if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
-
-    // 4. Buffer ANTES de una reserva
+    // 4. Buffer PRE-reserva: la hora anterior al inicio
     const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime)
     if (prevReservation) return { status: 'buffer', data: prevReservation }
 
-
-
-    // 5. Cotización EN_ESPERA — rango completo
+    // 5. Cotización EN_ESPERA — rango completo (sin incluir fin)
     const quote = quotations.find(q => {
       const start = timeToMinutes(q.startTime)
       const end   = timeToMinutes(q.endTime)
@@ -93,21 +89,18 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (quote) return { status: 'quote', data: quote }
 
-    /////Esto lo modifique por que no servia 
-    // 6. Buffer DESPUÉS de cotización
-  const bufferPostCotizacion = quotations.find(q => {
-    const end = timeToMinutes(q.endTime)
-    return hMin > end && hMin < end + 60  // ✅ mismo fix
-})
-  if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
-
-
+    // 6. Buffer POST-cotización: hora exacta de fin ← FIX
+    const bufferPostCotizacion = quotations.find(q => {
+      const end = timeToMinutes(q.endTime)
+      return hMin === end  // ← exactamente la hora de fin
+    })
+    if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
 
     // 7. Ensayo
     const rehearsal = rehearsals.find(r => (r.time ?? r.hora) === time)
     if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
-    // 8. Buffer ensayo
+    // 8. Buffer ensayo (hora siguiente al ensayo)
     const prevRehearsal = rehearsals.find(r => (r.time ?? r.hora) === prevTime)
     if (prevRehearsal) return { status: 'buffer_rehearsal', data: prevRehearsal }
 
@@ -191,14 +184,12 @@ export const DateDetailsModal: React.FC<Props> = ({
                           <p className="text-[10px] text-emerald-600 flex items-center gap-1">
                             <User size={10}/> {res.clientName}
                           </p>
-                          {/* ✅ Rango de horas */}
                           <p className="text-[10px] text-emerald-500 font-mono mt-0.5">{rangeLabel}</p>
                         </div>
                         <ArrowRight size={14} className="text-emerald-400" />
                       </div>
                     );
                   } else {
-                    // Horas intermedias — compacto
                     containerClass = "border-emerald-100 bg-emerald-50/40 cursor-pointer";
                     content = (
                       <div className="flex items-center gap-2 w-full text-emerald-600 opacity-70">
@@ -222,7 +213,6 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const rangeLabel = `${q.startTime} - ${q.endTime}`
 
                 if (!isClient) {
-                  // Admin/Empleado — ve datos completos
                   containerClass = "border-amber-100 bg-amber-50 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-between w-full text-amber-800">
@@ -231,14 +221,12 @@ export const DateDetailsModal: React.FC<Props> = ({
                           <FileText size={12}/> Cotización en Espera
                         </p>
                         <p className="text-[10px] opacity-70">{q.clientName}</p>
-                        {/* ✅ Rango de horas */}
                         <p className="text-[10px] font-mono opacity-60 mt-0.5">{rangeLabel}</p>
                       </div>
                       <span className="text-[9px] font-bold border border-amber-200 px-2 py-0.5 rounded-full bg-white/50 uppercase">Bloqueado</span>
                     </div>
                   );
                 } else {
-                  // Cliente — solo "No disponible"
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
@@ -266,13 +254,12 @@ export const DateDetailsModal: React.FC<Props> = ({
                     <span className="text-[10px] font-bold uppercase flex items-center gap-2">
                       <Music size={12}/> Ensayo Programado
                     </span>
-                    {/* ✅ Rango de horas */}
                     <span className="text-[10px] font-mono opacity-60">{rangeLabel}</span>
                   </div>
                 );
 
               } else if (status === 'buffer' || status === 'buffer_rehearsal') {
-                // ✅ Calcular rango del buffer según la fuente
+                // Calcular rango del buffer según la fuente
                 let bufferRange = ''
                 if (data) {
                   const d = data as any
@@ -299,7 +286,6 @@ export const DateDetailsModal: React.FC<Props> = ({
                       <AlertTriangle size={12} />
                       <span className="text-[10px] font-bold uppercase">Cierre / Transporte</span>
                     </div>
-                    {/* ✅ Rango del buffer */}
                     {bufferRange && <span className="text-[10px] font-mono">{bufferRange}</span>}
                   </div>
                 );

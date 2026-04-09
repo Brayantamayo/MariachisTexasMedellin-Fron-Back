@@ -21,11 +21,9 @@ export const ServicesPage: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   
-  // ✅ Guardamos también estado para pasarlo al deleteService
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; serviceId: string | null; isActive: boolean }>({
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; serviceId: string | null }>({
     isOpen: false,
     serviceId: null,
-    isActive: false,
   });
 
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -168,8 +166,7 @@ const confirmDelete = async () => {
           loading={loading}
           userRole={user?.role}
           onEdit={(service) => { setSelectedService(service); setIsEditOpen(true); }}
-          // ✅ Pasamos también estado al abrir el modal de confirmación
-          onDelete={(id, isActive) => setDeleteModal({ isOpen: true, serviceId: id, isActive })}
+          onDelete={(id) => setDeleteModal({ isOpen: true, serviceId: id })}
           onView={(service) => { setSelectedService(service); setIsDetailOpen(true); }}
           onToggleStatus={handleToggleStatus}
         />

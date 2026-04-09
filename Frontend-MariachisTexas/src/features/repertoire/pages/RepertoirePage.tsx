@@ -14,35 +14,49 @@ import { SongDetailModal } from '../components/SongDetailModal';
 import { LyricsModal }     from '../components/LyricsModal';
 
 export const RepertoirePage: React.FC = () => {
+  // Obtiene el usuario autenticado (para saber permisos)
   const { user } = useAuth();
+  //// Guarda la lista de canciones
   const [songs,      setSongs]      = useState<Song[]>([]);
+  // Indica si los datos están cargando
   const [loading,    setLoading]    = useState(true);
+  // Guarda lo que el usuario escribe para buscar canciones
   const [searchTerm, setSearchTerm] = useState('');
 
   // Audio
+  // Guarda el id de la canción que está sonando
   const [playingId, setPlayingId] = useState<string | null>(null);
+  // Referencia al reproductor de audio
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Modales
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen,   setIsEditOpen]   = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
+  // Controla si el modal de crear canción está abierto
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Controla si el modal de editar canción está abierto
+  const [isEditOpen,   setIsEditOpen]   = useState(false);
+  // Controla si el modal de ver detalles está abierto
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // Controla si el modal de letras está abierto
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  // Guarda la canción seleccionada para ver, editar o eliminar
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  // Controla el modal de eliminación (si está abierto y qué canción eliminar)
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; songId: string | null }>({
     isOpen: false, songId: null
   });
-
+  // Guarda notificaciones (éxito o error)
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
+  // Define si el usuario puede gestionar (solo ADMIN o EMPLEADO)
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO;
 
+  {/* muestra un mensaje en la pantalla de notificaciones*/}
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
 
+  {/* trae los datos de la letra (canciones) y los muestra en la tabla*/}
   const fetchSongs = async () => {
     setLoading(true);
     try {
@@ -57,12 +71,14 @@ export const RepertoirePage: React.FC = () => {
     }
   };
 
+  {/*Carga las canciones y asegura que el audio se detenga cuando se sale o cambia el usuario */}
   useEffect(() => {
     fetchSongs();
     return () => { audioRef.current?.pause(); };
   }, [user]);
 
   // ─── Audio ────────────────────────────────────────────────────────────────────
+  {/*Activa o desactiva la reproducción de la canción actual*/}
   const togglePlay = (song: Song) => {
     audioRef.current?.pause();
     audioRef.current = null;
@@ -95,24 +111,26 @@ export const RepertoirePage: React.FC = () => {
   };
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────────
+  {/*crea una canción y la agrega al repertorio*/}
   const handleCreateSong = async (songData: any) => {
-  // ✅ Lanzar el error para que el modal lo capture
+  // Lanzar el error para que el modal lo capture
   const newSong = await repertoireService.createSong({ ...songData, isActive: true });
   setSongs(prev => [newSong, ...prev]);
   showNotification('Nueva canción agregada al repertorio.');
   setIsCreateOpen(false);
 };
 
+  {/*actualiza la canción seleccionada*/}
   const handleUpdateSong = async (songData: any) => {
   if (!selectedSong) return;
-  // ✅ Lanzar el error para que el modal lo capture
+  // Lanzar el error para que el modal lo capture
   const updated = await repertoireService.updateSong(selectedSong.id, songData);
   setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
   showNotification('Canción actualizada correctamente.');
   setIsEditOpen(false);
   setSelectedSong(null);
 };
-
+  {/*confirma la eliminación de la canción seleccionada*/}
   const confirmDelete = async () => {
     if (!deleteModal.songId) return;
     try {
@@ -131,6 +149,7 @@ export const RepertoirePage: React.FC = () => {
     }
   };
 
+  {/*cambia el estado de la canción (activa o desactiva)*/}
   const handleToggleStatus = async (song: Song) => {
     try {
       const updated = await repertoireService.toggleStatus(song.id);
@@ -146,7 +165,7 @@ export const RepertoirePage: React.FC = () => {
     }
   };
 
-  
+  {/*filtra las canciones por título y artista*/}
   const filteredSongs = songs.filter(s =>
     s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.artist.toLowerCase().includes(searchTerm.toLowerCase())
@@ -155,7 +174,7 @@ export const RepertoirePage: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
 
-      {/* Toast */}
+      {/* Muestra una notificación flotante (éxito o error) que el usuario puede cerrar */}
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
           <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${
@@ -182,7 +201,7 @@ export const RepertoirePage: React.FC = () => {
         document.body
       )}
 
-      {/* Header */}
+      {/* Parte de arriba de la pagina de repertorio  */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">

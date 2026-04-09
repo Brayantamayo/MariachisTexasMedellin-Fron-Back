@@ -1,62 +1,53 @@
 
 import React from 'react';
-import { User as UserIcon, Mail, Lock, Phone, MapPin, Calendar, Hash, Music, Briefcase, Camera, FileText } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Phone, MapPin, Calendar, Hash, Music, Briefcase, FileText, AlertCircle } from 'lucide-react';
+
+export interface EmployeeFormErrors {
+  email?: string;
+  name?: string;
+  lastName?: string;
+  documentNumber?: string;
+  password?: string;
+  confirmPassword?: string;
+  phone?: string;
+}
 
 interface Props {
   formData: any;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   showPasswordFields?: boolean;
+  errors?: EmployeeFormErrors;
 }
 
-export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onImageUpload, onSubmit, showPasswordFields = false }) => {
+export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as EmployeeFormErrors }) => {
   return (
     <form id="employee-form" onSubmit={onSubmit} className="space-y-8">
         
         {/* 1. Foto y Credenciales */}
         <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Foto */}
-            <div className="flex-shrink-0 mx-auto md:mx-0">
-                <div className="relative group cursor-pointer">
-                    <div className="w-32 h-32 rounded-full bg-slate-200 border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
-                        {formData.avatar ? (
-                            <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                            <UserIcon size={48} className="text-slate-400" />
-                        )}
-                    </div>
-                    <div className="absolute bottom-0 right-0 bg-primary-600 p-2 rounded-full text-white shadow-lg hover:bg-primary-700 transition-colors z-10">
-                        <Camera size={16} />
-                    </div>
-                    <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={onImageUpload}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
-                    />
-                </div>
-                <p className="text-[10px] text-center text-slate-400 mt-2 font-bold uppercase tracking-wide">
-                    Subir Foto
-                </p>
-            </div>
 
             {/* Datos de Acceso */}
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
                  <div className="md:col-span-2">
                     <label className="label-form">Correo Electrónico (Usuario) <span className="text-red-500">*</span></label>
                     <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.email ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                         <input 
                             type="email" 
                             name="email"
                             required
                             value={formData.email}
                             onChange={onChange}
-                            className="input-form input-icon-padding"
+                            className={`input-form input-icon-padding transition-all ${errors.email ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                             placeholder="usuario@texas.com"
                         />
                     </div>
+                    {errors.email && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.email}
+                      </p>
+                    )}
                  </div>
 
                  {showPasswordFields && (
@@ -64,32 +55,42 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onImageUploa
                         <div>
                             <label className="label-form">Contraseña <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.password ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                                 <input 
                                     type="password" 
                                     name="password"
                                     required
                                     value={formData.password}
                                     onChange={onChange}
-                                    className="input-form input-icon-padding"
+                                    className={`input-form input-icon-padding transition-all ${errors.password ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                                     placeholder="••••••••"
                                 />
                             </div>
+                            {errors.password && (
+                              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} /> {errors.password}
+                              </p>
+                            )}
                         </div>
                         <div>
                             <label className="label-form">Confirmar Contraseña <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.confirmPassword ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                                 <input 
                                     type="password" 
                                     name="confirmPassword"
                                     required
                                     value={formData.confirmPassword}
                                     onChange={onChange}
-                                    className="input-form input-icon-padding"
+                                    className={`input-form input-icon-padding transition-all ${errors.confirmPassword ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                                     placeholder="••••••••"
                                 />
                             </div>
+                            {errors.confirmPassword && (
+                              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} /> {errors.confirmPassword}
+                              </p>
+                            )}
                         </div>
                      </>
                  )}
@@ -106,11 +107,21 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onImageUploa
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                     <label className="label-form">Nombres <span className="text-red-500">*</span></label>
-                    <input type="text" name="name" required value={formData.name} onChange={onChange} className="input-form" />
+                    <input type="text" name="name" required value={formData.name} onChange={onChange} className={`input-form transition-all ${errors.name ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                    {errors.name && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.name}
+                      </p>
+                    )}
                 </div>
                 <div>
                     <label className="label-form">Apellidos <span className="text-red-500">*</span></label>
-                    <input type="text" name="lastName" required value={formData.lastName} onChange={onChange} className="input-form" />
+                    <input type="text" name="lastName" required value={formData.lastName} onChange={onChange} className={`input-form transition-all ${errors.lastName ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                    {errors.lastName && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.lastName}
+                      </p>
+                    )}
                 </div>
                 <div>
                     <label className="label-form">Género</label>
@@ -139,9 +150,14 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onImageUploa
                 <div>
                     <label className="label-form">No. Documento <span className="text-red-500">*</span></label>
                     <div className="relative">
-                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="text" name="documentNumber" required value={formData.documentNumber} onChange={onChange} className="input-form input-icon-padding" />
+                        <Hash className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.documentNumber ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                        <input type="text" name="documentNumber" required value={formData.documentNumber} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.documentNumber ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
                     </div>
+                    {errors.documentNumber && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.documentNumber}
+                      </p>
+                    )}
                 </div>
             </div>
         </div>
@@ -176,9 +192,14 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onImageUploa
                 <div>
                     <label className="label-form">Teléfono Principal <span className="text-red-500">*</span></label>
                     <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="tel" name="phone" required value={formData.phone} onChange={onChange} className="input-form input-icon-padding" />
+                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                        <input type="tel" name="phone" required value={formData.phone} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.phone ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
                     </div>
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.phone}
+                      </p>
+                    )}
                 </div>
                 <div>
                     <label className="label-form">Teléfono Secundario</label>

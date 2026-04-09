@@ -77,6 +77,21 @@ export const asyncHandler = (fn: AsyncFn) =>
         ) {
           return res.status(400).json({ message: `El parámetro '${key}' debe ser un número válido` })
         }
+
+       // ─── Validar parámetros de fecha ──────────────────────────────────
+if (key === 'date') {
+  const dateValue = Array.isArray(value) ? value[0] : value  // ✅ fix
+  const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+  if (!dateRegex.test(dateValue)) {
+    return res.status(400).json({
+      message: 'Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-04-15)'
+    })
+  }
+  const parsed = new Date(`${dateValue}T00:00:00`)
+  if (isNaN(parsed.getTime())) {
+    return res.status(400).json({ message: 'La fecha proporcionada no es válida' })
+  }
+}
       }
 
       await fn(req, res, next)

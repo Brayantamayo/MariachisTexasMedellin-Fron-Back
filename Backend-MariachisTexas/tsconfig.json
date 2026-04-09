@@ -7,12 +7,14 @@
     "module": "Node16",
     "target": "ES2022",
 
-    "types": ["node"],
-
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
+<<<<<<< HEAD
   "include": ["src", "prisma", "prisma.config.ts"],
+=======
+  "include": ["src", "prisma", "prisma.config.ts"]
+>>>>>>> origin/brayan
 }

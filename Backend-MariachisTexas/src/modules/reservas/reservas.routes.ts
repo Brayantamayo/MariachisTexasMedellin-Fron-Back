@@ -11,10 +11,20 @@ router.get('/available-hours/:date', reservaController.getAvailableHours)
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 
+
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/calendario', reservaController.getCalendario)
+//Trae todos los abonos registrados
+router.get('/abonos',     reservaController.getAbonos)
+
+//Trae todas las reservas
 router.get('/',           reservaController.getAll)
+// Trae una reserva por ID
 router.get('/:id',        reservaController.getById)
+
+// Agregar abono — Admin, Empleado y Cliente
+///corregir esto solo el admin y empleado pueden hacer esto 
+router.post('/:id/abonos', requireRole(['ADMIN', 'EMPLEADO']), reservaController.addAbono)
 
 // Crear reserva — Admin y Cliente
 router.post('/', requireRole(['ADMIN', 'CLIENTE']), reservaController.create)
