@@ -46,6 +46,13 @@ export const APP_ROUTES: AppRoute[] = [
     roles: [UserRole.ADMIN], // El cliente ve su perfil, pero el admin gestiona la lista
     icon: 'Users'
   },
+  {
+    path: '/dashboard',
+    label: 'Dashboard',
+    module: 'dashboard',
+    roles: [UserRole.ADMIN, UserRole.EMPLEADO, UserRole.CLIENTE],
+    icon: 'BarChart2'
+  },
   
   // Módulos Operativos (Admin + Empleado + Cliente en algunos casos)
   {

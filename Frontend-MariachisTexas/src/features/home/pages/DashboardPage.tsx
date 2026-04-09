@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { UserRole, Reservation } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
+import { dashboardService } from '../services/dashboardService';
 import { ventaService } from '../../ventas/services/ventaService';
 import { clientService } from '../../clientes/services/clientService';
 import { 
@@ -89,9 +90,12 @@ export const DashboardPage: React.FC = () => {
     const loadDashboardData = async () => {
       setLoading(true);
       
-      const reservations = await reservaService.getReservations();
-      const sales = await ventaService.getSales();
-      const clients = await clientService.getClients();
+      const [reservations, sales, clients, apiStats] = await Promise.all([
+        reservaService.getReservations(),
+        ventaService.getSales(),
+        clientService.getClients(),
+        dashboardService.getStats().catch(() => null)
+      ]);
 
       const activeRes = reservations.filter(r => r.status === 'Confirmado' || r.status === 'Pendiente');
       const totalIncome = sales.reduce((acc, curr) => acc + curr.amount, 0);
@@ -158,11 +162,19 @@ export const DashboardPage: React.FC = () => {
       }
 
       setStats({
-        income: totalIncome,
-        activeReservations: activeRes.length,
-        pendingBalance: pending,
-        totalClients: clients.length,
-        upcomingEvents: relevantEvents.slice(0, 5),
+        income: apiStats?.totalRevenue ?? totalIncome,
+        activeReservations: apiStats?.confirmedReservas ?? activeRes.length,
+        pendingBalance: apiStats?.totalPendingBalance ?? pending,
+        totalClients: apiStats?.totalClients ?? clients.length,
+        upcomingEvents: apiStats?.upcomingReservations?.map(r => ({
+          id: r.id,
+          eventDate: r.eventDate,
+          status: r.status,
+          totalAmount: r.totalValue,
+          paidAmount: 0,
+          createdAt: r.eventDate,
+          eventType: 'N/A'
+        })) ?? relevantEvents.slice(0, 5),
         recentActivity: reservations.slice(0, 5),
         monthlyIncomeData: monthlyIncome,
         eventTypeData: eventTypeData,
