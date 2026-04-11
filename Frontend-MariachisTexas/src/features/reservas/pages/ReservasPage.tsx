@@ -49,7 +49,7 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
                   <Clock size={20} />
                 </div>
                 <div>
-                  <p className={`font-bold text-sm mb-0.5 ${urgent ? 'text-red-800' : 'text-amber-800'}`}>⚠️ Reserva #{res.id} pendiente de pago</p>
+                  <p className={`font-bold text-sm mb-0.5 ${urgent ? 'text-red-800' : 'text-amber-800'}`}> Reserva #{res.id} pendiente de pago</p>
                   <p className={`text-xs leading-relaxed ${urgent ? 'text-red-700' : 'text-amber-700'}`}>
                     Para confirmar tu evento del <strong>{res.eventDate}</strong> debes pagar el anticipo del 50%. Comunícate con nosotros para realizar el pago.
                   </p>
@@ -202,9 +202,14 @@ export const ReservasPage: React.FC = () => {
       const isSelected     = isDateSelected(dateStr);
 
       const totalItems = dayEvents.length + dayRehearsals.length + dayQuotes.length;
-      let dotColorClass = 'bg-emerald-400';
-      if (totalItems >= 5)     dotColorClass = 'bg-red-600';
-      else if (totalItems > 0) dotColorClass = 'bg-orange-400';
+      
+      // Color del indicador según prioridad: Azul (FINALIZADO) > Verde (CONFIRMADA) > Naranja (PENDIENTE)
+      // Prioridad: PENDIENTE (naranja) → CONFIRMADA (verde) → FINALIZADO (azul)
+      const s = (ev: any) => (ev.status ?? '').toUpperCase()
+      let dotColorClass = 'bg-slate-300'
+      if (totalItems > 0) dotColorClass = 'bg-orange-400'
+      if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
+      if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
         <div
@@ -243,27 +248,43 @@ export const ReservasPage: React.FC = () => {
               </div>
             ))}
             {dayQuotes.map((quote, index) => (
-              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-red-200 bg-red-50 text-red-700'}`}>
                 {isClient ? <Lock size={9} /> : <FileText size={9} />}
                 <span className="font-bold">{quote.startTime}</span>
                 {isClient ? ' Reservado' : ' Cotización'}
               </div>
             ))}
             {dayRehearsals.map((reh, index) => (
-              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
+              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
                 {isClient ? <Lock size={9} /> : null}
                 <span className="font-bold">{reh.time}</span> {isClient ? 'Reservado' : 'Ensayo'}
               </div>
             ))}
-            {dayEvents.map(ev => {
-              const isMyEvent = !isClient || user?.email === ev.clientEmail
-              const statusStyle = ev.status === 'CONFIRMADA' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'
-              return (
-                <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded font-medium truncate ${isMyEvent ? statusStyle : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                  <span className="font-bold">{ev.eventTime}</span> {isMyEvent ? (canManage ? ev.clientName : ev.eventType) : 'Reservado'}
-                </div>
-              )
-            })}
+
+{dayEvents
+  .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
+  .map(ev => {
+    const s = (ev.status ?? '').toUpperCase()
+    let statusStyle = 'bg-amber-50 border-amber-200 text-amber-800'
+    let timeStyle   = 'text-amber-600'
+    if (s === 'CONFIRMADA') {
+      statusStyle = 'bg-emerald-50 border-emerald-200 text-emerald-800'
+      timeStyle   = 'text-emerald-600'
+    }
+    if (s === 'FINALIZADO') {
+      statusStyle = 'bg-blue-50 border-blue-200 text-blue-800'
+      timeStyle   = 'text-blue-500'
+    }
+    return (
+      <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${statusStyle}`}>
+        <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+        <span className="truncate font-medium">
+          {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
+        </span>
+      </div>
+    )
+})}
+
           </div>
 
           {isFullDayBlock && (

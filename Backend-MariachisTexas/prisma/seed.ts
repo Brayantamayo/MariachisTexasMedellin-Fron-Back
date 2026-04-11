@@ -176,11 +176,11 @@ async function main() {
   console.log('✅ Usuarios y empleados creados')
 
   // ─── USUARIO PARA CLIENTE DIRECTA ─────────────────────────
-  await prisma.usuario.upsert({
+  const directaUser = await prisma.usuario.upsert({
     where: { email: 'directa@mariachistexas.com' },
     update: {},
     create: {
-      nombre:   'Cliente',
+      nombre:   'Cliente Directa',
       email:    'directa@mariachistexas.com',
       password: await bcrypt.hash('Directa-123456', 10),
       rolId:    cliente.id
@@ -189,9 +189,10 @@ async function main() {
 
   // ─── CLIENTE PARA VENTAS DIRECTAS ────────────────────────
   await prisma.cliente.upsert({
-    where: { email: 'directa@mariachistexas.com' },
+    where: { usuarioId: directaUser.id },
     update: {},
     create: {
+      usuarioId:           directaUser.id,
       email:               'directa@mariachistexas.com',
       apellido:            'Directa',
       tipoDocumento:       'CC',
@@ -208,7 +209,7 @@ async function main() {
   })
 
   // ─── CLIENTE DE PRUEBA ────────────────────────────────────
-  await prisma.usuario.upsert({
+  const clientePruebaUser = await prisma.usuario.upsert({
     where: { email: 'cliente@mariachistexas.com' },
     update: {},
     create: {
@@ -220,9 +221,10 @@ async function main() {
   })
 
   await prisma.cliente.upsert({
-    where: { email: 'cliente@mariachistexas.com' },
+    where: { usuarioId: clientePruebaUser.id },
     update: {},
     create: {
+      usuarioId:           clientePruebaUser.id,
       email:               'cliente@mariachistexas.com',
       apellido:            'Prueba',
       tipoDocumento:       'CC',

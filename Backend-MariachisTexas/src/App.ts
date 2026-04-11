@@ -55,6 +55,7 @@ const publicLimiter = rateLimit({
 })
 
 
+
 app.use('/api/auth/login',     authLimiter)
 app.use('/api/auth/registro',  authLimiter)
 app.use('/api/auth/recuperar', authLimiter)

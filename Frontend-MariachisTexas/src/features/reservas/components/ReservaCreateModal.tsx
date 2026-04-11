@@ -111,100 +111,119 @@ export const ReservaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, s
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setFormData(getInitialFormState());
-      setClients([]);
-      setErrors({});
-      setGlobalError(null);
-      return;
-    }
-
+useEffect(() => {
+  if (!isOpen) {
     setFormData(getInitialFormState());
+    setClients([]);
     setErrors({});
     setGlobalError(null);
+    return;
+  }
 
-    repertoireService.getSongsPublic().then(setSongs);
-    servicesService.getServices().then(setServices);
+  setFormData(getInitialFormState());
+  setErrors({});
+  setGlobalError(null);
 
-    if (isAdmin) {
-      clientService.getClients(1, 100).then(({ clients }) => setClients(clients));
-    }
+  const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
+  const timeToUse = selectedTime || '';
 
-    const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
-    const timeToUse = selectedTime || '';
+  // ─── Paralelizar todas las cargas ────────────────────────────────────────
+  const fetches: Promise<any>[] = [
+    repertoireService.getSongsPublic(),
+    servicesService.getServices(),
+    blockService.checkDateStatus(dateToUse),
+    reservaService.getAvailableHours(dateToUse),
+    ...(isAdmin ? [clientService.getClients(1, 100)] : [Promise.resolve(null)]),
+  ];
 
-    let baseState = {
-      ...getInitialFormState(),
-      eventDate: dateToUse,
-      eventTime: timeToUse,
-      startTime: timeToUse,
-    };
-
-    if (user && !isAdmin) {
-      baseState = {
-        ...baseState,
-        clientId:       String(user.id),
-        clientName:     `${user.name} ${user.lastName}`.trim(),
-        clientPhone:    user.phone          || '',
-        secondaryPhone: user.secondaryPhone || '',
-        clientEmail:    user.email,
-      };
-    }
-
-    setFormData(baseState);
-    checkBlockAndHours(dateToUse);
-  }, [isOpen, selectedDate, user, isAdmin]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const songCount       = formData.repertoireIds?.length || 0;
-    const extraSongsPrice = songCount > INCLUDED_SONGS
-      ? (songCount - INCLUDED_SONGS) * PRICE_PER_EXTRA_SONG
-      : 0;
-
-    const servicesCost = (formData.selectedServices || []).reduce((total: number, item: any) => {
-      const service = services.find((s: any) => String(s.id) === String(item.serviceId));
-      return total + (service ? Number(service.precio) * item.quantity : 0);
-    }, 0);
-
-    const normalizeStr      = (str: string) =>
-      str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const extraHoursService = services.find((s: any) => normalizeStr(s.nombre) === 'hora extra');
-    const extraHoursQty     = extraHoursService
-      ? (formData.selectedServices?.find((s: any) => String(s.serviceId) === String(extraHoursService.id))?.quantity || 0)
-      : 0;
-
-    const startTime = formData.startTime || formData.eventTime;
-    let newEndTime  = '';
-    if (startTime) {
-      const [h, m]       = startTime.split(':').map(Number);
-      const totalMinutes = h * 60 + m + (1 + extraHoursQty) * 60;
-      const newH         = Math.floor(totalMinutes / 60) % 24;
-      const newM         = totalMinutes % 60;
-      newEndTime         = `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
-    }
-
-    setFormData((prev: any) => ({
-      ...prev,
-      totalAmount: extraSongsPrice + servicesCost,
-      ...(newEndTime ? { endTime: newEndTime } : {}),
-    }));
-  }, [formData.repertoireIds, formData.selectedServices, formData.startTime, formData.eventTime, isOpen, services]);
-
-  const checkBlockAndHours = async (date: string) => {
-    const status = await blockService.checkDateStatus(date);
+  Promise.all(fetches).then(([songs, services, status, hours, clientsData]) => {
+    setSongs(songs);
+    setServices(services);
     setBlockStatus(status);
-    let hours = await reservaService.getAvailableHours(date);
+
+    let filtered = hours;
     if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
-      hours = hours.filter(hour =>
+      filtered = hours.filter((hour: string) =>
         !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
       );
     }
-    setAvailableHours(hours);
+    setAvailableHours(filtered);
+
+    if (isAdmin && clientsData) setClients(clientsData.clients);
+  });
+
+  let baseState = {
+    ...getInitialFormState(),
+    eventDate: dateToUse,
+    eventTime: timeToUse,
+    startTime: timeToUse,
   };
 
+  if (user && !isAdmin) {
+    baseState = {
+      ...baseState,
+      clientId:       String(user.id),
+      clientName:     `${user.name} ${user.lastName}`.trim(),
+      clientPhone:    user.phone          || '',
+      secondaryPhone: user.secondaryPhone || '',
+      clientEmail:    user.email,
+    };
+  }
+
+  setFormData(baseState);
+}, [isOpen, selectedDate, user, isAdmin]);
+
+useEffect(() => {
+  if (!isOpen) return;
+
+  const songCount       = formData.repertoireIds?.length || 0;
+  const extraSongsPrice = songCount > INCLUDED_SONGS
+    ? (songCount - INCLUDED_SONGS) * PRICE_PER_EXTRA_SONG
+    : 0;
+
+  const servicesCost = (formData.selectedServices || []).reduce((total: number, item: any) => {
+    const service = services.find((s: any) => String(s.id) === String(item.serviceId));
+    return total + (service ? Number(service.precio) * item.quantity : 0);
+  }, 0);
+
+  const normalizeStr      = (str: string) =>
+    str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const extraHoursService = services.find((s: any) => normalizeStr(s.nombre) === 'hora extra');
+  const extraHoursQty     = extraHoursService
+    ? (formData.selectedServices?.find((s: any) => String(s.serviceId) === String(extraHoursService.id))?.quantity || 0)
+    : 0;
+
+  const startTime = formData.startTime || formData.eventTime;
+  let newEndTime  = '';
+  if (startTime) {
+    const [h, m]       = startTime.split(':').map(Number);
+    const totalMinutes = h * 60 + m + (1 + extraHoursQty) * 60;
+    const newH         = Math.floor(totalMinutes / 60) % 24;
+    const newM         = totalMinutes % 60;
+    newEndTime         = `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
+  }
+
+  setFormData((prev: any) => ({
+    ...prev,
+    totalAmount: extraSongsPrice + servicesCost,
+    ...(newEndTime ? { endTime: newEndTime } : {}),
+  }));
+}, [formData.repertoireIds, formData.selectedServices, formData.startTime, formData.eventTime, isOpen, services]);
+
+const checkBlockAndHours = async (date: string) => {
+  const [status, hours] = await Promise.all([
+    blockService.checkDateStatus(date),
+    reservaService.getAvailableHours(date),
+  ]);
+  setBlockStatus(status);
+  let filtered = hours;
+  if (!status.isBlocked && status.hasPartialBlocks && status.blockedRanges) {
+    filtered = hours.filter((hour: string) =>
+      !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
+    );
+  }
+  setAvailableHours(filtered);
+};
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => {

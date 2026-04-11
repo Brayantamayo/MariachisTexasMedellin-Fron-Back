@@ -52,7 +52,11 @@ export type ReservaPublica = {
     horaInicio:  Date
     horaFin:     Date
     tipoEvento:  string
-    cliente:     { email: string } | null
+    cliente:     { 
+      email:    string
+      apellido: string                    // ← nuevo
+      usuario:  { nombre: string } | null // ← nuevo
+    } | null
   } | null
 }
 
@@ -102,12 +106,16 @@ export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse =
 // ─── mapToPublicReservation ───────────────────────────────────────────────────
 // Versión reducida para el calendario — no expone datos sensibles
 export const mapToPublicReservation = (r: ReservaPublica) => ({
-  id:        String(r.id),
-  clientId:  String(r.cotizacion?.clienteId ?? ''),
-  eventDate: r.cotizacion?.fechaEvento ? toLocalDate(r.cotizacion.fechaEvento) : '',
-  eventTime: r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
-  startTime: r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
-  endTime:   r.cotizacion?.horaFin     ? toLocalTime(r.cotizacion.horaFin)     : '',
-  eventType: r.cotizacion?.tipoEvento  ?? '',
-  status:    r.estado,
+  id:          String(r.id),
+  clientId:    String(r.cotizacion?.clienteId ?? ''),
+  clientName:  r.cotizacion?.cliente           // ← nuevo
+    ? `${r.cotizacion.cliente.usuario?.nombre ?? ''} ${r.cotizacion.cliente.apellido ?? ''}`.trim()
+    : '',
+  clientEmail: r.cotizacion?.cliente?.email ?? '', // ← nuevo
+  eventDate:   r.cotizacion?.fechaEvento ? toLocalDate(r.cotizacion.fechaEvento) : '',
+  eventTime:   r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
+  startTime:   r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
+  endTime:     r.cotizacion?.horaFin     ? toLocalTime(r.cotizacion.horaFin)     : '',
+  eventType:   r.cotizacion?.tipoEvento  ?? '',
+  status:      r.estado,
 })

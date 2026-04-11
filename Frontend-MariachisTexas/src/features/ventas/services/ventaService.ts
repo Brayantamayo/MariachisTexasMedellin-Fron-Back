@@ -1,4 +1,3 @@
-
 import api from '@/shared/api/api'
 
 export interface Sale {
@@ -6,113 +5,100 @@ export interface Sale {
     date: string;
     type: 'Por Reserva' | 'Directa';
     clientName: string;
-    clientId?: string; // ID del cliente para filtrado
-    concept: string; // Descripción o ID Reserva
+    clientId?: string;
+    concept: string;
     method: string;
-    amount: number; // Monto del último pago o monto total si es directa
-    totalAmount?: number; // Monto total de la reserva
-    pendingAmount?: number; // Saldo pendiente
+    amount: number;
+    totalAmount?: number;
+    pendingAmount?: number;
+    paidAmount?: number;
     reservationId?: string;
     reservationStatus?: 'Confirmado' | 'Finalizado';
-    status: 'Completado' | 'Anulado';
+    eventDate?: string;
+    eventType?: string;
+    status: string;
+    abonos?: { id: string; amount: number; date: string; method: string; notes: string }[];
+}
+
+// ─── Helper: extrae el array sin importar si la respuesta es directa o envuelta ──
+const unwrapList = (response: any): any[] => {
+    if (Array.isArray(response)) return response
+    if (response && Array.isArray(response.data)) return response.data
+    return []
+}
+
+const unwrapItem = (response: any): any => {
+    if (response && response.data !== undefined) return response.data
+    return response
 }
 
 export const ventaService = {
+
     getSales: async (): Promise<Sale[]> => {
         try {
             const { data } = await api.get('/ventas')
-            return data
+            return unwrapList(data)
         } catch (err) {
             console.error('Error obteniendo ventas:', err)
             return []
         }
     },
 
-    // Obtener reservas pendientes de pago para el select - AHORA desde el endpoint de ventas
     getPayableReservations: async (): Promise<any[]> => {
         try {
             const { data } = await api.get('/ventas/payable/reservations')
-            return data
+            return unwrapList(data)
         } catch (err) {
             console.error('Error obteniendo reservas pagables:', err)
             return []
         }
     },
 
-    // Método principal para crear venta desde el módulo de Ventas
     createSale: async (data: any): Promise<Sale> => {
-        // Normalizar método de pago
-        const methodMap: Record<string, string> = {
-            'efectivo': 'EFECTIVO',
-            'transferencia': 'TRANSFERENCIA',
-            'tarjeta': 'TARJETA',
-            'nequi': 'NEQUI',
-            'daviplata': 'DAVIPLATA',
-            'otro': 'OTRO'
-        };
-        const normalizedMethod = methodMap[String(data.method || '').toLowerCase()] || 'OTRO';
-
-        // 1. Si es por reserva, actualizamos la reserva original
-        if (data.type === 'Por Reserva' && data.reservationId) {
-            await api.post(`/reservas/${data.reservationId}/abonos`, {
-                amount: Number(data.amount),
-                method: String(data.method).toUpperCase(),
-                date: new Date().toISOString(),
-                notes: 'Generado desde módulo Ventas'
-            });
-        }
-
-        // 2. Crear registro de venta
         const payload = {
-            reservaId: data.reservationId ? Number(data.reservationId) : null,
-            clienteId: Number(data.clienteId),
-            tipo: data.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
-            estado: 'CONFIRMADO',
-            montoTotal: Number(data.amount),
+            reservaId:   data.reservationId ? Number(data.reservationId) : null,
+            clienteId:   Number(data.clienteId),
+            tipo:        data.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
+            estado:      'CONFIRMADO',
+            montoTotal:  Number(data.amount),
             montoPagado: Number(data.amount),
-            fechaVenta: data.date,
-            metodoPago: String(data.method).toUpperCase()
+            fechaVenta:  data.date,
+            metodoPago:  String(data.method).toUpperCase(),
         }
-
-        const { data: newSale } = await api.post('/ventas', payload)
-        return newSale
+        const { data: res } = await api.post('/ventas', payload)
+        return unwrapItem(res)
     },
 
     updateSale: async (id: string, updates: Partial<Sale>): Promise<Sale> => {
         const { data } = await api.put(`/ventas/${id}`, updates)
-        return data
+        return unwrapItem(data)
     },
 
-    // NUEVO MÉTODO: Registra una venta que viene de otro módulo (Abonos) sin llamar de nuevo a reservaService
-    // Esto evita bucles infinitos o pagos duplicados.
     registerExternalSale: async (saleData: Omit<Sale, 'id' | 'status'>): Promise<Sale> => {
         const payload = {
-            reservaId: saleData.reservationId ? Number(saleData.reservationId) : null,
-            clienteId: Number(saleData.clientId),
-            tipo: saleData.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
-            estado: 'CONFIRMADO',
-            montoTotal: saleData.amount,
+            reservaId:   saleData.reservationId ? Number(saleData.reservationId) : null,
+            clienteId:   Number(saleData.clientId),
+            tipo:        saleData.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
+            estado:      'CONFIRMADO',
+            montoTotal:  saleData.amount,
             montoPagado: saleData.amount,
-            fechaVenta: saleData.date,
-            metodoPago: String(saleData.method).toUpperCase()
+            fechaVenta:  saleData.date,
+            metodoPago:  String(saleData.method).toUpperCase(),
         }
-
         const { data } = await api.post('/ventas', payload)
-        return data
+        return unwrapItem(data)
     },
 
     downloadInvoice: async (saleId: string): Promise<void> => {
-        const response = await api.get(`/ventas/${saleId}/download/pdf`, {
-            responseType: 'blob'
-        });
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `factura-${saleId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-    }
-};
+        const response = await api.get(`/ventas/${saleId}/download/pdf`, { responseType: 'blob' })
+        const blob = new Blob([response.data], { type: 'application/pdf' })
+        const url  = window.URL.createObjectURL(blob)
+        const a    = document.createElement('a')
+        a.href     = url
+        a.download = `factura-${saleId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+    },
+}

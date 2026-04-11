@@ -5,6 +5,7 @@ import { UserRole, Reservation } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
 import { ventaService } from '../../ventas/services/ventaService';
 import { clientService } from '../../clientes/services/clientService';
+import api from '@/shared/api/api';
 import { 
   TrendingUp, 
   Users, 
@@ -87,7 +88,10 @@ export const DashboardPage: React.FC = () => {
       setLoading(true);
       
       const reservations = await reservaService.getReservations();
-      const sales = await ventaService.getSales();
+      const rawSales = await api.get('/ventas');
+      const sales    = Array.isArray(rawSales.data)
+    ? rawSales.data
+    : (rawSales.data?.data ?? []);
 
       // ✅ CORRECCIÓN: getClients() puede retornar { clients: User[], pagination: any }
       const clientsResponse = await clientService.getClients();

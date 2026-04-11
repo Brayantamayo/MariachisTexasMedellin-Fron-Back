@@ -23,7 +23,6 @@ router.get('/',           reservaController.getAll)
 router.get('/:id',        reservaController.getById)
 
 // Agregar abono — Admin, Empleado y Cliente
-///corregir esto solo el admin y empleado pueden hacer esto 
 router.post('/:id/abonos', requireRole(['ADMIN', 'EMPLEADO']), reservaController.addAbono)
 
 // Crear reserva — Admin y Cliente
@@ -35,8 +34,6 @@ router.put('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.update)
 // Anular — Admin y Empleado
 router.patch('/:id/anular', requireRole(['ADMIN', 'EMPLEADO']), reservaController.anular)
 
-// Confirmar — Admin y Empleado
-router.patch('/:id/confirmar', requireRole(['ADMIN', 'EMPLEADO']), reservaController.confirmar)
 
 // Eliminar — Admin y Empleado
 router.delete('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.remove)

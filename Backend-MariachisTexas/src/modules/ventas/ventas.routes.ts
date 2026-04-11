@@ -5,25 +5,85 @@ import { requireRole } from '../../middlewares/Role.middleware'
 
 const router = Router()
 
-// ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
+// ─── Todas las rutas requieren autenticación ───────────────────────────────────
 router.use(verifyToken)
 
-// ⚠️ IMPORTANTE: Rutas más específicas ANTES de rutas con parámetros
-router.get('/payable/reservations', ventaController.getPayableReservations)
+// ─── RESERVAS: Abono y PDF ────────────────────────────────────────────────────
 
-// Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
-router.get('/',    ventaController.getAll)
-router.get('/:id', ventaController.getById)
+/**
+ * POST /ventas/reserva/:reservaId/abono
+ * Registra el pago final (2do abono / saldo) de una reserva confirmada.
+ * Solo ADMIN y EMPLEADO.
+ */
+router.post(
+  '/reserva/:reservaId/abono',
+  requireRole(['ADMIN', 'EMPLEADO']),
+  ventaController.addFinalAbono
+)
+
+/**
+ * GET /ventas/reserva/:reservaId/pdf
+ * Descarga el comprobante PDF de una reserva.
+ * Todos los roles (el controller verifica propiedad para CLIENTE).
+ */
+router.get('/reserva/:reservaId/pdf', ventaController.downloadReservaPdf)
+
+// ─── RESERVAS PAGABLES ────────────────────────────────────────────────────────
+
+/**
+ * GET /ventas/payable/reservations
+ * Lista reservas con saldo pendiente > 0 (PENDIENTE o CONFIRMADA).
+ * Solo ADMIN y EMPLEADO.
+ */
+router.get(
+  '/payable/reservations',
+  requireRole(['ADMIN', 'EMPLEADO']),
+  ventaController.getPayableReservations
+)
+
+// ─── REPORTE PDF GENERAL ──────────────────────────────────────────────────────
+
+/**
+ * GET /ventas/download/pdf
+ * Descarga PDF con listado de ventas.
+ * Admin/Empleado ven todo; Cliente solo sus registros.
+ */
 router.get('/download/pdf', ventaController.downloadPdf)
+
+// ─── CRUD VENTAS ──────────────────────────────────────────────────────────────
+
+/**
+ * GET /ventas
+ * Obtiene todas las ventas.
+ * Admin/Empleado ven todo; Cliente solo las suyas.
+ */
+router.get('/', ventaController.getAll)
+
+/**
+ * POST /ventas
+ * Crea una nueva venta directa o asociada a reserva.
+ * Solo ADMIN y EMPLEADO.
+ */
+router.post(
+'/',
+requireRole(['ADMIN', 'EMPLEADO']),
+ventaController.create
+)
+
+
+
+/**
+ * GET /ventas/:id
+ * Obtiene una venta por ID.
+ * Admin/Empleado ven cualquiera; Cliente solo la suya.
+ */
+router.get('/:id', ventaController.getById)
+
+/**
+ * GET /ventas/:id/download/pdf
+ * Descarga la factura PDF de una venta específica.
+ * Admin/Empleado ven cualquiera; Cliente solo la suya.
+ */
 router.get('/:id/download/pdf', ventaController.downloadVentaPdf)
-
-// Crear — Admin y Empleado
-router.post('/', requireRole(['ADMIN', 'EMPLEADO']), ventaController.create)
-
-// Editar — Admin y Empleado
-router.put('/:id', requireRole(['ADMIN', 'EMPLEADO']), ventaController.update)
-
-// Eliminar — Admin
-router.delete('/:id', requireRole(['ADMIN']), ventaController.remove)
 
 export default router
