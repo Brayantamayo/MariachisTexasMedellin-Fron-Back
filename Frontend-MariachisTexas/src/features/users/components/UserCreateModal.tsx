@@ -22,6 +22,7 @@ export interface UserFormErrors {
   password?: string;
   confirmPassword?: string;
   phone?: string;
+  birthDate?: string;
 }
 
 const validate = (data: any): UserFormErrors => {
@@ -140,11 +141,13 @@ export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave
     } catch (err: any) {
       console.error('Error al crear usuario:', err);
       const errorMessage = getErrorMessage(err, 'Error al crear el usuario.');
-      // Si hay error del servidor en un campo específico, mostrar en ese campo
-      if (err.response?.data?.field) {
+      const msg = errorMessage.toLowerCase();
+
+      if (msg.includes('email') && (msg.includes('registrado') || msg.includes('uso') || msg.includes('existe') || msg.includes('conflict'))) {
+        setErrors({ email: 'Este correo ya está en uso. Usa otro correo electrónico.' });
+      } else if (err.response?.data?.field) {
         setErrors({ [err.response.data.field]: errorMessage });
       } else {
-        // Si no, mostrar email como error general
         setErrors({ email: errorMessage });
       }
     } finally {
@@ -213,6 +216,8 @@ interface EditProps {
 
 export const UserEditModal: React.FC<EditProps> = ({ isOpen, onClose, onSave, user }) => {
   const [formData, setFormData] = useState<any>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const photo = usePhotoUpload({
     folder: 'usuarios/fotos',
@@ -229,6 +234,7 @@ export const UserEditModal: React.FC<EditProps> = ({ isOpen, onClose, onSave, us
           ? user.otherInstruments.join(', ')
           : user.otherInstruments || ''
       });
+      setServerError(null);
       photo.reset();
     }
   }, [user, isOpen]);
@@ -239,22 +245,36 @@ export const UserEditModal: React.FC<EditProps> = ({ isOpen, onClose, onSave, us
   };
 
   const handleClose = () => {
+    setServerError(null);
     photo.reset();
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (photo.uploading) return;
+    setServerError(null);
+    setSaving(true);
+    try {
+      const submission = { ...formData };
+      if (submission.otherInstruments && typeof submission.otherInstruments === 'string') {
+        submission.otherInstruments = submission.otherInstruments.split(',').map((i: string) => i.trim());
+      }
+      if (!submission.password) delete submission.password;
+      delete submission.confirmPassword;
 
-    const submission = { ...formData };
-    if (submission.otherInstruments && typeof submission.otherInstruments === 'string') {
-      submission.otherInstruments = submission.otherInstruments.split(',').map((i: string) => i.trim());
+      await onSave(submission);
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err, 'Error al actualizar el usuario.');
+      const msg = errorMessage.toLowerCase();
+      if (msg.includes('email') && (msg.includes('registrado') || msg.includes('uso') || msg.includes('existe') || msg.includes('conflict'))) {
+        setServerError('Este correo ya está en uso. Usa otro correo electrónico.');
+      } else {
+        setServerError(errorMessage);
+      }
+    } finally {
+      setSaving(false);
     }
-    if (!submission.password) delete submission.password;
-    delete submission.confirmPassword;
-
-    onSave(submission);
   };
 
   if (!isOpen || !formData) return null;
@@ -281,6 +301,12 @@ export const UserEditModal: React.FC<EditProps> = ({ isOpen, onClose, onSave, us
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
           <PhotoUploadWidget photo={photo} currentUrl={formData.avatar} />
+          {serverError && (
+            <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-medium">
+              <AlertCircle size={16} className="flex-shrink-0" />
+              {serverError}
+            </div>
+          )}
           <UserForm
             formData={formData}
             onChange={handleChange}
@@ -291,9 +317,9 @@ export const UserEditModal: React.FC<EditProps> = ({ isOpen, onClose, onSave, us
 
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button onClick={handleClose} className="px-6 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all uppercase tracking-widest">Cancelar</button>
-          <button onClick={handleSubmit} disabled={photo.uploading}
+          <button onClick={handleSubmit} disabled={photo.uploading || saving}
             className="bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shadow-lg transition-all transform hover:-translate-y-0.5">
-            {photo.uploading ? <><Loader2 size={14} className="animate-spin" /> Subiendo foto...</> : <><Save size={16} /> Guardar Cambios</>}
+            {photo.uploading ? <><Loader2 size={14} className="animate-spin" /> Subiendo foto...</> : saving ? <><Loader2 size={14} className="animate-spin" /> Guardando...</> : <><Save size={16} /> Guardar Cambios</>}
           </button>
         </div>
       </div>

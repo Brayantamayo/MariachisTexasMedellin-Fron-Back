@@ -65,9 +65,7 @@ export const UserDetailModal: React.FC<Props> = ({ isOpen, onClose, user }) => {
                     <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-xs font-bold uppercase flex items-center gap-1">
                         <Shield size={10} /> {user.role}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${user.isActive ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                        {user.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
+
                 </div>
             </div>
 

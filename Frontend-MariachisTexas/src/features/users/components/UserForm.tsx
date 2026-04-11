@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { User as UserIcon, Mail, Lock, Phone, MapPin, Calendar, Hash, Music, Briefcase, AlertCircle } from 'lucide-react';
 import { UserRole } from '@/types';
 
@@ -11,6 +11,7 @@ interface UserFormErrors {
   password?: string;
   confirmPassword?: string;
   phone?: string;
+  birthDate?: string;
 }
 
 interface Props {
@@ -19,6 +20,147 @@ interface Props {
   onSubmit: (e: React.FormEvent) => void;
   showPasswordFields?: boolean;
   errors?: UserFormErrors;
+}
+
+// ─── Convierte YYYY-MM-DD → DD/MM/YYYY para mostrar ──────────────────────────
+const toDisplay = (iso: string): string => {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return iso
+  return `${d}/${m}/${y}`
+}
+
+// ─── Convierte DD/MM/YYYY → YYYY-MM-DD para el modelo ────────────────────────
+const toISO = (display: string): string => {
+  const clean = display.replace(/\D/g, '')
+  if (clean.length < 8) return ''
+  const d = clean.slice(0, 2)
+  const m = clean.slice(2, 4)
+  const y = clean.slice(4, 8)
+  return `${y}-${m}-${d}`
+}
+
+// ─── Aplica máscara DD/MM/YYYY mientras el usuario escribe ───────────────────
+const applyMask = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
+// ─── Valida que la fecha tenga sentido básico ─────────────────────────────────
+const validateDate = (iso: string): string | undefined => {
+  if (!iso) return 'La fecha de nacimiento es requerida'
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return 'La fecha no es válida'
+  const year = date.getFullYear()
+  if (year < 1900 || year > new Date().getFullYear()) return 'El año no es válido'
+  return undefined
+}
+
+// ─── Componente de fecha con máscara + picker nativo ─────────────────────────
+const BirthDateInput: React.FC<{
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  error?: string
+  required?: boolean
+}> = ({ value, onChange, error, required }) => {
+  const [displayValue, setDisplayValue] = useState(() => toDisplay(value))
+  const [dateError, setDateError] = useState<string | undefined>()
+  const hiddenRef = React.useRef<HTMLInputElement>(null)
+
+  // Sincronizar si el valor externo cambia (ej: reset del form)
+  React.useEffect(() => {
+    setDisplayValue(toDisplay(value))
+  }, [value])
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = applyMask(e.target.value)
+    setDisplayValue(masked)
+
+    const digits = masked.replace(/\D/g, '')
+    if (digits.length === 8) {
+      const iso = toISO(masked)
+      const err = validateDate(iso)
+      setDateError(err)
+      if (!err) {
+        // Emitir evento sintético con el valor ISO
+        const syntheticEvent = {
+          ...e,
+          target: { ...e.target, name: 'birthDate', value: iso }
+        } as React.ChangeEvent<HTMLInputElement>
+        onChange(syntheticEvent)
+      }
+    } else {
+      setDateError(undefined)
+    }
+  }
+
+  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const iso = e.target.value // YYYY-MM-DD
+    setDisplayValue(toDisplay(iso))
+    setDateError(undefined)
+    const syntheticEvent = {
+      ...e,
+      target: { ...e.target, name: 'birthDate', value: iso }
+    } as React.ChangeEvent<HTMLInputElement>
+    onChange(syntheticEvent)
+  }
+
+  const openPicker = () => {
+    try {
+      hiddenRef.current?.showPicker()
+    } catch {
+      hiddenRef.current?.click()
+    }
+  }
+
+  const combinedError = error || dateError
+
+  return (
+    <div>
+      <label className="label-form">Fecha Nacimiento <span className="text-red-500">*</span></label>
+      <div className="relative">
+        {/* Input visible con máscara */}
+        <input
+          type="text"
+          name="birthDate"
+          value={displayValue}
+          onChange={handleTextChange}
+          placeholder="DD/MM/AAAA"
+          maxLength={10}
+          required={required}
+          className={`input-form pr-10 transition-all ${combinedError ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+        />
+        {/* Botón para abrir el picker nativo */}
+        <button
+          type="button"
+          onClick={openPicker}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors"
+          tabIndex={-1}
+          title="Abrir calendario"
+        >
+          <Calendar size={16} />
+        </button>
+        {/* Input date oculto — solo para el picker */}
+        <input
+          ref={hiddenRef}
+          type="date"
+          value={value || ''}
+          onChange={handlePickerChange}
+          className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+          tabIndex={-1}
+          max={new Date().toISOString().split('T')[0]}
+          min="1900-01-01"
+        />
+      </div>
+      {combinedError && (
+        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <AlertCircle size={12} /> {combinedError}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as UserFormErrors }) => {
@@ -146,29 +288,12 @@ export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPa
                         <option value="O">Otro</option>
                     </select>
                 </div>
-                <div>
-                     <label className="label-form">Fecha Nacimiento <span className="text-red-500">*</span></label>
-                     <div className="relative">
-                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                         <input 
-                            type="date" 
-                            name="birthDate" 
-                            required 
-                            value={formData.birthDate} 
-                            onChange={onChange} 
-                            className="input-form input-icon-padding cursor-pointer"
-                            onClick={(e) => {
-                                try {
-                                    if('showPicker' in e.currentTarget) {
-                                        e.currentTarget.showPicker();
-                                    }
-                                } catch (err) {
-                                    console.warn("Date picker not supported", err);
-                                }
-                            }}
-                         />
-                     </div>
-                </div>
+                <BirthDateInput
+                  value={formData.birthDate}
+                  onChange={onChange}
+                  error={errors.birthDate}
+                  required
+                />
                 <div>
                     <label className="label-form">Tipo Documento <span className="text-red-500">*</span></label>
                     <select name="documentType" value={formData.documentType} onChange={onChange} className="input-form appearance-none cursor-pointer text-slate-700">

@@ -48,50 +48,84 @@ interface SearchResponse {
 // ─── MAPPERS ──────────────────────────────────────────────────────────────────
 
 // API → User (frontend)
-const mapClienteToUser = (cliente: ClienteAPI): User => ({
-  id: cliente.id.toString(),
-  name: cliente.usuario?.nombre || 'Sin nombre',
-  lastName: cliente.apellido,
-  email: cliente.email,
-  role: 'CLIENTE' as any,
-  isActive: cliente.activo,
-  documentType: cliente.tipoDocumento,
-  documentNumber: cliente.numeroDocumento,
-  gender: 'O' as any,
-  birthDate: cliente.fechaNacimiento.split('T')[0],
-  phone: cliente.telefonoPrincipal,
-  secondaryPhone: cliente.telefonoAlternativo,
-  city: cliente.ciudad,
-  neighborhood: cliente.barrio,
-  address: cliente.direccion,
-  serviceZone: cliente.zonaServicio === 'URBANA' ? 'Urbano' : 'Rural',
-  avatar: cliente.foto,
-})
+const mapClienteToUser = (cliente: ClienteAPI): User => {
+  const nombreCompleto = cliente.usuario?.nombre || 'Sin nombre'
+  const apellido = cliente.apellido || ''
 
-// User (frontend) → API
-const mapUserToCliente = (user: Partial<Omit<User, 'id'>>) => {
+  // usuario.nombre puede ser "Juan García" (nombre + apellido concatenados)
+  // Para evitar duplicar el apellido, extraemos solo la parte que no sea el apellido
+  let nombre = nombreCompleto
+  if (apellido && nombreCompleto.toLowerCase().endsWith(apellido.toLowerCase())) {
+    nombre = nombreCompleto.slice(0, nombreCompleto.length - apellido.length).trim()
+  }
+
+  return {
+    id: cliente.id.toString(),
+    name: nombre || nombreCompleto,
+    lastName: apellido,
+    email: cliente.email,
+    role: 'CLIENTE' as any,
+    isActive: cliente.activo,
+    documentType: cliente.tipoDocumento,
+    documentNumber: cliente.numeroDocumento,
+    gender: 'O' as any,
+    birthDate: cliente.fechaNacimiento.split('T')[0],
+    phone: cliente.telefonoPrincipal,
+    secondaryPhone: cliente.telefonoAlternativo,
+    city: cliente.ciudad,
+    neighborhood: cliente.barrio,
+    address: cliente.direccion,
+    serviceZone: cliente.zonaServicio === 'URBANA' ? 'Urbano' : 'Rural',
+    avatar: cliente.foto,
+    hasActiveReservations: (cliente as any).hasActiveReservations ?? false,
+  }
+}
+
+// User (frontend) → API (CREATE)
+const mapUserToClienteCreate = (user: Partial<Omit<User, 'id'>>) => {
+  const nombre = `${user.name || ''} ${user.lastName || ''}`.trim()
+  return {
+    nombre,
+    apellido:          user.lastName?.trim() || '',
+    email:             user.email,
+    tipoDocumento:     user.documentType || 'CC',
+    numeroDocumento:   user.documentNumber,
+    fechaNacimiento:   user.birthDate,
+    telefonoPrincipal: user.phone,
+    ...(user.secondaryPhone?.trim() && { telefonoAlternativo: user.secondaryPhone }),
+    ciudad:            user.city || 'Medellín',
+    barrio:            user.neighborhood,
+    direccion:         user.address,
+    zonaServicio:      user.serviceZone === 'Rural' ? 'RURAL' : 'URBANA',
+    ...(user.avatar?.startsWith('http') && { foto: user.avatar }),
+  }
+}
+
+// User (frontend) → API (UPDATE)
+const mapUserToClienteUpdate = (user: Partial<Omit<User, 'id'>>) => {
   const data: Record<string, any> = {}
 
-  if (user.name !== undefined)         data.nombre            = user.name
-  if (user.email !== undefined)        data.email             = user.email
-  if (user.lastName !== undefined)     data.apellido          = user.lastName
-  if (user.documentType !== undefined) data.tipoDocumento     = user.documentType
-  if (user.documentNumber !== undefined) data.numeroDocumento = user.documentNumber
-  if (user.birthDate !== undefined)    data.fechaNacimiento   = user.birthDate
-  if (user.phone !== undefined)        data.telefonoPrincipal = user.phone
-  if (user.city !== undefined)         data.ciudad            = user.city
-  if (user.neighborhood !== undefined) data.barrio            = user.neighborhood
-  if (user.address !== undefined)      data.direccion         = user.address
+  // nombreUsuario sincroniza el nombre en la tabla usuario
+  if (user.name !== undefined || user.lastName !== undefined) {
+    const nombre = `${user.name || ''} ${user.lastName || ''}`.trim()
+    if (nombre) data.nombreUsuario = nombre
+  }
+
+  if (user.email !== undefined)          data.email             = user.email
+  if (user.lastName !== undefined)       data.apellido          = user.lastName
+  if (user.documentType !== undefined)   data.tipoDocumento     = user.documentType
+  if (user.documentNumber !== undefined) data.numeroDocumento   = user.documentNumber
+  if (user.birthDate !== undefined)      data.fechaNacimiento   = user.birthDate
+  if (user.phone !== undefined)          data.telefonoPrincipal = user.phone
+  if (user.city !== undefined)           data.ciudad            = user.city
+  if (user.neighborhood !== undefined)   data.barrio            = user.neighborhood
+  if (user.address !== undefined)        data.direccion         = user.address
 
   if (user.serviceZone !== undefined && user.serviceZone !== null && user.serviceZone.trim() !== '') {
     const zone = user.serviceZone.trim()
     data.zonaServicio = zone === 'Urbano' ? 'URBANA' : zone === 'Rural' ? 'RURAL' : 'URBANA'
-  } else {
-    // Valor por defecto si no hay zona especificada
-    data.zonaServicio = 'URBANA'
   }
 
-  // Opcionales — solo se envían si tienen valor real
   if (user.secondaryPhone?.trim())
     data.telefonoAlternativo = user.secondaryPhone
 
@@ -130,14 +164,14 @@ export const clientService = {
 
   // POST /clientes  →  ClienteAPI  (retorna objeto directo)
   createClient: async (client: Omit<User, 'id'>): Promise<User> => {
-    const response = await api.post<ClienteAPI | { message: string; cliente: ClienteAPI }>('/clientes', mapUserToCliente(client))
+    const response = await api.post<ClienteAPI | { message: string; cliente: ClienteAPI }>('/clientes', mapUserToClienteCreate(client))
     const result = 'cliente' in response.data ? response.data.cliente : response.data
     return mapClienteToUser(result)
   },
 
   // PUT /clientes/:id  →  ClienteAPI  (retorna objeto directo)
   updateClient: async (id: string, updates: Partial<User>): Promise<User> => {
-    const response = await api.put<ClienteAPI | { message: string; cliente: ClienteAPI }>(`/clientes/${id}`, mapUserToCliente(updates))
+    const response = await api.put<ClienteAPI | { message: string; cliente: ClienteAPI }>(`/clientes/${id}`, mapUserToClienteUpdate(updates))
     const result = 'cliente' in response.data ? response.data.cliente : response.data
     return mapClienteToUser(result)
   },

@@ -85,10 +85,10 @@ async function main() {
 
 
     // ─── USUARIOS ────────────────────────────────────────────
-  await prisma.usuario.upsert({
-    where: { email: 'admin@mariachistexas.com' },
-    update: {},
-    create: {
+  // Admin: se elimina si existe y se recrea siempre para garantizar credenciales frescas
+  await prisma.usuario.deleteMany({ where: { email: 'admin@mariachistexas.com' } })
+  await prisma.usuario.create({
+    data: {
       nombre:   'Administrador',
       email:    'admin@mariachistexas.com',
       password: await bcrypt.hash('Admin-123456', 10),

@@ -56,29 +56,20 @@ export const UsersPage: React.FC = () => {
 
   // CRUD Handlers
   const handleCreateUser = async (userData: any) => {
-    try {
-        const newUser = await userService.createUser(userData);
-        setUsers(prev => [newUser, ...prev]);
-        showNotification('Usuario creado exitosamente.');
-        setIsCreateOpen(false);
-        // Abrir automáticamente el modal de detalles
-        setSelectedUser(newUser);
-        setIsDetailOpen(true);
-    } catch (error) {
-      console.error(error);
-    }
+    const newUser = await userService.createUser(userData);
+    setUsers(prev => [newUser, ...prev]);
+    showNotification('Usuario creado exitosamente.');
+    setIsCreateOpen(false);
+    setSelectedUser(newUser);
+    setIsDetailOpen(true);
   };
 
   const handleUpdateUser = async (userData: any) => {
     if (!selectedUser) return;
-    try {
-        const updatedUser = await userService.updateUser(selectedUser.id, userData);
-        setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-        showNotification('Usuario actualizado correctamente.');
-        setIsEditOpen(false);
-    } catch (error) {
-      console.error(error);
-    }
+    const updatedUser = await userService.updateUser(selectedUser.id, userData);
+    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    showNotification('Usuario actualizado correctamente.');
+    setIsEditOpen(false);
   };
 
   const confirmDelete = async () => {

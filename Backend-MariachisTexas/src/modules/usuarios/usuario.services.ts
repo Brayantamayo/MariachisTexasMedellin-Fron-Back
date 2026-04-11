@@ -33,7 +33,29 @@ export const getUsuarios = async (): Promise<UsuarioResponse[]> => {
     orderBy: { createdAt: 'desc' }
   })
 
-  return usuarios.map(mapToUsuario)
+  // Contar reservas activas por cliente en una sola consulta
+  const clienteIds = usuarios
+    .map(u => u.cliente?.id)
+    .filter((id): id is number => id !== undefined)
+
+  const reservasActivas = await prisma.reserva.findMany({
+    where: {
+      cotizacion: { clienteId: { in: clienteIds } },
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] }
+    },
+    select: { cotizacion: { select: { clienteId: true } } }
+  })
+
+  const clientesConReservas = new Set(
+    reservasActivas.map(r => r.cotizacion.clienteId).filter(Boolean)
+  )
+
+  return usuarios.map(u => ({
+    ...mapToUsuario(u),
+    hasActiveReservations: u.cliente
+      ? clientesConReservas.has(u.cliente.id)
+      : false
+  }))
 }
 
 // ─── OBTENER USUARIO POR ID ──────────────────────────────────────────────────
@@ -95,11 +117,15 @@ export const registerUsuario = async (data: Omit<UsuarioCreateInput, 'rolId'> & 
 
     // Crear cliente (siempre para registro público)
     if (clienteData) {
+      const { fechaNacimiento, activo, ...restCliente } = clienteData
+      if (!fechaNacimiento) throw new AppError('La fecha de nacimiento es requerida', 400)
       await tx.cliente.create({
         data: {
           usuarioId: usuario.id,
           email: d.email,
-          ...clienteData
+          fechaNacimiento: new Date(fechaNacimiento),
+          activo: activo ?? true,
+          ...restCliente
         }
       })
     }
@@ -124,7 +150,6 @@ export const registerUsuario = async (data: Omit<UsuarioCreateInput, 'rolId'> & 
 export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioResponse> => {
   const parsed = UsuarioCreateSchema.safeParse(data)
   if (!parsed.success) {
-    // Obtener el primer error específico del campo
     const fieldErrors = parsed.error.flatten().fieldErrors
     const firstError = Object.entries(fieldErrors)[0]
     if (firstError) {
@@ -134,18 +159,18 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
     throw new AppError('Datos inválidos. Verifique los campos requeridos.', 400)
   }
 
-  const { password, clienteData, empleadoData, ...d } = parsed.data
+  const { password, clienteData, empleadoData, apellido, ...d } = parsed.data
+
+  // El frontend ya envía nombre completo (nombre + apellido) en el campo nombre,
+  // así que no concatenamos apellido para evitar duplicarlo
+  const nombreCompleto = d.nombre.replace(/\s+/g, ' ').trim()
 
   // Verificar si el email ya existe
-  const existing = await prisma.usuario.findUnique({
-    where: { email: d.email }
-  })
+  const existing = await prisma.usuario.findUnique({ where: { email: d.email } })
   if (existing) throw new AppError('El email ya está registrado', 409)
 
   // Verificar si el rol existe
-  const rol = await prisma.rol.findUnique({
-    where: { id: d.rolId }
-  })
+  const rol = await prisma.rol.findUnique({ where: { id: d.rolId } })
   if (!rol) throw new AppError('Rol no encontrado', 404)
 
   // Hash de la contraseña
@@ -155,33 +180,38 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
   const result = await prisma.$transaction(async (tx) => {
     const usuario = await tx.usuario.create({
       data: {
-        nombre: d.nombre,
+        nombre: nombreCompleto,
         email: d.email,
         password: hashedPassword,
         rolId: d.rolId
       },
-      include: {
-        rol: true
-      }
+      include: { rol: true }
     })
 
     // Si es empleado y hay datos, crear empleado
     if (d.rolId === 2 && empleadoData) {
+      const { fechaNacimiento, ...restEmpleado } = empleadoData
+      if (!fechaNacimiento) throw new AppError('La fecha de nacimiento del empleado es requerida', 400)
       await tx.empleado.create({
         data: {
           usuarioId: usuario.id,
-          ...empleadoData
+          fechaNacimiento: new Date(fechaNacimiento),
+          ...restEmpleado
         }
       })
     }
 
     // Si es cliente y hay datos, crear cliente
     if (d.rolId === 3 && clienteData) {
+      const { fechaNacimiento, activo, ...restCliente } = clienteData
+      if (!fechaNacimiento) throw new AppError('La fecha de nacimiento del cliente es requerida', 400)
       await tx.cliente.create({
         data: {
           usuarioId: usuario.id,
-          email: d.email,
-          ...clienteData
+          email:     d.email,
+          fechaNacimiento: new Date(fechaNacimiento),
+          activo: activo ?? true,
+          ...restCliente
         }
       })
     }
@@ -189,14 +219,9 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
     return usuario
   })
 
-  // Obtener el usuario completo con relaciones
   const usuarioCompleto = await prisma.usuario.findUnique({
     where: { id: result.id },
-    include: {
-      rol: true,
-      cliente: true,
-      empleado: true
-    }
+    include: { rol: true, cliente: true, empleado: true }
   })
 
   return mapToUsuario(usuarioCompleto!)
@@ -207,7 +232,17 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
   const parsed = UsuarioUpdateSchema.safeParse(data)
   if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
-  const { clienteData, empleadoData, ...d } = parsed.data
+  const { clienteData, empleadoData, apellido, passwordConfirmation, ...d } = parsed.data
+
+  // Construir objeto de actualización limpio (sin undefined)
+  const updateData: any = {}
+  if (d.nombre !== undefined) updateData.nombre = d.nombre
+  if (d.email  !== undefined) updateData.email  = d.email
+  if (d.estado !== undefined) updateData.estado = d.estado
+  if (d.rolId  !== undefined) updateData.rolId  = d.rolId
+  if (d.password !== undefined) {
+    updateData.password = await bcrypt.hash(d.password, 10)
+  }
 
   // Verificar si el usuario existe
   const existing = await prisma.usuario.findUnique({
@@ -217,87 +252,53 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
   if (!existing) throw new AppError('Usuario no encontrado', 404)
 
   // Si se actualiza email, verificar que no exista
-  if (d.email && d.email !== existing.email) {
-    const emailExists = await prisma.usuario.findUnique({
-      where: { email: d.email }
-    })
+  if (updateData.email && updateData.email !== existing.email) {
+    const emailExists = await prisma.usuario.findUnique({ where: { email: updateData.email } })
     if (emailExists) throw new AppError('El email ya está registrado', 409)
   }
 
   // Si se actualiza rolId, verificar que exista
-  if (d.rolId) {
-    const rol = await prisma.rol.findUnique({
-      where: { id: d.rolId }
-    })
+  if (updateData.rolId) {
+    const rol = await prisma.rol.findUnique({ where: { id: updateData.rolId } })
     if (!rol) throw new AppError('Rol no encontrado', 404)
   }
 
   // Si se intenta desactivar el usuario, verificar que no tenga reservas activas
-  if (d.estado === false) {
+  if (updateData.estado === false) {
     const reservasCount = await prisma.reserva.count({
       where: {
-        cotizacion: {
-          cliente: {
-            usuario: {
-              id: id
-            }
-          }
-        },
+        cotizacion: { cliente: { usuario: { id } } },
         estado: { in: ['PENDIENTE', 'CONFIRMADA'] }
       }
     })
-
-    if (reservasCount > 0) {
+    if (reservasCount > 0)
       throw new AppError('No se puede desactivar el usuario porque tiene reservas activas', 400)
-    }
   }
 
   // Actualizar en transacción
   await prisma.$transaction(async (tx) => {
-    // Actualizar usuario
-    await tx.usuario.update({
-      where: { id },
-      data: d
-    })
+    await tx.usuario.update({ where: { id }, data: updateData })
 
     // Sincronizar estado entre usuario y cliente
     if (existing.cliente) {
-      const nuevoEstadoUsuario = d.estado !== undefined ? d.estado : existing.estado
-      const nuevoEstadoCliente = clienteData?.activo !== undefined ? clienteData.activo : existing.cliente.activo
-
-      // Si cambió el estado del usuario, actualizar cliente
-      if (d.estado !== undefined) {
-        await tx.cliente.update({
-          where: { usuarioId: id },
-          data: { activo: d.estado }
-        })
+      if (updateData.estado !== undefined) {
+        await tx.cliente.update({ where: { usuarioId: id }, data: { activo: updateData.estado } })
       }
-
-      // Si cambió el estado del cliente, actualizar usuario
       if (clienteData?.activo !== undefined) {
-        await tx.usuario.update({
-          where: { id },
-          data: { estado: clienteData.activo }
-        })
+        await tx.usuario.update({ where: { id }, data: { estado: clienteData.activo } })
       }
     }
 
     // Actualizar empleado si existe y hay datos
     if (existing.empleado && empleadoData) {
-      await tx.empleado.update({
-        where: { usuarioId: id },
-        data: empleadoData
-      })
+      await tx.empleado.update({ where: { usuarioId: id }, data: empleadoData })
     }
 
-    // Actualizar cliente si existe y hay datos (además del estado ya sincronizado)
+    // Actualizar cliente si existe y hay datos
     if (existing.cliente && clienteData) {
       const { activo, ...clienteDataSinActivo } = clienteData
       if (Object.keys(clienteDataSinActivo).length > 0) {
-        await tx.cliente.update({
-          where: { usuarioId: id },
-          data: clienteDataSinActivo
-        })
+        await tx.cliente.update({ where: { usuarioId: id }, data: clienteDataSinActivo })
       }
     }
   })
@@ -318,9 +319,15 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
 // ─── ELIMINAR USUARIO ────────────────────────────────────────────────────────
 export const deleteUsuario = async (id: number): Promise<void> => {
   const existing = await prisma.usuario.findUnique({
-    where: { id }
+    where: { id },
+    include: { rol: true }
   })
   if (!existing) throw new AppError('Usuario no encontrado', 404)
+
+  // Proteger al administrador del sistema
+  if (existing.email === 'admin@mariachistexas.com') {
+    throw new AppError('No se puede eliminar el usuario administrador del sistema', 403)
+  }
 
   // Verificar si el usuario tiene reservas activas
   const reservasCount = await prisma.reserva.count({

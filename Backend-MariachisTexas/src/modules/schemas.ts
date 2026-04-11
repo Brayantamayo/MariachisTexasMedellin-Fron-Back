@@ -84,6 +84,17 @@ const email = z.string()
   return !/^[._-]/.test(local) && !/[._-]$/.test(local)}, 'La parte local del correo no puede empezar ni terminar con puntos o guiones')
   .transform(e => e.toLowerCase().trim())
 
+// ─── EMAIL PERMISIVO (para admin — acepta cualquier dominio válido) ───────────
+const emailAdmin = z.string()
+  .trim()
+  .toLowerCase()
+  .min(5,   'El correo es demasiado corto')
+  .max(100, 'El correo no puede superar 100 caracteres')
+  .email('El correo no es válido')
+  .refine(e => !e.includes('..'), 'El correo no puede contener puntos consecutivos')
+  .refine(e => !DOMINIOS_TEMPORALES.includes(e.split('@')[1] ?? ''), 'No se permiten correos temporales')
+  .transform(e => e.toLowerCase().trim())
+
 const DOMINIOS_PERMITIDOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'protonmail.com']
 
 const emailRegistro = email.refine(e => {
@@ -701,42 +712,86 @@ export const RolUpdateSchema = z.object({
   permisos: z.array(z.number().int().positive('Los IDs de permisos deben ser números positivos')).optional()
 })
 
-export const UsuarioCreateSchema = z.object({
-  nombre: z.string()
-    .trim()
+// ─── NOMBRE REUTILIZABLE ──────────────────────────────────────────────────────
+const nombreUsuario = z.string()
+  .trim()
+  .transform(n => n.replace(/\s+/g, ' ').trim()) // normaliza espacios múltiples
+  .pipe(z.string()
     .min(2,  'El nombre debe tener al menos 2 caracteres')
-    .max(50, 'El nombre no puede superar 50 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres')
     .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
     .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
-    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
-    .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
-    .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
-    .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido'),
-  email: email,
-  password: password,
-  rolId: z.number().int().positive('El ID del rol debe ser un número positivo'),
-  clienteData: z.any().optional(),
-  empleadoData: z.any().optional()
-})
-
-export const UsuarioUpdateSchema = z.object({
-  nombre: z.string()
-    .trim()
-    .min(2,  'El nombre debe tener al menos 2 caracteres')
-    .max(50, 'El nombre no puede superar 50 caracteres')
-    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El nombre solo puede contener letras')
-    .refine(n => n.trim().length > 0,       'El nombre no puede ser solo espacios')
-    .refine(n => !/\s{2,}/.test(n),         'El nombre no puede tener espacios consecutivos')
     .refine(n => n.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del nombre debe tener al menos 2 letras')
     .refine(n => !/\d/.test(n),             'El nombre no puede contener números')
     .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido')
+  )
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+export const LoginSchema = z.object({
+  email: z.string().trim().min(1, 'El correo es requerido').email('El correo no es válido'),
+  password: z.string().trim().min(1, 'La contraseña es requerida'),
+})
+
+export const UsuarioCreateSchema = z.object({
+  nombre:   nombreUsuario,
+  apellido: z.string()
+    .trim()
+    .min(2,  'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El apellido solo puede contener letras')
+    .refine(a => a.trim().length > 0,       'El apellido no puede ser solo espacios')
+    .refine(a => !/\s{2,}/.test(a),         'El apellido no puede tener espacios consecutivos')
+    .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
+    .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
+    .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido')
+    .optional(),
+  email:    email,
+  password: password,
+  passwordConfirmation: z.string().trim().min(1, 'La confirmación de contraseña es requerida').optional(),
+  rolId:    z.number().int().positive('El ID del rol debe ser un número positivo'),
+  estado:   z.boolean().optional().default(true),
+  clienteData:  z.any().optional(),
+  empleadoData: z.any().optional(),
+})
+.refine(d => !d.passwordConfirmation || d.password === d.passwordConfirmation, {
+  message: 'Las contraseñas no coinciden', path: ['passwordConfirmation'],
+})
+.refine(d => !d.apellido || d.nombre.trim().toLowerCase() !== d.apellido.trim().toLowerCase(), {
+  message: 'El nombre y el apellido no pueden ser iguales', path: ['apellido'],
+})
+
+export const UsuarioUpdateSchema = z.object({
+  nombre:   nombreUsuario.optional(),
+  apellido: z.string()
+    .trim()
+    .min(2,  'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El apellido solo puede contener letras')
+    .refine(a => a.trim().length > 0,       'El apellido no puede ser solo espacios')
+    .refine(a => !/\s{2,}/.test(a),         'El apellido no puede tener espacios consecutivos')
+    .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
+    .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
+    .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido')
     .optional(),
   email: email.optional(),
-  password: password.optional(),
-  estado: z.boolean().optional(),
-  rolId: z.number().int().positive('El ID del rol debe ser un número positivo').optional(),
-  clienteData: z.any().optional(),
-  empleadoData: z.any().optional()
+  // password vacío ('') se trata como "no cambiar"
+  password: z.string().trim().transform(v => v === '' ? undefined : v)
+    .pipe(password.optional())
+    .optional(),
+  passwordConfirmation: z.string().trim().optional(),
+  estado:   z.boolean().optional(),
+  rolId:    z.number().int().positive('El ID del rol debe ser un número positivo').optional(),
+  clienteData:  z.any().optional(),
+  empleadoData: z.any().optional(),
+})
+.refine(d => {
+  const pwd = d.password
+  if (!pwd) return true
+  if (!d.passwordConfirmation) return false
+  return pwd === d.passwordConfirmation
+}, { message: 'Las contraseñas no coinciden', path: ['passwordConfirmation'] })
+.refine(d => !d.nombre || !d.apellido || d.nombre.trim().toLowerCase() !== d.apellido.trim().toLowerCase(), {
+  message: 'El nombre y el apellido no pueden ser iguales', path: ['apellido'],
 })
 
 export const EmpleadoCreateSchema = z.object({
@@ -829,22 +884,35 @@ export const EmpleadoUpdateSchema = z.object({
     .refine(n => !esGibberish(n),           'El nombre parece contener texto sin sentido')
     .optional(),
   email: email.optional(),
-  password: password.optional(),
+  // password vacío ('') se trata como "no cambiar"
+  password: z.string().trim().transform(v => v === '' ? undefined : v)
+    .pipe(password.optional())
+    .optional(),
+  passwordConfirmation: z.string().trim().optional(),
   estado: z.boolean().optional(),
   tipoDocumento: z.string().trim().refine(
-    v => ['CC', 'CE', 'TI', 'PAS'].includes(v),'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
+    v => ['CC', 'CE', 'PAS'].includes(v), 'Tipo de documento inválido. Opciones: CC, CE, PAS'
   ).optional(),
   numeroDocumento: z.string()
     .trim()
     .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
     .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
     .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .refine(n => n !== '123456789',        'El documento no puede ser una secuencia obvia')
     .optional(),
   fechaNacimiento: z.string()
     .trim()
     .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
     .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
     .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
+    .refine(d => {
+      const nac  = new Date(d)
+      const hoy  = new Date()
+      const edad = hoy.getFullYear() - nac.getFullYear()
+      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+      return (hoy >= cumple ? edad : edad - 1) >= 18
+    }, 'Debes ser mayor de 18 años para trabajar con nosotros')
+    .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años')
     .optional(),
   telefonoPrincipal: telefono.optional(),
   telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
@@ -861,6 +929,7 @@ export const EmpleadoUpdateSchema = z.object({
     .max(80, 'Barrio demasiado largo')
     .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
     .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números')
+    .refine(b => !esGibberish(b),         'El barrio parece contener texto sin sentido')
     .optional(),
   direccion: z.string()
     .trim()
@@ -869,43 +938,189 @@ export const EmpleadoUpdateSchema = z.object({
     .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
     .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
     .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .refine(d => !/^\d+$/.test(d.trim()),   'La dirección no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos')
     .optional(),
   zonaServicio: z.string().trim().refine(
-    v => ['URBANA', 'RURAL'].includes(v),'La zona de servicio debe ser URBANA o RURAL'
+    v => ['URBANA', 'RURAL'].includes(v), 'La zona de servicio debe ser URBANA o RURAL'
   ).optional(),
   instrumentoPrincipal: z.string()
     .trim()
     .min(2, 'El instrumento debe tener al menos 2 caracteres')
     .max(50, 'El instrumento no puede superar 50 caracteres')
-    .refine(i => !esGibberish(i), 'El instrumento parece contener texto sin sentido')
+    .refine(i => !/^\d+$/.test(i.trim()), 'El instrumento no puede ser solo números')
+    .refine(i => !esGibberish(i),         'El instrumento parece contener texto sin sentido')
     .optional(),
   otrosInstrumentos: z.string()
     .trim()
     .max(200, 'Otros instrumentos no pueden superar 200 caracteres')
+    .refine(o => !esGibberish(o), 'El campo parece contener texto sin sentido')
     .optional(),
-  anosExperiencia: z.number().min(0).max(100).optional(),
+  anosExperiencia: z.number()
+    .int('Los años de experiencia deben ser un número entero')
+    .min(0, 'Los años de experiencia no pueden ser negativos')
+    .max(60, 'Los años de experiencia no pueden superar 60')
+    .optional(),
   foto: urlImagen.optional(),
+})
+.refine(d => {
+  const pwd = d.password
+  if (!pwd) return true
+  if (!d.passwordConfirmation) return false
+  return pwd === d.passwordConfirmation
+}, { message: 'Las contraseñas no coinciden', path: ['passwordConfirmation'] })
+.refine(d => !d.telefonoAlternativo || !d.telefonoPrincipal || d.telefonoPrincipal !== d.telefonoAlternativo, {
+  message: 'El teléfono alternativo no puede ser igual al principal', path: ['telefonoAlternativo'],
 })
 
 
 export const ClienteCreateSchema = z.object({
-  nombre: z.string().trim().min(2, 'Nombre requerido'),
-  email: z.string().email('Email inválido').toLowerCase().trim(),
-  apellido: z.string().trim().min(2, 'Apellido requerido'),
-  tipoDocumento: z.enum(['CC', 'CE', 'TI', 'PAS']),
-  numeroDocumento: z.string().trim().regex(/^\d{6,12}$/, 'Documento inválido'),
-  fechaNacimiento: z.string().refine(d => !isNaN(Date.parse(d)), 'Fecha inválida'),
-  telefonoPrincipal: z.string().trim().regex(/^3\d{9}$/, 'Teléfono inválido'),
-  telefonoAlternativo: z.string().optional(),
-  ciudad: z.string().trim().min(2, 'Ciudad requerida'),
-  barrio: z.string().trim().min(2, 'Barrio requerido'),
-  direccion: z.string().trim().min(5, 'Dirección requerida'),
-  zonaServicio: z.enum(['URBANA', 'RURAL']),
-  foto: z.string().url().optional().or(z.literal('')).transform(val => val || undefined),
+  nombre: nombreUsuario,
+  apellido: z.string()
+    .trim()
+    .min(2,  'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El apellido solo puede contener letras')
+    .refine(a => a.trim().length > 0,       'El apellido no puede ser solo espacios')
+    .refine(a => !/\s{2,}/.test(a),         'El apellido no puede tener espacios consecutivos')
+    .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
+    .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
+    .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido'),
+  email: emailAdmin,
+  tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'TI', 'PAS'].includes(v), 'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
+  ),
+  numeroDocumento: z.string()
+    .trim()
+    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
+    .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
+    .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .refine(n => n !== '123456789',        'El documento no puede ser una secuencia obvia')
+    .refine(n => !['000000', '00000000', '000000000', '0000000000'].includes(n), 'Número de documento no válido'),
+  fechaNacimiento: z.string()
+    .trim()
+    .min(1, 'La fecha de nacimiento es requerida')
+    .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
+    .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
+    .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
+    .refine(d => {
+      const nac  = new Date(d)
+      const hoy  = new Date()
+      const edad = hoy.getFullYear() - nac.getFullYear()
+      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+      return (hoy >= cumple ? edad : edad - 1) >= 18
+    }, 'Debes ser mayor de 18 años para registrarte')
+    .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años'),
+  telefonoPrincipal:   telefono,
+  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+  ciudad: z.string()
+    .trim()
+    .min(2,  'La ciudad es requerida')
+    .max(60, 'Ciudad demasiado larga')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-\.]+$/, 'La ciudad solo puede contener letras')
+    .refine(c => c.trim().length > 0, 'La ciudad no puede ser solo espacios'),
+  barrio: z.string()
+    .trim()
+    .min(2,  'El barrio es requerido')
+    .max(80, 'Barrio demasiado largo')
+    .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
+    .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números'),
+  direccion: z.string()
+    .trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(150, 'Dirección demasiado larga')
+    .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
+    .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
+    .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .refine(d => !/^\d+$/.test(d.trim()),   'La dirección no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos'),
+  zonaServicio: z.string().trim().refine(
+    v => ['URBANA', 'RURAL'].includes(v), 'La zona de servicio debe ser URBANA o RURAL'
+  ),
+  foto: z.string().trim().url('URL de foto inválida').optional().or(z.literal('')).transform(val => val || undefined),
+})
+.refine(d => d.nombre.trim().toLowerCase() !== d.apellido.trim().toLowerCase(), {
+  message: 'El nombre y el apellido no pueden ser iguales', path: ['apellido'],
+})
+.refine(d => !d.telefonoAlternativo || d.telefonoPrincipal !== d.telefonoAlternativo, {
+  message: 'El teléfono alternativo no puede ser igual al principal', path: ['telefonoAlternativo'],
 })
 
-export const ClienteUpdateSchema = ClienteCreateSchema.partial().extend({
+export const ClienteUpdateSchema = z.object({
+  // nombre NO va aquí — pertenece a usuario, se maneja via nombreUsuario en el servicio
+  nombreUsuario: nombreUsuario.optional(),
+  apellido: z.string()
+    .trim()
+    .min(2,  'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede superar 50 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 'El apellido solo puede contener letras')
+    .refine(a => a.trim().length > 0,       'El apellido no puede ser solo espacios')
+    .refine(a => !/\s{2,}/.test(a),         'El apellido no puede tener espacios consecutivos')
+    .refine(a => a.trim().split(/\s+/).every(p => p.length >= 2), 'Cada parte del apellido debe tener al menos 2 letras')
+    .refine(a => !/\d/.test(a),             'El apellido no puede contener números')
+    .refine(a => !esGibberish(a),           'El apellido parece contener texto sin sentido')
+    .optional(),
+  email: emailAdmin.optional(),
+  tipoDocumento: z.string().trim().refine(
+    v => ['CC', 'CE', 'TI', 'PAS'].includes(v), 'Tipo de documento inválido. Opciones: CC, CE, TI, PAS'
+  ).optional(),
+  numeroDocumento: z.string()
+    .trim()
+    .regex(/^\d{6,12}$/, 'El documento debe tener entre 6 y 12 dígitos')
+    .refine(n => !/^0+$/.test(n),         'El documento no puede ser solo ceros')
+    .refine(n => !/^(\d)\1+$/.test(n),    'El documento no puede ser un dígito repetido')
+    .refine(n => n !== '123456789',        'El documento no puede ser una secuencia obvia')
+    .refine(n => !['000000', '00000000', '000000000', '0000000000'].includes(n), 'Número de documento no válido')
+    .optional(),
+  fechaNacimiento: z.string()
+    .trim()
+    .refine(d => !isNaN(Date.parse(d)),            'La fecha de nacimiento no es válida')
+    .refine(d => new Date(d).getFullYear() >= 1940, 'El año de nacimiento no puede ser anterior a 1940')
+    .refine(d => new Date(d) <= new Date(),         'La fecha de nacimiento no puede ser en el futuro')
+    .refine(d => {
+      const nac  = new Date(d)
+      const hoy  = new Date()
+      const edad = hoy.getFullYear() - nac.getFullYear()
+      const cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate())
+      return (hoy >= cumple ? edad : edad - 1) >= 18
+    }, 'Debes ser mayor de 18 años')
+    .refine(d => new Date().getFullYear() - new Date(d).getFullYear() <= 100, 'La edad ingresada supera los 100 años')
+    .optional(),
+  telefonoPrincipal:   telefono.optional(),
+  telefonoAlternativo: z.union([telefono, z.literal(''), z.undefined()]).optional(),
+  ciudad: z.string()
+    .trim()
+    .min(2,  'La ciudad es requerida')
+    .max(60, 'Ciudad demasiado larga')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-\.]+$/, 'La ciudad solo puede contener letras')
+    .refine(c => c.trim().length > 0, 'La ciudad no puede ser solo espacios')
+    .optional(),
+  barrio: z.string()
+    .trim()
+    .min(2,  'El barrio es requerido')
+    .max(80, 'Barrio demasiado largo')
+    .refine(b => b.trim().length > 0,     'El barrio no puede ser solo espacios')
+    .refine(b => !/^\d+$/.test(b.trim()), 'El barrio no puede ser solo números')
+    .refine(b => !esGibberish(b),         'El barrio parece contener texto sin sentido')
+    .optional(),
+  direccion: z.string()
+    .trim()
+    .min(5,   'La dirección debe tener al menos 5 caracteres')
+    .max(150, 'Dirección demasiado larga')
+    .refine(d => d.trim().length > 0,       'La dirección no puede ser solo espacios')
+    .refine(d => /\d/.test(d),              'La dirección debe incluir al menos un número')
+    .refine(d => /[a-zA-Z]/.test(d),        'La dirección debe incluir letras')
+    .refine(d => !/^\d+$/.test(d.trim()),   'La dirección no puede ser solo números')
+    .refine(d => !/[<>{}[\]\\|^`]/.test(d), 'La dirección contiene caracteres no permitidos')
+    .optional(),
+  zonaServicio: z.string().trim().refine(
+    v => ['URBANA', 'RURAL'].includes(v), 'La zona de servicio debe ser URBANA o RURAL'
+  ).optional(),
+  foto: urlImagen.optional(),
   activo: z.boolean().optional(),
+})
+.refine(d => !d.telefonoAlternativo || !d.telefonoPrincipal || d.telefonoPrincipal !== d.telefonoAlternativo, {
+  message: 'El teléfono alternativo no puede ser igual al principal', path: ['telefonoAlternativo'],
 })
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -55,6 +55,9 @@ export interface User {
   mainInstrument?:   string
   otherInstruments?: string[]
   experienceYears?:  number
+
+  // Control de eliminación
+  hasActiveReservations?: boolean
 }
 
 // ─── CANCIÓN ──────────────────────────────────────────────────────────────────

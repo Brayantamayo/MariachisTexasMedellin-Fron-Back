@@ -121,7 +121,9 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, on
                                   {client.isActive && (
                                     <>
                                       <ActionButton icon={Edit2} onClick={() => onEdit(client)} tooltip="Editar cliente" />
-                                      <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                      {!client.hasActiveReservations && (
+                                        <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                      )}
                                     </>
                                   )}
                               </div>

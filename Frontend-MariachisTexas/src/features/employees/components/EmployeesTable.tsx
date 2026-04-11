@@ -104,9 +104,7 @@ export const EmployeesTable: React.FC<Props> = ({ employees, loading, onView, on
                                   className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${emp.isActive ? 'translate-x-6' : 'translate-x-0'}`} 
                               />
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider w-14 ${emp.isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
-                              {emp.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
+
                       </div>
 
                       {/* Actions */}

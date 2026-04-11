@@ -109,9 +109,7 @@ export const UsersTable: React.FC<Props> = ({ users, loading, onView, onEdit, on
                                   className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${user.isActive ? 'translate-x-6' : 'translate-x-0'}`} 
                               />
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider w-14 ${user.isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
-                              {user.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
+
                       </div>
 
                       {/* Actions */}
@@ -120,7 +118,9 @@ export const UsersTable: React.FC<Props> = ({ users, loading, onView, onEdit, on
                           {user.isActive && (
                             <>
                               <ActionButton icon={Edit2} onClick={() => onEdit(user)} tooltip="Editar usuario" />
-                              <ActionButton icon={Trash2} onClick={() => onDelete(user.id)} tooltip="Eliminar usuario" />
+                              {!user.hasActiveReservations && user.role !== UserRole.ADMIN && (
+                                <ActionButton icon={Trash2} onClick={() => onDelete(user.id)} tooltip="Eliminar usuario" />
+                              )}
                             </>
                           )}
                       </div>

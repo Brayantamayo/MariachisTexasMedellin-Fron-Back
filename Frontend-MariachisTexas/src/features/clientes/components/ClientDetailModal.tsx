@@ -90,9 +90,7 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
                 <h2 className="text-2xl font-serif font-bold text-slate-800">{client.name} {client.lastName}</h2>
                 <div className="flex gap-2 mt-2">
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase">{client.role}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${client.isActive ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                        {client.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
+
                 </div>
             </div>
 

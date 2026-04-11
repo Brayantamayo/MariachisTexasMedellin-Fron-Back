@@ -70,34 +70,27 @@ export const useClientsManager = () => {
 
   // Handlers
   const handleCreateClient = async (clientData: any) => {
-    try {
-        const newClient = await clientService.createClient(clientData);
-        setClients(prev => [newClient, ...prev]);
-        showNotification('Nuevo cliente registrado exitosamente.');
-        setIsCreateOpen(false);
-    } catch (error) {
-        console.error(error);
-    }
+    const newClient = await clientService.createClient(clientData);
+    setClients(prev => [newClient, ...prev]);
+    showNotification('Nuevo cliente registrado exitosamente.');
+    setIsCreateOpen(false);
   };
 
   const handleUpdateClient = async (clientData: any) => {
     if (!selectedClient) return;
-    try {
-        const updated = await clientService.updateClient(selectedClient.id, clientData);
-        setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-        showNotification('Cliente actualizado exitosamente.');
-        setIsEditOpen(false);
-    } catch (error) {
-        console.error(error);
-    }
+    await clientService.updateClient(selectedClient.id, clientData);
+    showNotification('Cliente actualizado exitosamente.');
+    setIsEditOpen(false);
+    await fetchClients(pagination.page, searchTerm); // refresca respetando página y búsqueda activa
   };
 
   const confirmDelete = async () => {
     if (!deleteModal.clientId) return;
     try {
         await clientService.deleteClient(deleteModal.clientId);
-        setClients(prev => prev.filter(c => c.id !== deleteModal.clientId));
+        setDeleteModal({ isOpen: false, clientId: null });
         showNotification('Cliente eliminado del sistema.');
+        await fetchClients(pagination.page, searchTerm);
     } catch (error) {
         console.error(error);
         showNotification("No se pudo eliminar el cliente.", "error");

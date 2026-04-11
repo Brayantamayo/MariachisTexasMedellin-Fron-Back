@@ -19,7 +19,7 @@ const mapFromBackend = (backend: any): User => {
   isActive: backend.estado ?? false,
   documentType: empleado?.tipoDocumento || cliente?.tipoDocumento || 'CC',
   documentNumber: empleado?.numeroDocumento || cliente?.numeroDocumento || '',
-  gender: 'M', // Default
+  gender: 'M',
   birthDate: empleado?.fechaNacimiento || cliente?.fechaNacimiento ? new Date(empleado?.fechaNacimiento || cliente?.fechaNacimiento).toISOString().split('T')[0] : '',
   phone: empleado?.telefonoPrincipal || cliente?.telefonoPrincipal || '',
   secondaryPhone: empleado?.telefonoAlternativo || cliente?.telefonoAlternativo || '',
@@ -27,25 +27,26 @@ const mapFromBackend = (backend: any): User => {
   neighborhood: empleado?.barrio || cliente?.barrio || '',
   address: empleado?.direccion || cliente?.direccion || '',
   serviceZone: empleado?.zonaServicio || cliente?.zonaServicio || 'URBANA',
-  // Campos específicos de empleado
   mainInstrument: empleado?.instrumentoPrincipal || '',
   otherInstruments: empleado?.otrosInstrumentos ? empleado.otrosInstrumentos.split(', ').filter((i: string) => i.trim()) : [],
   experienceYears: empleado?.anosExperiencia || 0,
   avatar: empleado?.foto || cliente?.foto || '',
+  hasActiveReservations: backend.hasActiveReservations ?? false,
   };
 };
 
 // ─── MAPEAR DE FRONTEND A BACKEND ────────────────────────────────────────────
 const mapToBackend = (user: Omit<User, 'id'>) => ({
-  nombre: `${user.name || ''} ${user.lastName || ''}`.trim() || 'Usuario',
+  // nombre guarda nombre completo para que todas las vistas lo muestren bien
+  nombre: `${user.name?.trim() || ''} ${user.lastName?.trim() || ''}`.trim() || 'Usuario',
   email: user.email,
   password: user.password || 'defaultpassword',
-  rolId: user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3, // Asumir ids
+  rolId: user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3,
   ...(user.role === UserRole.EMPLEADO && {
     empleadoData: {
       tipoDocumento: user.documentType || 'CC',
       numeroDocumento: user.documentNumber,
-      fechaNacimiento: user.birthDate ? new Date(user.birthDate) : null,
+      fechaNacimiento: user.birthDate || null,
       telefonoPrincipal: user.phone,
       telefonoAlternativo: user.secondaryPhone || null,
       ciudad: user.city || 'Medellín',
@@ -60,18 +61,18 @@ const mapToBackend = (user: Omit<User, 'id'>) => ({
   }),
   ...(user.role === UserRole.CLIENTE && {
     clienteData: {
-      apellido: user.lastName,
+      apellido: user.lastName?.trim() || '',
       foto: user.avatar || null,
       tipoDocumento: user.documentType || 'CC',
       numeroDocumento: user.documentNumber,
-      fechaNacimiento: user.birthDate ? new Date(user.birthDate) : null,
+      fechaNacimiento: user.birthDate || null,
       telefonoPrincipal: user.phone,
       telefonoAlternativo: user.secondaryPhone || null,
       ciudad: user.city || 'Medellín',
       barrio: user.neighborhood,
       direccion: user.address,
       zonaServicio: user.serviceZone || 'URBANA',
-      activo: user.isActive
+      activo: user.isActive ?? true
     }
   })
 });
@@ -89,7 +90,9 @@ export const userService = {
   },
 
   updateUser: async (id: string, updates: Partial<User>): Promise<User> => {
-    const nombre = updates.name ? `${updates.name} ${updates.lastName || ''}`.trim() : undefined;
+    const nombre = updates.name
+      ? `${updates.name} ${updates.lastName || ''}`.replace(/\s+/g, ' ').trim()
+      : undefined;
     
     const data = {
       ...(nombre && { nombre }),

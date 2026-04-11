@@ -13,7 +13,12 @@ const generatePassword = () => randomBytes(8).toString('hex')
 // Registrar cliente (sin usuario, para admin)
 export const crearCliente = async (data: unknown) => {
   const parsed = ClienteCreateSchema.safeParse(data)
-  if (!parsed.success) throw new AppError('Datos inválidos', 400)
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]
+    const field = firstError?.path?.join('.') || ''
+    const msg   = firstError?.message || 'Datos inválidos'
+    throw new AppError(field ? `${field}: ${msg}` : msg, 400)
+  }
 
   const { nombre, email, numeroDocumento, apellido } = parsed.data
 
@@ -99,41 +104,45 @@ export const listarClientes = async (page?: number, limit?: number) => {
     _count: { select: { cotizaciones: true, abonos: true, ventas: true } },
   }
 
+  let clientes: any[]
+  let total: number
+
   if (!limit || limit <= 0) {
-    const clientes = await prisma.cliente.findMany({
-      orderBy: { createdAt: 'desc' },
-      include,
-    })
-    return {
-      clientes,
-      pagination: {
-        page: 1,
-        limit: clientes.length,
-        total: clientes.length,
-        pages: 1,
-      },
-    }
+    clientes = await prisma.cliente.findMany({ orderBy: { createdAt: 'desc' }, include })
+    total = clientes.length
+  } else {
+    const skip = (page && page > 1) ? (page - 1) * limit : 0
+    ;[clientes, total] = await Promise.all([
+      prisma.cliente.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' }, include }),
+      prisma.cliente.count(),
+    ])
   }
 
-  const skip = (page && page > 1) ? (page - 1) * limit : 0
+  // Reservas activas en una sola consulta
+  const clienteIds = clientes.map(c => c.id)
+  const reservasActivas = await prisma.reserva.findMany({
+    where: {
+      cotizacion: { clienteId: { in: clienteIds } },
+      estado: { in: ['PENDIENTE', 'CONFIRMADA'] }
+    },
+    select: { cotizacion: { select: { clienteId: true } } }
+  })
+  const clientesConReservas = new Set(
+    reservasActivas.map(r => r.cotizacion.clienteId).filter(Boolean)
+  )
 
-  const [clientes, total] = await Promise.all([
-    prisma.cliente.findMany({
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include,
-    }),
-    prisma.cliente.count(),
-  ])
+  const clientesConFlag = clientes.map(c => ({
+    ...c,
+    hasActiveReservations: clientesConReservas.has(c.id)
+  }))
 
   return {
-    clientes,
+    clientes: clientesConFlag,
     pagination: {
       page: page || 1,
-      limit,
+      limit: limit || total,
       total,
-      pages: Math.ceil(total / limit),
+      pages: limit ? Math.ceil(total / limit) : 1,
     },
   }
 }
@@ -187,7 +196,12 @@ export const obtenerClientePorId = async (id: number) => {
 // Editar cliente
 export const actualizarCliente = async (id: number, data: unknown) => {
   const parsed = ClienteUpdateSchema.safeParse(data)
-  if (!parsed.success) throw new AppError('Datos inválidos', 400)
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]
+    const field = firstError?.path?.join('.') || ''
+    const msg   = firstError?.message || 'Datos inválidos'
+    throw new AppError(field ? `${field}: ${msg}` : msg, 400)
+  }
 
   const clienteExiste = await prisma.cliente.findUnique({ where: { id } })
   if (!clienteExiste) throw new AppError('Cliente no encontrado', 404)
@@ -206,36 +220,45 @@ export const actualizarCliente = async (id: number, data: unknown) => {
   // Si se intenta desactivar el cliente, verificar que no tenga reservas activas
   if (parsed.data.activo === false) {
     const reservasCount = await prisma.reserva.count({
-      where: {
-        cotizacion: {
-          clienteId: id
-        },
-        estado: { in: ['PENDIENTE', 'CONFIRMADA'] }
-      }
+      where: { cotizacion: { clienteId: id }, estado: { in: ['PENDIENTE', 'CONFIRMADA'] } }
     })
-
-    if (reservasCount > 0) {
+    if (reservasCount > 0)
       throw new AppError('No se puede desactivar el cliente porque tiene reservas activas', 400)
-    }
   }
 
+  // Extraer nombreUsuario (no es campo de cliente, va en usuario)
+  const { nombreUsuario, ...clienteFields } = parsed.data as any
+
   const updateData: any = { ...parsed.data }
+  delete updateData.nombreUsuario
   if (parsed.data.fechaNacimiento) updateData.fechaNacimiento = new Date(parsed.data.fechaNacimiento)
-  if (parsed.data.tipoDocumento) updateData.tipoDocumento = parsed.data.tipoDocumento as TipoDocumento
-  if (parsed.data.zonaServicio) updateData.zonaServicio = parsed.data.zonaServicio as ZonaServicio
+  if (parsed.data.tipoDocumento)   updateData.tipoDocumento   = parsed.data.tipoDocumento as TipoDocumento
+  if (parsed.data.zonaServicio)    updateData.zonaServicio    = parsed.data.zonaServicio as ZonaServicio
 
-  // Actualizar cliente y sincronizar estado del usuario si cambió activo
   await prisma.$transaction(async (tx) => {
-    await tx.cliente.update({
-      where: { id },
-      data: updateData,
-    })
+    await tx.cliente.update({ where: { id }, data: updateData })
 
-    // Si cambió el estado del cliente y tiene usuario asociado, sincronizar
+    // Sincronizar nombre en usuario si se envió
+    if (nombreUsuario && clienteExiste.usuarioId) {
+      await tx.usuario.update({
+        where: { id: clienteExiste.usuarioId },
+        data: { nombre: nombreUsuario }
+      })
+    }
+
+    // Sincronizar email en usuario si cambió
+    if (parsed.data.email && parsed.data.email !== clienteExiste.email && clienteExiste.usuarioId) {
+      await tx.usuario.update({
+        where: { id: clienteExiste.usuarioId },
+        data: { email: parsed.data.email }
+      })
+    }
+
+    // Sincronizar estado del usuario si cambió activo
     if (parsed.data.activo !== undefined && clienteExiste.usuarioId) {
       await tx.usuario.update({
         where: { id: clienteExiste.usuarioId },
-        data: { estado: parsed.data.activo },
+        data: { estado: parsed.data.activo }
       })
     }
   })
