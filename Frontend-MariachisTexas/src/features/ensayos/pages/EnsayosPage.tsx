@@ -151,7 +151,12 @@ export const EnsayosPage: React.FC = () => {
 
       days.push(
         <div
-          key={day}
+        key={day}
+        onClick={() => {
+            if (!isFullDayBlock && !isPast && canManage) {
+            setIsCreateOpen(true);
+            }
+            }}
           style={{
             ...(isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fef2f2 0,#fef2f2 10px,#fee2e2 10px,#fee2e2 20px)' } : {}),
             ...(isPast ? { backgroundColor: '#f8fafc', opacity: 0.6, cursor: 'not-allowed' } : {}),
@@ -304,25 +309,50 @@ export const EnsayosPage: React.FC = () => {
       </div>
 
       {/* Modal confirmar completado */}
-      {confirmModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <CheckCircle className="text-amber-600" size={20} />
-              </div>
-              <h3 className="font-bold text-slate-800 text-base">¿Marcar como listo?</h3>
-            </div>
-            <p className="text-sm text-slate-500 mb-5">
-              <span className="font-medium text-slate-700">"{confirmModal.title}"</span> desaparecerá del calendario activo.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
-              <button onClick={handleConfirm} className="px-4 py-2 text-sm rounded-xl bg-purple-600 text-white hover:bg-purple-700 font-medium">Confirmar</button>
-            </div>
-          </div>
+      {confirmModal && createPortal(
+  <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmModal(null)} />
+    <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 border border-slate-100">
+      
+      {/* Ícono */}
+      <div className="flex justify-center mb-5">
+        <div className="w-16 h-16 rounded-full bg-red-50 border-4 border-red-100 flex items-center justify-center">
+          <CheckCircle className="text-red-600" size={28} />
         </div>
-      )}
+      </div>
+
+      {/* Texto */}
+      <div className="text-center mb-6">
+        <h3 className="font-serif font-bold text-slate-800 text-xl uppercase tracking-wide mb-2">
+          ¿Marcar como listo?
+        </h3>
+        <p className="text-sm text-slate-500 leading-relaxed">
+          El ensayo{' '}
+          <span className="font-bold text-slate-700">"{confirmModal.title}"</span>{' '}
+          desaparecerá del calendario activo.
+        </p>
+      </div>
+
+      {/* Botones */}
+      <div className="flex gap-3">
+        <button
+          onClick={() => setConfirmModal(null)}
+          className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleConfirm}
+          className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-sm font-bold uppercase tracking-widest shadow-lg shadow-red-900/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+        >
+          <CheckCircle size={16} />
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
 
       {/* Contenedor principal */}
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px] flex flex-col">

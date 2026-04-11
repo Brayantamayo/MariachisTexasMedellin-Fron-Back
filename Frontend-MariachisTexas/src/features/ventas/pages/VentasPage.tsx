@@ -179,7 +179,6 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
   );
 };
 
-// ─── SaleDetailModal ──────────────────────────────────────────────────────────
 const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: SaleRecord | null; onDownload: (id: string) => void }> = ({ isOpen, onClose, sale, onDownload }) => {
   if (!isOpen || !sale) return null;
   const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
@@ -187,26 +186,38 @@ const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: Sa
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <div className={`px-5 py-4 flex items-center justify-between text-white shrink-0 ${isFinalizado ? 'bg-emerald-700' : 'bg-primary-700'}`}>
-          <div>
-            <h3 className="text-sm font-bold tracking-widest uppercase">{sale.concept}</h3>
-            <p className="text-[10px] opacity-80 mt-0.5">{sale.clientName}</p>
+        <div className="px-6 py-5 flex items-center justify-between shrink-0 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
+              <Eye className="text-red-600" size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-serif font-bold text-slate-800 uppercase tracking-wide">{sale.concept}</h3>
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5">{sale.clientName}</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white bg-white/10 p-1 rounded-full"><X size={16} /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Scrollable body */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
 
           {/* Status */}
-          <div className={`flex items-center justify-between p-3 rounded-xl border ${isFinalizado ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-            <span className={`text-xs font-bold uppercase tracking-widest ${isFinalizado ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {isFinalizado ? 'Pagado Completamente' : 'Venta Completa'}
-            </span>
-            <span className={`text-sm font-black ${isFinalizado ? 'text-emerald-800' : 'text-amber-800'}`}>
+          <div className={`flex items-center justify-between p-4 rounded-2xl border ${isFinalizado ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isFinalizado ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                <CheckCircle size={14} className={isFinalizado ? 'text-emerald-600' : 'text-red-500'} />
+              </div>
+              <span className={`text-xs font-bold uppercase tracking-widest ${isFinalizado ? 'text-emerald-700' : 'text-red-600'}`}>
+                {isFinalizado ? 'Pagado Completamente' : 'Venta Completa'}
+              </span>
+            </div>
+            <span className={`text-lg font-serif font-black ${isFinalizado ? 'text-emerald-800' : 'text-red-700'}`}>
               ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
             </span>
           </div>
@@ -324,17 +335,18 @@ const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: Sa
           )}
         </div>
 
-        {/* Footer fijo */}
+        {/* Footer */}
         <div className="px-5 pb-5 pt-3 flex gap-3 shrink-0 border-t border-slate-100">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+          <button onClick={onClose}
+            className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors">
             Cerrar
           </button>
           {sale.reservationId && (
             <button
               onClick={() => onDownload(sale.reservationId!)}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+              className="flex-[2] py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:-translate-y-0.5 transition-all"
             >
-              <Download size={14} /> PDF
+              <Download size={14} /> Descargar PDF
             </button>
           )}
         </div>
