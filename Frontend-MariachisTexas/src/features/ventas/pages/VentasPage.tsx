@@ -1,324 +1,656 @@
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, CheckCircle, AlertCircle, Calendar, User, FileText, CreditCard } from 'lucide-react';
-import { Sale, ventaService } from '../services/ventaService';
-import { reservaService } from '../../reservas/services/reservaService';
-import { abonoService } from '../../abonos/services/abonoService';
+import { Search, CheckCircle, AlertCircle, X, Eye, Download, CreditCard, Calendar, User, CheckSquare, Clock, Plus } from 'lucide-react';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { UserRole, Reservation } from '@/types';
-
-// Componentes Modulares
-import { VentasTable } from '../components/VentasTable';
+import { UserRole } from '@/types';
+import api from '@/shared/api/api';
+import { TablePagination } from '@/shared/components/TablePagination';
+import { AbonoCreateModal } from '@/src/features/abonos/components/AbonoCreateModal.tsx';
 import { VentaCreateModal } from '../components/VentaCreateModal';
-import { VentaEditModal } from '../components/VentaEditModal';
-import { VentaDetailModal } from '../components/VentaDetailModal';
-import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface SaleRecord {
+  id:                 string;
+  date:               string;
+  type:               string;
+  clientName:         string;
+  clientId?:          string;
+  clientEmail?:       string;
+  concept:            string;
+  method:             string;
+  amount:             number;
+  totalAmount?:       number;
+  pendingAmount?:     number;
+  paidAmount?:        number;
+  reservationId?:     string;
+  reservationStatus?: string;
+  eventDate?:         string;
+  eventType?:         string;
+  status:             string;
+  abonos?:            { id: string; amount: number; date: string; method: string; notes: string }[];
+  // ─── Nuevos ───────────────────────────────────────────────────────────────
+  eventTime?:         string;
+  eventEndTime?:      string;
+  eventLocation?:     string;
+  homenajeado?:       string;
+  notes?:             string;
+  services?:          { nombre: string; cantidad: number; precio: number }[];
+  repertoire?:        { titulo: string; artista: string }[];
+}
+
+const metodoPagoLabel: Record<string, string> = {
+  EFECTIVO:      'Efectivo',
+  TRANSFERENCIA: 'Transferencia',
+  TARJETA:       'Tarjeta',
+  NEQUI:         'Nequi',
+  DAVIPLATA:     'Daviplata',
+  OTRO:          'Otro',
+};
+
+// ─── AbonoModal - 2nd payment (final balance) ─────────────────────────────────
+interface FinalPaymentModalProps {
+  isOpen:        boolean;
+  onClose:       () => void;
+  sale:          SaleRecord | null;
+  onSave:        (data: { reservationId: string; amount: number; date: string; method: string; notes?: string }) => Promise<void>;
+}
+
+const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, sale, onSave }) => {
+  const [method,  setMethod]  = useState('TRANSFERENCIA');
+  const [date,    setDate]    = useState(new Date().toISOString().split('T')[0]);
+  const [notes,   setNotes]   = useState('');
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const saldo = sale?.pendingAmount ?? 0;
+
+  useEffect(() => {
+    if (isOpen) {
+      setMethod('TRANSFERENCIA');
+      setDate(new Date().toISOString().split('T')[0]);
+      setNotes('');
+      setError(null);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sale?.reservationId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({
+        reservationId: sale.reservationId,
+        amount:        saldo,
+        date,
+        method,
+        notes:         notes || undefined,
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Error al registrar pago');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen || !sale) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+
+        {/* Header */}
+        <div className="bg-emerald-600 px-5 py-4 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2">
+            <CheckSquare size={18} />
+            <h3 className="text-xs font-bold tracking-widest uppercase">Registrar Saldo Final</h3>
+          </div>
+          <button onClick={onClose} className="text-white/80 hover:text-white bg-white/10 p-1 rounded-full">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {error && (
+            <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-xs">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          {/* Info box */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5">
+            <p className="text-xs text-emerald-700 font-bold uppercase tracking-widest mb-1">Saldo a pagar</p>
+            <p className="text-3xl font-serif font-black text-emerald-800">${saldo.toLocaleString('es-CO')}</p>
+            <p className="text-[10px] text-emerald-600 mt-1">{sale.concept} — Total: ${(sale.totalAmount ?? 0).toLocaleString('es-CO')}</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Método de Pago</label>
+              <select
+                value={method}
+                onChange={e => setMethod(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400"
+              >
+                {Object.entries(metodoPagoLabel).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fecha de Pago</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notas (opcional)</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400 resize-none"
+                placeholder="Referencia de pago..."
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-md transition-all disabled:opacity-60"
+              >
+                {saving ? 'Guardando...' : `Pagar $${saldo.toLocaleString('es-CO')}`}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// ─── SaleDetailModal ──────────────────────────────────────────────────────────
+const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: SaleRecord | null; onDownload: (id: string) => void }> = ({ isOpen, onClose, sale, onDownload }) => {
+  if (!isOpen || !sale) return null;
+  const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
+
+        {/* Header */}
+        <div className={`px-5 py-4 flex items-center justify-between text-white shrink-0 ${isFinalizado ? 'bg-emerald-700' : 'bg-primary-700'}`}>
+          <div>
+            <h3 className="text-sm font-bold tracking-widest uppercase">{sale.concept}</h3>
+            <p className="text-[10px] opacity-80 mt-0.5">{sale.clientName}</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white bg-white/10 p-1 rounded-full"><X size={16} /></button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+
+          {/* Status */}
+          <div className={`flex items-center justify-between p-3 rounded-xl border ${isFinalizado ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            <span className={`text-xs font-bold uppercase tracking-widest ${isFinalizado ? 'text-emerald-700' : 'text-amber-700'}`}>
+              {isFinalizado ? 'Pagado Completamente' : 'Venta Completa'}
+            </span>
+            <span className={`text-sm font-black ${isFinalizado ? 'text-emerald-800' : 'text-amber-800'}`}>
+              ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
+            </span>
+          </div>
+
+          {/* Detalles del evento */}
+          {(sale.homenajeado || sale.eventTime || sale.eventLocation || sale.eventDate || sale.notes) && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Detalles del Evento</p>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2 text-xs">
+                {sale.eventDate && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 flex items-center gap-1"><Calendar size={11} /> Fecha</span>
+                    <span className="font-bold text-slate-700">{sale.eventDate}</span>
+                  </div>
+                )}
+                {sale.eventTime && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Horario</span>
+                    <span className="font-bold text-slate-700">
+                      {sale.eventTime}{sale.eventEndTime ? ` — ${sale.eventEndTime}` : ''}
+                    </span>
+                  </div>
+                )}
+                {sale.eventType && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Tipo de evento</span>
+                    <span className="font-bold text-slate-700">{sale.eventType}</span>
+                  </div>
+                )}
+                {sale.homenajeado && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Homenajeado</span>
+                    <span className="font-bold text-slate-700">{sale.homenajeado}</span>
+                  </div>
+                )}
+                {sale.eventLocation && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-slate-400 shrink-0">Dirección</span>
+                    <span className="font-bold text-slate-700 text-right">{sale.eventLocation}</span>
+                  </div>
+                )}
+                {sale.notes && (
+                  <div className="pt-1 border-t border-slate-200">
+                    <span className="text-slate-400 block mb-0.5">Notas</span>
+                    <span className="text-slate-600">{sale.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Servicios */}
+          {sale.services && sale.services.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Servicios Contratados</p>
+              <div className="space-y-1.5">
+                {sale.services.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-xs text-slate-700">{s.nombre}{s.cantidad > 1 ? ` ×${s.cantidad}` : ''}</span>
+                    <span className="text-xs font-bold text-slate-800">${(s.precio * s.cantidad).toLocaleString('es-CO')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Repertorio */}
+          {sale.repertoire && sale.repertoire.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                Repertorio ({sale.repertoire.length} canciones)
+              </p>
+              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                {sale.repertoire.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 w-4 text-right shrink-0">{i + 1}</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 leading-none">{r.titulo}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{r.artista}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Historial de pagos */}
+          {sale.abonos && sale.abonos.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Historial de Pagos</p>
+              <div className="space-y-2">
+                {sale.abonos.map((abono, idx) => (
+                  <div key={abono.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">
+                        {idx === 0 ? '1er Abono (Anticipo 50%)' : '2do Abono (Saldo Final)'}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(abono.date).toLocaleDateString('es-CO')} · {metodoPagoLabel[abono.method] ?? abono.method}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-emerald-600">${abono.amount.toLocaleString('es-CO')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Saldo pendiente */}
+          {!isFinalizado && (sale.pendingAmount ?? 0) > 0 && (
+            <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+              <span className="text-xs font-bold text-red-700">Saldo Pendiente</span>
+              <span className="text-sm font-bold text-red-700">${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer fijo */}
+        <div className="px-5 pb-5 pt-3 flex gap-3 shrink-0 border-t border-slate-100">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+            Cerrar
+          </button>
+          {sale.reservationId && (
+            <button
+              onClick={() => onDownload(sale.reservationId!)}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+            >
+              <Download size={14} /> PDF
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export const VentasPage: React.FC = () => {
-  const { user } = useAuth();
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modals
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isAbonoModalOpen, setIsAbonoModalOpen] = useState(false);
-  
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-  const [abonoReservationId, setAbonoReservationId] = useState<string | null>(null);
+  const { user }        = useAuth();
+  const [sales,         setSales]         = useState<SaleRecord[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [searchTerm,    setSearchTerm]    = useState('');
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [notification,  setNotification]  = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [detailSale,    setDetailSale]    = useState<SaleRecord | null>(null);
+  const [isDetailOpen,  setIsDetailOpen]  = useState(false);
+     const [finalPaySale,  setFinalPaySale]  = useState<SaleRecord | null>(null);
+    const [isFinalPayOpen,setIsFinalPayOpen]= useState(false);
+    const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+    
 
-  // Notification
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const isClient = user?.role === UserRole.CLIENTE;
+  const itemsPerPage = 10;
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const fetchSales = async () => {
+   const fetchSales = async () => {
     setLoading(true);
     try {
-      const [salesData, reservationsData] = await Promise.all([
-          ventaService.getSales(),
-          reservaService.getReservations()
-      ]);
-      
-      // 1. Procesar TODAS las ventas del backend (directas y por reserva)
-      const backendSales: Sale[] = salesData.map(s => ({
-          ...s,
-          status: 'Completado'
-      }));
-
-      // 2. Si hay reservas SIN venta asociada y tienen pagos, mostrarlas como "en proceso"
-      // (Las que ya tienen venta ya están en backendSales)
-      const reservationSalesInProgress: Sale[] = [];
-      reservationsData
-          .filter(r => r.status === 'Confirmado' && r.paidAmount > 0 && r.paidAmount < r.totalAmount)
-          .forEach(r => {
-              // Verificar si ya existe en ventas del backend
-              const alreadyExists = backendSales.some(s => s.reservationId === r.id);
-              if (!alreadyExists) {
-                  const lastPaymentDate = r.payments.length > 0 
-                      ? r.payments[r.payments.length - 1].date.split('T')[0]
-                      : new Date().toISOString().split('T')[0];
-                  
-                  reservationSalesInProgress.push({
-                      id: `V-RES-${r.id}`,
-                      date: lastPaymentDate,
-                      type: 'Por Reserva',
-                      clientName: r.clientName,
-                      clientId: r.clientId,
-                      clientEmail: r.clientEmail,
-                      concept: `Servicio: ${r.eventType} (#${r.id})`,
-                      method: r.payments.length > 0 ? r.payments[r.payments.length - 1].method : 'Pendiente',
-                      amount: r.paidAmount,
-                      totalAmount: r.totalAmount,
-                      pendingAmount: r.totalAmount - r.paidAmount,
-                      reservationId: r.id,
-                      reservationStatus: 'Confirmado' as any,
-                      status: 'Completado'
-                  });
-              }
-          });
-      
-      let combinedData = [...backendSales, ...reservationSalesInProgress];
-      
-      // Ordenar por fecha descendente
-      combinedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      // FILTRO DE SEGURIDAD: Si es cliente, solo ve sus compras
-      if (user && user.role === UserRole.CLIENTE) {
-          combinedData = combinedData.filter(s => 
-              s.clientEmail?.toLowerCase() === user.email.toLowerCase() ||
-              s.clientId === user.id || 
-              s.clientName.toLowerCase().includes(user.name.toLowerCase())
-          );
-      }
-
-      setSales(combinedData);
-    } catch (error) {
-      console.error(error);
-      showNotification("Error cargando ventas.", "error");
+      const { data } = await api.get('/ventas');
+      // El backend ahora devuelve { ok, data: [...], total }
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      setSales(list);
+    } catch {
+      showNotification('Error cargando ventas.', 'error');
     } finally {
       setLoading(false);
     }
   };
+ 
 
-  useEffect(() => {
-    fetchSales();
-  }, [user]);
+  useEffect(() => { fetchSales(); }, [user]);
 
-  const handleCreateSale = async (data: any) => {
-      try {
-          // Validación básica
-          if (!data.clienteId || data.clienteId === '0') {
-              showNotification("❌ Debes seleccionar un cliente válido", "error");
-              return;
-          }
-          if (!data.amount || Number(data.amount) <= 0) {
-              showNotification("❌ El monto debe ser mayor a 0", "error");
-              return;
-          }
-          if (data.type === 'Por Reserva' && !data.reservationId) {
-              showNotification("❌ Debes seleccionar una reserva", "error");
-              return;
-          }
-          
-          await ventaService.createSale(data);
-          await fetchSales(); // Re-fetch all to sync reservations and sales
-          showNotification('✅ Venta registrada exitosamente.');
-          setIsCreateOpen(false);
-      } catch (error: any) {
-          console.error(error);
-          const errorMsg = error?.response?.data?.message || error?.message || "Error al registrar la venta";
-          showNotification(`❌ ${errorMsg}`, "error");
-      }
+  const handleFinalPayment = async (data: { reservationId: string; amount: number; date: string; method: string; notes?: string }) => {
+    await api.post(`/ventas/reserva/${data.reservationId}/abono`, {
+      amount: data.amount,
+      date:   data.date,
+      method: data.method,
+      notes:  data.notes,
+    });
+    showNotification('Pago final registrado. ¡Reserva finalizada!');
+    setIsFinalPayOpen(false);
+    await fetchSales();
   };
 
-  const handleUpdateSale = async (data: any) => {
-      if (!selectedSale) return;
-      try {
-          const updated = await ventaService.updateSale(selectedSale.id, data);
-          setSales(prev => prev.map(s => s.id === updated.id ? updated : s));
-          showNotification('Venta actualizada exitosamente.');
-          setIsEditOpen(false);
-      } catch (error) {
-          console.error(error);
-          showNotification("Error al actualizar la venta.", "error");
-      }
-  };
+const handleCreateSale = async (data: any) => {
+  try {
+    const esReserva = data.type !== 'Directa'
+ 
+    await api.post('/ventas', {
+      reservaId:   esReserva && data.reservationId ? Number(data.reservationId) : null,
+      clienteId:   Number(data.clienteId),
+      tipo:        esReserva ? 'RESERVA' : 'DIRECTA',
+      estado:      'CONFIRMADO',
+      // Para RESERVA:  montoTotal  = total real de la reserva (totalValor en BD)
+      // Para DIRECTA:  montoTotal  = lo que el admin ingresó en el campo amount
+      montoTotal:  esReserva ? Number(data.totalAmount) : Number(data.amount),
+      // Para RESERVA:  montoPagado = suma real de abonos ya registrados (paidAmount)
+      // Para DIRECTA:  montoPagado = mismo que montoTotal (pago inmediato)
+      montoPagado: esReserva ? Number(data.paidAmount)  : Number(data.amount),
+      fechaVenta:  data.date,
+      metodoPago:  String(data.method).toUpperCase(),
+    })
+ 
+    showNotification('Venta registrada correctamente')
+    setIsNewSaleOpen(false)       
+    await fetchSales()  
+  } catch (error: any) {
+  console.log('ERROR COMPLETO:', error?.response?.data) // ← agrega esta línea
+  showNotification(
+    error?.response?.data?.message || 'Error al registrar la venta',
+    'error'
+  )
+}
+}
 
-  const handleDownload = async (id: string) => {
-      showNotification('Generando factura...', 'success');
-      try {
-          await ventaService.downloadInvoice(id);
-          showNotification('Factura descargada correctamente.');
-      } catch (error) {
-          showNotification('Error al descargar.', 'error');
-      }
-  };
-
-  const handleDownloadPdf = async () => {
-    showNotification('Generando PDF de ventas...', 'success');
+  const handleDownloadPdf = async (reservationId: string) => {
+    showNotification('Generando PDF...');
     try {
-      const response = await fetch('/api/ventas/download/pdf', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+      const token    = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ventas/reserva/${reservationId}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error('Error al descargar PDF');
+      if (!response.ok) throw new Error('Error al generar PDF');
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'ventas.pdf';
-      document.body.appendChild(a);
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `Reserva-${reservationId}.pdf`;
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
       showNotification('PDF descargado correctamente.');
-    } catch (error) {
-      console.error(error);
-      showNotification('Error al descargar PDF.', 'error');
+    } catch {
+      showNotification('Error al generar el PDF.', 'error');
     }
   };
 
-  const handleSaveAbono = async (data: any) => {
-      try {
-          await abonoService.createAbono(data);
-          // Reutilizamos fetchSales para actualizar todo
-          await fetchSales();
-          showNotification('✅ Abono registrado exitosamente.');
-          setIsAbonoModalOpen(false);
-      } catch (error) {
-          console.error(error);
-          showNotification('Error al registrar abono.', 'error');
-      }
-  };
-
-  const filteredSales = sales.filter(s => 
-      s.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      s.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = sales.filter(s =>
+    (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isClient = user?.role === UserRole.CLIENTE;
+  const totalPages   = Math.ceil(filtered.length / itemsPerPage);
+  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const getStatusBadge = (sale: SaleRecord) => {
+    const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
+    if (isFinalizado) return { label: 'Finalizado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (sale.reservationId) return { label: 'Confirmado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    return { label: 'Venta Directa', cls: 'bg-slate-50 text-slate-500 border-slate-200' };
+  };
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
-      
+
       {/* Toast */}
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
-            <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${
-                notification.type === 'success' ? 'bg-white/95 border-emerald-100' : 'bg-white/95 border-red-100'
-            }`}>
-                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-                }`}>
-                    {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} /> }
-                </div>
-                <div className="flex-1">
-                    <h4 className={`font-bold text-sm ${notification.type === 'success' ? 'text-emerald-950' : 'text-red-950'}`}>
-                        {notification.type === 'success' ? 'Notificación' : 'Error'}
-                    </h4>
-                    <p className="text-xs text-slate-500 font-medium">{notification.message}</p>
-                </div>
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] bg-white/95 ${notification.type === 'success' ? 'border-emerald-100' : 'border-red-100'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+              {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
             </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-sm text-slate-800">{notification.type === 'success' ? 'Notificación' : 'Error'}</h4>
+              <p className="text-xs text-slate-500">{notification.message}</p>
+            </div>
+            <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+          </div>
         </div>,
         document.body
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">
-            {isClient ? 'Mis Compras' : 'Gestión de Ventas'}
+          <h1 className="text-3xl font-serif font-bold text-slate-800 tracking-wide uppercase">
+            {isClient ? 'Mis Pagos' : 'Gestión de Ventas'}
           </h1>
           <p className="text-slate-500 mt-2 text-sm">
-            {isClient ? 'Historial de tus pagos, facturas y servicios contratados.' : 'Registro de ingresos, facturación y pagos directos.'}
+            {isClient
+              ? 'Historial de tus pagos y reservas confirmadas.'
+              : 'Reservas confirmadas con anticipo del 50%. Registra pagos finales aquí.'}
           </p>
         </div>
-        
-        {/* Solo Admin y Empleado pueden registrar ventas manualmente */}
         {!isClient && (
-            <button 
-                onClick={() => setIsCreateOpen(true)}
-                className="bg-[#dc2626] hover:bg-red-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase"
-            >
-            <Plus size={18} strokeWidth={3} />
-            Registrar Venta
-            </button>
+          <button
+            onClick={() => setIsNewSaleOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full flex items-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase"
+          >
+            <Plus size={16} strokeWidth={3} /> REGISTRAR VENTA
+          </button>
         )}
       </div>
 
-      {/* Main Container */}
+
+
+      {/* Table */}
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
-        
-        {/* Search & Filter */}
         <div className="p-8 pb-4">
-             <div className="relative max-w-sm">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                    type="text" 
-                    placeholder={isClient ? "Buscar por concepto o ID..." : "Buscar venta, cliente o ID..."} 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-red-100 focus:border-red-400 outline-none transition-all placeholder:text-slate-400 text-sm shadow-sm"
-                />
-            </div>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Buscar por cliente"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all text-sm"
+            />
+          </div>
         </div>
 
-        {/* Modular Table */}
-        <VentasTable 
-            sales={filteredSales}
-            loading={loading}
-            isClient={isClient}
-            onView={(sale) => { setSelectedSale(sale); setIsDetailOpen(true); }}
-            onEdit={(sale) => { setSelectedSale(sale); setIsEditOpen(true); }}
-            onAddPayment={(id) => { setAbonoReservationId(id); setIsAbonoModalOpen(true); }}
-            onDownload={handleDownload}
-        />
+        {loading ? (
+          <div className="py-20 text-center text-slate-400">Cargando ventas...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center text-slate-400">No se encontraron registros.</div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="overflow-x-auto p-8 pt-4 pb-4">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left">
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">ID / Fecha</th>
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente / Concepto</th>
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Estado</th>
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total / Saldo</th>
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {currentItems.map(sale => {
+                    const badge       = getStatusBadge(sale);
+                    const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
+                    const hasPending   = !isFinalizado && (sale.pendingAmount ?? 0) > 0 && !!sale.reservationId;
+
+                    return (
+                      <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-4">
+                          <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">#{sale.id.replace('RES-','')}</span>
+                          {sale.eventDate && (
+                            <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                              <Calendar size={10} /> {sale.eventDate}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="font-bold text-slate-800 text-sm flex items-center gap-1">
+                            <User size={12} className="text-slate-400" /> {sale.clientName}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{sale.concept}</p>
+                          {sale.eventType && (
+                            <p className="text-[10px] text-slate-300 uppercase tracking-wide">{sale.eventType}</p>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`inline-flex px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="text-sm font-bold text-slate-700">
+                            ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
+                          </p>
+                          {!isFinalizado && (sale.pendingAmount ?? 0) > 0 && (
+                            <p className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                              <Clock size={10} /> Pendiente: ${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}
+                            </p>
+                          )}
+                          {isFinalizado && (
+                            <p className="text-[10px] font-bold text-emerald-500">✓ Pagado</p>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => { setDetailSale(sale); setIsDetailOpen(true); }}
+                              title="Ver detalle"
+                              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all"
+                            >
+                              <Eye size={14} />
+                            </button>
+
+                            {/* Pay final balance - only for admin/employee on confirmed reservations */}
+                            {!isClient && hasPending && (
+                              <button
+                                onClick={() => { setFinalPaySale(sale); setIsFinalPayOpen(true); }}
+                                title="Registrar pago final"
+                                className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all"
+                              >
+                                <CreditCard size={14} />
+                              </button>
+                            )}
+
+                            {/* Download PDF */}
+                            {sale.reservationId && (
+                              <button
+                                onClick={() => handleDownloadPdf(sale.reservationId!)}
+                                title="Descargar PDF"
+                                className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 flex items-center justify-center transition-all"
+                              >
+                                <Download size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filtered.length}
+              itemsPerPage={itemsPerPage}
+            />
+          </div>
+        )}
       </div>
 
-      <AbonoCreateModal 
-        isOpen={isAbonoModalOpen}
-        onClose={() => setIsAbonoModalOpen(false)}
-        onSave={handleSaveAbono}
-        initialReservationId={abonoReservationId}
-      />
-
-      {/* Modal de Registro */}
-      {!isClient && (
-          <VentaCreateModal 
-            isOpen={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            onSave={handleCreateSale}
-          />
-      )}
-
-      {/* Modal de Edición */}
-      {!isClient && (
-          <VentaEditModal 
-            isOpen={isEditOpen}
-            onClose={() => setIsEditOpen(false)}
-            onSave={handleUpdateSale}
-            sale={selectedSale}
-          />
-      )}
-
-      {/* Modal de Detalle */}
-      <VentaDetailModal
+      {/* Modals */}
+      <SaleDetailModal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        sale={selectedSale}
-        onDownload={handleDownload}
-      />
-
+        sale={detailSale}
+        onDownload={handleDownloadPdf}
+    />
+    <FinalPaymentModal
+        isOpen={isFinalPayOpen}
+        onClose={() => setIsFinalPayOpen(false)}
+        sale={finalPaySale}
+        onSave={handleFinalPayment}
+    />
+      <VentaCreateModal
+  isOpen={isNewSaleOpen}
+  onClose={() => setIsNewSaleOpen(false)}
+  onSave={handleCreateSale}
+/>
     </div>
   );
 };

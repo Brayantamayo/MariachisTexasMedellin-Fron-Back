@@ -649,11 +649,17 @@ export const VentaCreateSchema = z.object({
   clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo'),
   tipo: z.enum(['RESERVA', 'DIRECTA']),
   estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional().default('CONFIRMADO'),
+  
+
+
   montoTotal: z.number()
     .positive('El monto total debe ser mayor a 0')
     .max(10_000_000, 'El monto parece demasiado alto')
     .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
-    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
+    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+    .refine(v => v >= 1000,           'El monto mínimo es $1.000 COP')
+    .refine(v => v <= 10_000_000,      'El monto máximo es $10.000.000 COP'),
+
   montoPagado: z.number()
     .min(0, 'El monto pagado no puede ser negativo')
     .max(10_000_000, 'El monto parece demasiado alto')
@@ -666,26 +672,6 @@ export const VentaCreateSchema = z.object({
   message: 'El monto pagado no puede ser mayor al total', path: ['montoPagado']
 })
 
-export const VentaUpdateSchema = z.object({
-  reservaId: z.union([z.number().int().positive(), z.null()]).optional(),
-  clienteId: z.number().int().positive('El ID del cliente debe ser un número positivo').optional(),
-  tipo: z.enum(['RESERVA', 'DIRECTA']).optional(),
-  estado: z.enum(['CONFIRMADO', 'FINALIZADO', 'VENTA_DIRECTA']).optional(),
-  montoTotal: z.number()
-    .positive('El monto total debe ser mayor a 0')
-    .max(10_000_000, 'El monto parece demasiado alto')
-    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
-    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
-    .optional(),
-  montoPagado: z.number()
-    .min(0, 'El monto pagado no puede ser negativo')
-    .max(10_000_000, 'El monto parece demasiado alto')
-    .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
-    .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
-    .optional(),
-  fechaVenta: fecha.optional(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']).optional()
-})
 
 export const RolCreateSchema = z.object({
   nombre: z.string()
@@ -1132,3 +1118,69 @@ export const zodError = (e: ZodError): string =>
     const path = issue.path.length ? `${issue.path.join('.')}: ` : ''
     return `${path}${issue.message}`
   }).join(' | ')
+
+  export const AbonoCreateSchema = z.object({
+ 
+  reservaId: z.union([z.string(), z.number()])
+    .transform(v => Number(v))
+    .pipe(
+      z.number()
+        .int('El ID de reserva debe ser un número entero')
+        .positive('El ID de reserva debe ser mayor a 0')
+    )
+    ,
+
+  amount: z.union([z.string(), z.number()])
+    .transform(v => Number(v))
+    .pipe(
+      z.number()
+        
+        .positive('El monto debe ser mayor a 0')
+        .max(10_000_000, 'El monto parece demasiado alto')
+        .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
+        .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales')
+        .refine(v => v >= 1000,           'El monto mínimo es $1.000 COP')
+        .refine(v => v <= 10_000_000,     'El monto máximo es $10.000.000 COP')
+        
+        .refine(v => !isNaN(v), 'El monto debe ser un número')
+        .refine(v => v % 1 === 0, 'El monto debe ser un número entero')
+        
+        .refine(v => v.toString().trim() === v.toString(), 'El monto no puede tener espacios')
+
+        
+    ),
+ 
+  // Fecha: solo se permite la fecha de HOY (no pasado, no futuro)
+  date: z.string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')
+    .refine(d => !isNaN(Date.parse(d)), 'La fecha no es válida')
+    .refine(d => {
+      const [y, m, day] = d.split('-').map(Number)
+      const date = new Date(y, m - 1, day)
+      return (
+        date.getFullYear() === y &&
+        date.getMonth() === m - 1 &&
+        date.getDate() === day
+      )
+    }, 'La fecha no existe en el calendario')
+    .refine(d => {
+      const today = new Date().toISOString().split('T')[0]
+      return d === today
+    }, 'La fecha del abono debe ser la fecha de hoy'),
+ 
+  method: z.string()
+    .trim()
+    .toUpperCase()
+    .refine(
+      m => ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO'].includes(m.toUpperCase()),
+      'Método de pago inválido. Opciones: EFECTIVO, TRANSFERENCIA, TARJETA, NEQUI, DAVIPLATA, OTRO'
+    ),
+ 
+  notes: z.string()
+    .trim()
+    .max(500, 'Las notas no pueden superar 500 caracteres')
+    .refine(n => !/[<>{}[\]\\]/.test(n), 'Las notas contienen caracteres no permitidos')
+    .optional()
+    .nullable(),
+})

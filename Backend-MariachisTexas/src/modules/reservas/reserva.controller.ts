@@ -94,9 +94,6 @@ res.json(await reservaService.updateReserva(Number(id), req.body))})
 export const anular = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 res.json(await reservaService.anularReserva(Number(id), req.body.motivo))})
 
-// ─── CONFIRMAR ────────────────────────────────────────────────────────────────
-export const confirmar = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-res.json(await reservaService.confirmarReserva(Number(id)))})
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 export const remove = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id

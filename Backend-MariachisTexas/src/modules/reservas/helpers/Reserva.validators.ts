@@ -1,6 +1,8 @@
 import prisma from '../../../config/prisma'
 import { AppError } from '../../../utils/AppError'
 import { toLocalTime, parseLocalDate, bloquearRango, dayRange } from '../../../utils/date.helpers'
+import { EstadoEnsayo } from '../../../generated/prisma'
+
 
 // ─── verificarDisponibilidadReserva ───────────────────────────────────────────
 // Verifica que el horario de la reserva no conflictúe con:
@@ -20,30 +22,32 @@ export const verificarDisponibilidadReserva = async (
   const { dayStart, dayEnd } = dayRange(dateStr)
   const bufferInicio         = new Date(inicio.getTime() - 60 * 60 * 1000)
 
-  const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
-    prisma.bloqueoCalendario.findFirst({
-      where: { fechaInicio: { lte: fin }, fechaFin: { gte: inicio } },
-    }),
-    prisma.cotizacion.findMany({
-      where: {
-        fechaEvento: { gte: dayStart, lte: dayEnd },
-        estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] },
-        // ✅ Excluir la cotización propia para no bloquearse a sí misma al editar
-        ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {}),
-      },
-    }),
-    prisma.reserva.findMany({
-      where: {
-        estado:     { in: ['PENDIENTE', 'CONFIRMADA'] },
-        cotizacion: { fechaEvento: parseLocalDate(dateStr), horaInicio: { lt: fin }, horaFin: { gt: bufferInicio } },
-        ...(excludeReservaId ? { id: { not: excludeReservaId } } : {}),
-      },
-      include: { cotizacion: true },
-    }),
-    prisma.ensayo.findMany({
-      where: { fechaHora: { gte: dayStart, lte: dayEnd } },
-    }),
-  ])
+const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
+  prisma.bloqueoCalendario.findFirst({
+    where: { fechaInicio: { lte: fin }, fechaFin: { gte: inicio } },
+  }),
+  prisma.cotizacion.findMany({
+    where: {
+      fechaEvento: { gte: dayStart, lte: dayEnd },
+      estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] }, // ANULADA queda excluida automáticamente
+      ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {}),
+    },
+  }),
+  prisma.reserva.findMany({
+    where: {
+      estado:     { in: ['PENDIENTE', 'CONFIRMADA'] }, // ANULADA queda excluida automáticamente
+      cotizacion: { fechaEvento: parseLocalDate(dateStr), horaInicio: { lt: fin }, horaFin: { gt: bufferInicio } },
+      ...(excludeReservaId ? { id: { not: excludeReservaId } } : {}),
+    },
+    include: { cotizacion: true },
+  }),
+  prisma.ensayo.findMany({
+  where: {
+    fechaHora: { gte: dayStart, lte: dayEnd },
+    estado:    { not: EstadoEnsayo.LISTO }, // ← era 'Completado', el enum real es LISTO
+  },
+}),
+])
 
   if (bloqueo)
     throw new AppError(
@@ -79,22 +83,30 @@ export const getAvailableHours = async (dateStr: string, excludeId?: number): Pr
   const blocked              = new Set<string>()
 
   const [bloqueos, cotizaciones, reservas, ensayos] = await Promise.all([
-    prisma.bloqueoCalendario.findMany({
-      where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } },
-    }),
-    prisma.cotizacion.findMany({
-      where: { fechaEvento: { gte: dayStart, lte: dayEnd }, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } },
-    }),
-    prisma.reserva.findMany({
-      where: {
-        estado:     { in: ['PENDIENTE', 'CONFIRMADA'] },
-        cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } },
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-      },
-      include: { cotizacion: true },
-    }),
-    prisma.ensayo.findMany({ where: { fechaHora: { gte: dayStart, lte: dayEnd } } }),
-  ])
+  prisma.bloqueoCalendario.findMany({
+    where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } },
+  }),
+  prisma.cotizacion.findMany({
+    where: {
+      fechaEvento: { gte: dayStart, lte: dayEnd },
+      estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] }, // ANULADA excluida
+    },
+  }),
+  prisma.reserva.findMany({
+    where: {
+      estado:     { in: ['PENDIENTE', 'CONFIRMADA'] }, // ANULADA excluida
+      cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    include: { cotizacion: true },
+  }),
+   prisma.ensayo.findMany({
+  where: {
+    fechaHora: { gte: dayStart, lte: dayEnd },
+    estado:    { not: EstadoEnsayo.LISTO }, // ← era 'Completado', el enum real es LISTO
+  },
+}),
+])
 
   for (const b of bloqueos) {
     if (!b.motivo?.startsWith('TIME_RANGE:')) return []

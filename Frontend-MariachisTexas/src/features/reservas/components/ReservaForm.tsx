@@ -33,7 +33,6 @@ interface Props {
   isPublic?: boolean;
   isEditing?: boolean;
   isClient?: boolean;
-  // ✅ Tipado como any[] porque el shape real del backend es distinto a UserType
   clients: any[];
   songs: Song[];
   services: Service[];
@@ -54,8 +53,6 @@ interface Props {
   onCancel: () => void;
 }
 
-// ─── HELPER: construir el label del cliente para el <option> ─────────────────
-// Backend: { id, apellido, telefonoPrincipal, usuario: { nombre } }
 const getClienteLabel = (cliente: any): string => {
   const fullName = `${cliente.name ?? ''} ${cliente.lastName ?? ''}`.trim() || cliente.email
   const telefono = cliente.phone ?? ''
@@ -73,7 +70,11 @@ export const ReservaForm: React.FC<Props> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const lockClientFields = isEditing || isClient
+  // ─── FIX 1: bloquear campos si ya hay un cliente seleccionado del dropdown ──
+  // Antes: lockClientFields = isEditing || isClient  (no bloqueaba al seleccionar)
+  // Ahora: también se bloquea cuando el admin escoge un cliente existente (clientId poblado)
+  const hasSelectedClient = isAdmin && !!formData.clientId && formData.clientId !== ''
+  const lockClientFields  = isEditing || isClient || hasSelectedClient
 
   const activeServices      = services.filter(s => s.estado === true);
   const baseServices        = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'));
@@ -120,6 +121,9 @@ export const ReservaForm: React.FC<Props> = ({
     onToggleSong(id);
   };
 
+  // ─── FIX 2: calcular total sumando TODOS los servicios seleccionados ──────
+  // Antes: totalExtras solo sumaba servicios adicionales (sin el servicio base de serenata)
+  // Ahora: el total mostrado refleja la suma real de todos los servicios activos
   const totalExtras = useMemo(() =>
     formData.selectedServices?.reduce((acc, item) => {
       const s = services.find(srv => String(srv.id) === String(item.serviceId));
@@ -127,6 +131,20 @@ export const ReservaForm: React.FC<Props> = ({
     }, 0) ?? 0,
     [formData.selectedServices, services]
   );
+
+  // Total calculado automáticamente (base serenata + adicionales)
+  const autoTotal = useMemo(() => {
+    return formData.selectedServices?.reduce((acc, item) => {
+      if (item.quantity <= 0) return acc
+      const s = services.find(srv => String(srv.id) === String(item.serviceId))
+      return acc + (s ? Number(s.precio) * item.quantity : 0)
+    }, 0) ?? 0
+  }, [formData.selectedServices, services])
+
+  // Si el admin no ha modificado manualmente el total (es 0 o undefined), usar el calculado
+  const displayTotal = formData.totalAmount && formData.totalAmount > 0
+    ? formData.totalAmount
+    : autoTotal
 
   const today             = new Date().toISOString().split('T')[0];
   const filteredSongs     = searchTerm.trim() === ''
@@ -147,6 +165,13 @@ export const ReservaForm: React.FC<Props> = ({
   const inputClass    = "input-form";
   const lockedClass   = `${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`;
 
+  // Handler del dropdown que también dispara recálculo del total si queda en 0
+  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onClientSelect(e)
+    // Si se deselecciona el cliente (value = ''), desbloquear campos
+    // El padre maneja el estado, aquí solo propagamos
+  }
+
   return (
     <form id="reserva-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
 
@@ -162,7 +187,7 @@ export const ReservaForm: React.FC<Props> = ({
             Información del Cliente
           </h4>
 
-          {isAdmin && !lockClientFields && (
+          {isAdmin && !isEditing && !isClient && (
             <div className="mb-4">
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
               <div className="relative">
@@ -170,12 +195,11 @@ export const ReservaForm: React.FC<Props> = ({
                 <select
                   name="clientId"
                   value={formData.clientId || ''}
-                  onChange={onClientSelect}
+                  onChange={handleClientSelect}
                   className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium"
                 >
                   <option value="">-- Buscar en base de datos --</option>
                   {(clients ?? []).map(c => (
-                    // ✅ value usa String(c.id) para garantizar tipo consistente
                     <option key={String(c.id)} value={String(c.id)}>
                       {getClienteLabel(c)}
                     </option>
@@ -186,13 +210,16 @@ export const ReservaForm: React.FC<Props> = ({
             </div>
           )}
 
+          {/* Aviso de bloqueo — se muestra cuando hay cliente seleccionado O en edición/cliente */}
           {lockClientFields && (
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
               <Lock size={12} className="text-slate-400" />
               <p className="text-[11px] text-slate-400 font-medium">
                 {isClient
                   ? 'Tus datos se toman de tu perfil registrado.'
-                  : 'Los datos del cliente no se pueden modificar.'}
+                  : isEditing
+                  ? 'Los datos del cliente no se pueden modificar.'
+                  : 'Cliente seleccionado. Los datos se cargan automáticamente.'}
               </p>
             </div>
           )}
@@ -519,25 +546,32 @@ export const ReservaForm: React.FC<Props> = ({
         {/* Resumen de Costos */}
         <div className={`p-8 border-t border-slate-200 ${isPublic ? 'bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20' : 'bg-white'}`}>
           <div className="space-y-3 mb-8 text-sm">
-            {formData.selectedServices && formData.selectedServices.length > 0 && (
-              <div className="flex justify-between text-slate-500">
-                <span>Servicios Adicionales</span>
-                <span className="font-bold text-slate-700">+${totalExtras.toLocaleString()}</span>
-              </div>
-            )}
+            {/* Desglose por servicio seleccionado */}
+            {formData.selectedServices && formData.selectedServices
+              .filter(item => item.quantity > 0)
+              .map(item => {
+                const s = services.find(srv => String(srv.id) === String(item.serviceId))
+                if (!s) return null
+                return (
+                  <div key={item.serviceId} className="flex justify-between text-slate-500">
+                    <span>{s.nombre}{item.quantity > 1 ? ` ×${item.quantity}` : ''}</span>
+                    <span className="font-bold text-slate-700">
+                      +${(Number(s.precio) * item.quantity).toLocaleString()}
+                    </span>
+                  </div>
+                )
+              })}
             <div className="h-px bg-slate-100 my-4" />
             <div className="flex flex-col">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                TOTAL ESTIMADO {isAdmin && <span className="text-emerald-500">(Editable)</span>}
-              </label>
               <div className="relative">
                 <DollarSign className={`absolute left-0 top-1/2 -translate-y-1/2 ${isPublic ? 'text-slate-800' : 'text-primary-600'}`} size={isPublic ? 32 : 24} />
                 <input
                   type="number"
                   name="totalAmount"
-                  value={formData.totalAmount || 0}
+                  // ─── FIX 2: mostrar autoTotal si el valor guardado es 0 ───
+                  value={displayTotal}
                   onChange={onChange}
-                  disabled={!isAdmin}
+                  disabled={true}
                   className={`w-full pl-8 pr-4 py-2 rounded-xl font-serif font-black border outline-none transition-all
                     ${isAdmin
                       ? 'bg-white border-slate-200 text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-2xl'

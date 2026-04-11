@@ -24,10 +24,12 @@ const reservaInclude = {
 }
 
 // ─── OBTENER ──────────────────────────────────────────────────────────────────
+// Para admin/empleado: solo muestra PENDIENTE (las CONFIRMADAS van a Ventas)
+// Para clientes: muestra solo sus reservas
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
   const where = usuarioId
     ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
-    : { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] as EstadoReserva[] } }
+    : { estado: 'PENDIENTE' as EstadoReserva }
 
   const reservas = await prisma.reserva.findMany({
     where,
@@ -37,6 +39,7 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones))
 }
 
+<<<<<<< HEAD
 export const getReservasCalendario = async (usuarioId?: number) => {
   const reservaWhere = usuarioId
     ? {
@@ -46,6 +49,13 @@ export const getReservasCalendario = async (usuarioId?: number) => {
     : { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
 
   const [reservas, ensayos, cotizaciones] = await Promise.all([
+=======
+export const getReservasCalendario = async () => {
+  const now = new Date()
+
+  const [reservas, ensayos, cotizaciones, ventasFinalizadas] = await Promise.all([
+    // PENDIENTE y CONFIRMADA siguen apareciendo normalmente
+>>>>>>> origin/brayan
     prisma.reserva.findMany({
       where: reservaWhere,
       include: {
@@ -56,7 +66,12 @@ export const getReservasCalendario = async (usuarioId?: number) => {
             horaInicio:  true,
             horaFin:     true,
             tipoEvento:  true,
-            cliente:     { select: { email: true } },
+            cliente: { select:{ 
+              email: true,
+              apellido:true,
+               usuario:  { select: { nombre: true } }, // ← nuevo
+              } 
+            },
           },
         },
       },
@@ -77,6 +92,47 @@ export const getReservasCalendario = async (usuarioId?: number) => {
         cliente: { select: { email: true } },
       },
       orderBy: { fechaEvento: 'asc' },
+    }),
+
+    // Ventas FINALIZADAS que aún no han terminado (horaFin > ahora)
+    prisma.venta.findMany({
+      where: { estado: 'FINALIZADO' },
+      include: {
+        reserva: {
+          include: {
+            cotizacion: {
+              select: {
+                clienteId:        true,
+                fechaEvento:      true,
+                horaInicio:       true,
+                horaFin:          true,
+                tipoEvento:       true,
+                nombreHomenajeado: true,
+                direccionEvento:  true,
+                cliente: {
+                  select: {
+                    email:               true,
+                    usuario:            { select: { nombre: true } },
+                    apellido:           true,
+                    telefonoPrincipal:  true,
+                    telefonoAlternativo: true,
+                  }
+                },
+              },
+            },
+          },
+        },
+        cliente: {
+          select: {
+            email:               true,
+            usuario:            { select: { nombre: true } },
+            apellido:           true,
+            telefonoPrincipal:  true,
+            telefonoAlternativo: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     }),
   ])
 
@@ -108,7 +164,53 @@ export const getReservasCalendario = async (usuarioId?: number) => {
     clientEmail: c.cliente?.email ?? c.contactoEmail ?? '',
   }))
 
-  return [...reservasMapped, ...ensayosMapped, ...cotizacionesMapped] 
+  // ─── Ventas FINALIZADAS - siempre aparecen en calendario ───
+  const ventasFinalizadasMapped = ventasFinalizadas
+    .filter(v => {
+      // Solo incluir si tiene fecha (de cualquier fuente)
+      const cot = (v.reserva as any)?.cotizacion
+      const fechaEvento = cot?.fechaEvento || v.fechaVenta
+      return !!fechaEvento // Solo incluir si tiene fecha
+    })
+    .map(v => {
+      const cot = (v.reserva as any)?.cotizacion
+      const cliente = (cot?.cliente as any) || (v.cliente as any)
+      const nombreCliente = cliente
+        ? `${cliente.usuario?.nombre ?? ''} ${cliente.apellido ?? ''}`.trim()
+        : 'Cliente'
+      
+      // Usar fecha de cotización si existe, sino usar fechaVenta
+      const fechaEvento = cot?.fechaEvento || v.fechaVenta
+      const horaInicio = cot?.horaInicio
+      const horaFin = cot?.horaFin
+      
+      return {
+        id:               `VENTA-${v.id}`,
+        cotizacionId:     v.reservaId ? String(v.reservaId) : undefined,
+        clientName:       nombreCliente,
+        clientId:         String(v.clienteId),
+        clientPhone:      cliente?.telefonoPrincipal ?? '',
+        secondaryPhone:   cliente?.telefonoAlternativo ?? '',
+        clientEmail:      cliente?.email ?? '',
+        homenajeado:      cot?.nombreHomenajeado ?? 'Sin especificar',
+        eventType:        cot?.tipoEvento ?? 'Venta Finalizada',
+        eventDate:        toLocalDate(fechaEvento as Date),
+        eventTime:        horaInicio ? toLocalTime(horaInicio) : '08:00',
+        startTime:        horaInicio ? toLocalTime(horaInicio) : '08:00',
+        endTime:          horaFin ? toLocalTime(horaFin) : '23:00',
+        location:         cot?.direccionEvento ?? 'Sin especificar',
+        address:          cot?.direccionEvento ?? 'Sin especificar',
+        neighborhood:     '',
+        repertoireIds:    [],
+        selectedServices: [],
+        totalAmount:      Number(v.montoTotal),
+        paidAmount:       Number(v.montoPagado),
+        pendingAmount:    0,
+        status:           'FINALIZADO',
+      }
+    })
+
+  return [...reservasMapped, ...ensayosMapped, ...cotizacionesMapped, ...ventasFinalizadasMapped]
 }
 export { getAvailableHours }
 
@@ -389,16 +491,6 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
   return getReservaById(id)
 }
 
-// ─── CONFIRMAR ────────────────────────────────────────────────────────────────
-export const confirmarReserva = async (id: number): Promise<ReservationResponse> => {
-  const r = await prisma.reserva.findUnique({ where: { id } })
-  if (!r) throw new AppError('Reserva no encontrada', 404)
-  if (r.estado !== 'PENDIENTE')
-    throw new AppError('Solo se pueden confirmar reservas pendientes', 409)
-
-  await prisma.reserva.update({ where: { id }, data: { estado: 'CONFIRMADA' } })
-  return getReservaById(id)
-}
 
 // ─── ELIMINAR ─────────────────────────────────────────────────────────────────
 export const deleteReserva = async (id: number) => {
@@ -414,6 +506,8 @@ export const deleteReserva = async (id: number) => {
 
   return { message: 'Reserva eliminada correctamente' }
 }
+
+
 // ─── ABONOS ────────────────────────────────────────────────────────────────────
 export const getAbonos = async (usuarioId?: number) => {
   // Validate usuarioId
@@ -422,7 +516,7 @@ export const getAbonos = async (usuarioId?: number) => {
   }
 
   const where: any = {}
-
+ 
   if (usuarioId) {
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } })
     if (usuario) {
@@ -430,7 +524,7 @@ export const getAbonos = async (usuarioId?: number) => {
       if (cliente) where.clienteId = cliente.id
     }
   }
-
+ 
   const abonos = await prisma.abono.findMany({
     where,
     include: {
@@ -439,6 +533,7 @@ export const getAbonos = async (usuarioId?: number) => {
   },
     orderBy: { fechaPago: 'desc' }
   })
+<<<<<<< HEAD
 
   return abonos.map((a: any) => {
     // Validate required fields
@@ -461,62 +556,110 @@ export const getAbonos = async (usuarioId?: number) => {
       newBalance: Number(a.nuevoSaldo ?? 0)
     }
   })
+=======
+ 
+  return abonos.map((a: any) => ({
+    id: String(a.id),
+    amount: Number(a.monto),
+    date: a.fechaPago?.toISOString() ?? '',
+    type: 'Abono Parcial',
+    method: a.metodoPago,
+    notes: a.notas ?? '',
+    reservationId: String(a.reservaId),
+    clientId: String(a.clienteId),
+    clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
+    clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
+    reservationTotal: Number(a.reserva?.totalValor ?? 0),
+    newBalance: Number(a.nuevoSaldo ?? 0)
+  }))
+>>>>>>> origin/brayan
 }
 
+// ─── CREATE ABONO - 50% RULE ENFORCED ────────────────────────────────────────
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
   const reserva = await prisma.reserva.findUnique({
     where: { id: reservaId },
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
   })
-
+ 
   if (!reserva) throw new AppError('Reserva no encontrada', 404)
   if (reserva.estado === 'ANULADA') throw new AppError('No se puede registrar abono en una reserva anulada', 400)
-
+ 
   const monto = Number(data.amount)
   if (isNaN(monto) || monto <= 0) throw new AppError('Monto de abono inválido', 400)
-
-  const saldoActual = Number(reserva.saldoPendiente)
-  if (monto > saldoActual) throw new AppError('El monto de abono supera el saldo pendiente', 400)
-
+ 
+  const totalValor    = Number(reserva.totalValor)
+  const saldoActual   = Number(reserva.saldoPendiente)
+  const pagadoActual  = totalValor - saldoActual
+  const anticipo50    = Math.ceil(totalValor / 2)
+ 
+  // ─── RULE 1: First abono must be exactly 50% ─────────────────────────────
+  if (pagadoActual === 0) {
+    if (monto !== anticipo50) {
+      throw new AppError(
+        `El primer abono debe ser exactamente el 50% del total: $${anticipo50.toLocaleString('es-CO')} COP`,
+        400
+      )
+    }
+  } else {
+    // ─── RULE 2: Subsequent abono must be exactly the remaining balance ──────
+    if (monto !== saldoActual) {
+      throw new AppError(
+        `El segundo abono debe ser exactamente el saldo pendiente: $${saldoActual.toLocaleString('es-CO')} COP`,
+        400
+      )
+    }
+  }
+ 
   const metodoPagoRaw = String(data.method ?? '').trim().toUpperCase()
   const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']
   if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new AppError('Método de pago inválido', 400)
-
+ 
   const nuevoSaldo = Number((saldoActual - monto).toFixed(2))
-
-  const clienteId = reserva.cotizacion?.clienteId
+  const clienteId  = reserva.cotizacion?.clienteId
   if (!clienteId) throw new AppError('Reserva sin cliente asociado', 400)
-
+ 
   await prisma.abono.create({
     data: {
       reservaId,
       clienteId,
       monto,
-      fechaPago: new Date(data.date),
+      fechaPago:  new Date(data.date),
       metodoPago: metodoPagoRaw as any,
-      notas: data.notes ?? null,
+      notas:      data.notes ?? null,
       nuevoSaldo
     }
   })
-
+ 
+  // Update saldo pendiente
   await prisma.reserva.update({ where: { id: reservaId }, data: { saldoPendiente: nuevoSaldo } })
-
-  // ✅ Si el saldo llega a 0, crear automáticamente la venta
+ 
+  // ─── After first abono (50%) → confirm reservation ───────────────────────
+  if (pagadoActual === 0 && nuevoSaldo > 0) {
+    await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'CONFIRMADA' } })
+  }
+ 
+  // ─── After second abono (fully paid) → create venta + finalize ───────────
   if (nuevoSaldo <= 0.01 && !reserva.venta) {
-    const totalValor = Number(reserva.totalValor)
     const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
-
+ 
     await prisma.venta.create({
       data: {
         reservaId,
         clienteId,
-        tipo: 'RESERVA',
-        estado: 'FINALIZADO',
-        montoTotal: totalValor,
+        tipo:        'RESERVA',
+        estado:      'FINALIZADO',
+        montoTotal:  totalValor,
         montoPagado: totalAbonos,
-        fechaVenta: new Date(),
-        metodoPago: metodoPagoRaw as any
+        fechaVenta:  new Date(),
+        metodoPago:  metodoPagoRaw as any
       }
     })
+  }
+    const esUltimoPago = nuevoSaldo <= 0.01
+  return {
+    message: esUltimoPago
+      ? 'Pago final registrado. Reserva completamente pagada y venta generada.'
+      : 'Anticipo del 50% registrado. Reserva confirmada.',
   }
 }

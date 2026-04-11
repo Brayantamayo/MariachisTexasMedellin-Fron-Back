@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Mail, Lock, Phone, MapPin, Calendar, FileText, Camera, Home, Hash, Map, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, Calendar, FileText, Camera, Home, Hash, Map, CheckCircle, AlertCircle, X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { authService } from '../pages/authService';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 import { uploadImage } from '@/shared/services/uploadService';
+
 
 interface Props {
   onNavigate: (path: string) => void;
@@ -146,6 +147,8 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
       setIsLoading(false);
     }
   };
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 pt-32 pb-12 bg-dark-900">
@@ -256,29 +259,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
               <p className="text-[10px] text-gray-600">JPG, PNG, WEBP · Máx 5MB · Opcional</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Nombre */}
-              <div>
-                <label className="block text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2 ml-1">Nombre <span className="text-primary-500">*</span></label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500 transition-colors" size={18} />
-                  <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} required
-                    placeholder="Tu nombre"
-                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/50 focus:border-secondary-500 outline-none transition-all text-sm font-medium" />
-                </div>
-              </div>
-
-              {/* Apellido */}
-              <div>
-                <label className="block text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2 ml-1">Apellido <span className="text-primary-500">*</span></label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500 transition-colors" size={18} />
-                  <input type="text" name="apellido" value={formData.apellido} onChange={handleChange} required
-                    placeholder="Tu apellido"
-                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/50 focus:border-secondary-500 outline-none transition-all text-sm font-medium" />
-                </div>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Tipo Documento */}
               <div>
@@ -304,6 +285,29 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-white/20 outline-none transition-all text-sm font-medium" />
                 </div>
               </div>
+
+              {/* Nombre */}
+              <div>
+                <label className="block text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2 ml-1">Nombre <span className="text-primary-500">*</span></label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500 transition-colors" size={18} />
+                  <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} required
+                    placeholder="Tu nombre"
+                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/50 focus:border-secondary-500 outline-none transition-all text-sm font-medium" />
+                </div>
+              </div>
+
+              {/* Apellido */}
+              <div>
+                <label className="block text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2 ml-1">Apellido <span className="text-primary-500">*</span></label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500 transition-colors" size={18} />
+                  <input type="text" name="apellido" value={formData.apellido} onChange={handleChange} required
+                    placeholder="Tu apellido"
+                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/50 focus:border-secondary-500 outline-none transition-all text-sm font-medium" />
+                </div>
+              </div>
+
 
               {/* Fecha Nacimiento */}
               <div>
@@ -403,26 +407,44 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
               </div>
 
               {/* Contraseña */}
-              <div>
-                <label className="block text-xs font-bold text-primary-500 uppercase tracking-widest mb-2 ml-1">Contraseña <span className="text-white">*</span></label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary-500 transition-colors" size={18} />
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6}
-                    placeholder="Mínimo 6 caracteres"
-                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm font-medium" />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-primary-500 uppercase tracking-widest mb-2 ml-1">
+                Contraseña <span className="text-white">*</span>
+              </label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary-500 transition-colors" size={18} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password" value={formData.password} onChange={handleChange}
+                  required minLength={6} placeholder="Mínimo 6 caracteres"
+                  className="w-full pl-11 pr-11 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm font-medium"
+                />
+                <button type="button" onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-500 transition-colors">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+            </div>
 
-              {/* Confirmar Contraseña */}
-              <div>
-                <label className="block text-xs font-bold text-primary-500 uppercase tracking-widest mb-2 ml-1">Confirmar Contraseña <span className="text-white">*</span></label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary-500 transition-colors" size={18} />
-                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={6}
-                    placeholder="Repite tu contraseña"
-                    className="w-full pl-11 pr-4 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm font-medium" />
-                </div>
+            {/* Confirmar Contraseña */}
+            <div>
+              <label className="block text-xs font-bold text-primary-500 uppercase tracking-widest mb-2 ml-1">
+                Confirmar Contraseña <span className="text-white">*</span>
+              </label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary-500 transition-colors" size={18} />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
+                  required minLength={6} placeholder="Repite tu contraseña"
+                  className="w-full pl-11 pr-11 py-3 bg-dark-800/50 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm font-medium"
+                />
+                <button type="button" onClick={() => setShowConfirmPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-500 transition-colors">
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+            </div>
             </div>
 
             <div className="pt-4">

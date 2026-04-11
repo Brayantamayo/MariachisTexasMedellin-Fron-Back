@@ -10,6 +10,7 @@ import { RehearsalCreateModal } from '../components/RehearsalCreateModal';
 import { RehearsalEditModal } from '../components/RehearsalEditModal';
 import { RehearsalDetailModal } from '../components/RehearsalDetailModal';
 
+
 export const EnsayosPage: React.FC = () => {
 const { user } = useAuth();
 const [rehearsals, setRehearsals] = useState<Rehearsal[]>([]);
@@ -86,34 +87,25 @@ const confirmDelete = async () => {
     }
 };
 
-//handleToggleStatus sirve para marcar un ensayo como listo se crea en pendiente 
+//handleToggleStatus sirve para marcar un ensayo como listo se crea en pendiente
+const [confirmModal, setConfirmModal] = useState<Rehearsal | null>(null)
 const handleToggleStatus = async (rehearsal: Rehearsal) => {
-const isCompleted = rehearsal.status === 'Completado'
+  const isCompleted = rehearsal.status === 'Completado'
+  if (!isCompleted) {
+    setConfirmModal(rehearsal)  // abre el modal en vez de window.confirm
+    return
+  }
+  await doToggle(rehearsal)
+}
 
-///confirmacion a la hora de cambiar de estado el ensayo
-if (!isCompleted) {
-    const confirmed = window.confirm(
-    `¿Marcar "${rehearsal.title}" como Listo?\n` +
-    'Desaparecerá del calendario y no podrás editarlo.'
-    )
-    if (!confirmed) return
+const doToggle = async (rehearsal: Rehearsal) => {
+  // aquí va tu lógica actual de cambio de estado
 }
-////
-try {
-    // Al hacer cambio con el suiche, el backend devuelve el ensayo actualizado con el nuevo estado
-    const updated = await rehearsalService.toggleStatus(rehearsal.id)
-    setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r))
-    showNotification(
-    updated.status === 'Completado'
-        ? `Ensayo "${updated.title}" marcado como Listo.`
-        : `Ensayo "${updated.title}" marcado como Pendiente.`
-    )
-} catch (err: any) {
-    showNotification(
-    err?.response?.data?.message || 'Error al cambiar el estado del ensayo.',
-    'error'
-    )
-}
+
+const handleConfirm = async () => {
+  if (!confirmModal) return
+  await doToggle(confirmModal)
+  setConfirmModal(null)
 }
 
 // Filtrar canciones para el selector
@@ -172,6 +164,36 @@ return (
                 </button>
             )}
         </div>
+
+        {confirmModal && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+    <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+          <CheckCircle className="text-amber-600" size={20} />
+        </div>
+        <h3 className="font-bold text-slate-800 text-base">¿Marcar como listo?</h3>
+      </div>
+      <p className="text-sm text-slate-500 mb-5">
+        <span className="font-medium text-slate-700">"{confirmModal.title}"</span> desaparecerá del calendario y no podrás editarlo.
+      </p>
+      <div className="flex gap-2 justify-end">
+        <button
+          onClick={() => setConfirmModal(null)}
+          className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleConfirm}
+          className="px-4 py-2 text-sm rounded-xl bg-primary-600 text-white hover:bg-primary-700 font-medium"
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Contenedor principal de la tabla */}
         <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
@@ -233,5 +255,7 @@ return (
             message="Esta acción eliminará el evento del calendario. No se puede deshacer."
         />
     </div>
+
+    
 );
 };
