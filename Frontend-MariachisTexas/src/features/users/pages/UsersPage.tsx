@@ -91,10 +91,11 @@ export const UsersPage: React.FC = () => {
         setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: newStatus } : u));
         await userService.updateUser(user.id, { isActive: newStatus });
         showNotification(`Usuario ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error cambiando estado", error);
-        fetchUsers(); 
-        showNotification("Error al cambiar el estado.", "error");
+        fetchUsers();
+        const msg = error?.response?.data?.message || error?.message || 'Error al cambiar el estado.';
+        showNotification(msg, "error");
     }
   };
 

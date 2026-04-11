@@ -140,7 +140,6 @@ export const AbonoForm: React.FC<Props> = ({
                     >
                         <option value="TRANSFERENCIA">Transferencia</option>
                         <option value="EFECTIVO">Efectivo</option>
-                        <option value="TARJETA">Tarjeta</option>
                         <option value="NEQUI">Nequi</option>
                         <option value="DAVIPLATA">Daviplata</option>
                         <option value="OTRO">Otro</option>

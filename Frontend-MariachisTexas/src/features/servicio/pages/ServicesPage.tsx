@@ -98,8 +98,8 @@ const confirmDelete = async () => {
   };
 
   const filteredServices = services.filter(service =>
-    service.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    service.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    service.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const canManage = user?.role === UserRole.ADMIN;

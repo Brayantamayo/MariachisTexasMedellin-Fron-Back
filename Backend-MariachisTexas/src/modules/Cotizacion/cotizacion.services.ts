@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../schemas'
-import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia } from '../../utils/date.helpers'
+import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
 import { emailCotizacionAprobada } from '../../utils/email.templates'
 import { AppError } from '../../utils/AppError'
@@ -33,7 +33,7 @@ interface QuotationResponse {
 
 const mapToQuotation = (c: any): QuotationResponse => {
   const clientName     = c.clienteId
-    ? `${c.cliente?.usuario?.nombre ?? ''} ${c.cliente?.apellido ?? ''}`.trim()
+    ? buildClientName(c.cliente?.usuario?.nombre, c.cliente?.apellido)
     : c.contactoNombre || c.nombreHomenajeado || ''
   const clientPhone    = c.cliente?.telefonoPrincipal   || c.contactoTelefono  || ''
   const secondaryPhone = c.cliente?.telefonoAlternativo || c.contactoTelefono2 || ''
@@ -286,7 +286,7 @@ export const convertirCotizacion = async (id: number) => {
 
   const emailDestino  = cotizacion.cliente?.email || cotizacion.contactoEmail || ''
   const nombreCliente = cotizacion.cliente
-    ? `${cotizacion.cliente.usuario?.nombre ?? ''} ${cotizacion.cliente.apellido}`.trim()
+    ? buildClientName(cotizacion.cliente.usuario?.nombre, cotizacion.cliente.apellido)
     : cotizacion.contactoNombre || 'Cliente'
   const telefono  = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
   const telefono2 = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''

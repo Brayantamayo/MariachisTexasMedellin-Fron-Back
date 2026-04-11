@@ -103,10 +103,11 @@ export const useClientsManager = () => {
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, isActive: newStatus } : c));
         await clientService.toggleClientStatus(client.id, newStatus);
         showNotification(`Cliente ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        fetchClients(); 
-        showNotification("Error al cambiar el estado.", "error");
+        fetchClients();
+        const msg = error?.response?.data?.message || error?.message || 'Error al cambiar el estado.';
+        showNotification(msg, "error");
     }
   };
 

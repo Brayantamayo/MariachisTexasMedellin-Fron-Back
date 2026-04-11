@@ -50,13 +50,19 @@ interface SearchResponse {
 // API → User (frontend)
 const mapClienteToUser = (cliente: ClienteAPI): User => {
   const nombreCompleto = cliente.usuario?.nombre || 'Sin nombre'
-  const apellido = cliente.apellido || ''
+  const apellido = (cliente.apellido || '').trim()
 
-  // usuario.nombre puede ser "Juan García" (nombre + apellido concatenados)
-  // Para evitar duplicar el apellido, extraemos solo la parte que no sea el apellido
-  let nombre = nombreCompleto
-  if (apellido && nombreCompleto.toLowerCase().endsWith(apellido.toLowerCase())) {
-    nombre = nombreCompleto.slice(0, nombreCompleto.length - apellido.length).trim()
+  // usuario.nombre puede venir como "Juan García" (nombre + apellido juntos).
+  // Extraemos solo el primer nombre eliminando el apellido del final,
+  // usando comparación case-insensitive y tolerando espacios extra.
+  let nombre = nombreCompleto.trim()
+  if (apellido) {
+    const suffix = ' ' + apellido
+    const lower  = nombre.toLowerCase()
+    const sfxLow = suffix.toLowerCase()
+    if (lower.endsWith(sfxLow)) {
+      nombre = nombre.slice(0, nombre.length - suffix.length).trim()
+    }
   }
 
   return {

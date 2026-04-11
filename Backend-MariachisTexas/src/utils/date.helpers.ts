@@ -62,3 +62,23 @@ export const bloquearRango = (
   // Buffer POST: hora siguiente al fin (cierre/transporte) ← FIX
   blocked.add(`${(eh % 24).toString().padStart(2, '0')}:00`)
 }
+
+// ─── NOMBRE DE CLIENTE SIN APELLIDO DUPLICADO ────────────────────────────────
+// usuario.nombre se guarda como "Juan García" (nombre + apellido).
+// Si concatenamos apellido de nuevo queda "Juan García García".
+// Esta función extrae solo el primer nombre quitando el apellido del final.
+export const buildClientName = (
+  usuarioNombre: string | null | undefined,
+  apellido:      string | null | undefined
+): string => {
+  const nombre   = (usuarioNombre ?? '').trim()
+  const apell    = (apellido      ?? '').trim()
+  if (!nombre) return apell
+  if (!apell)  return nombre
+  const suffix   = ' ' + apell
+  const lower    = nombre.toLowerCase()
+  if (lower.endsWith(suffix.toLowerCase()))
+    return nombre.slice(0, nombre.length - suffix.length).trim() + ' ' + apell
+  // Si no termina con el apellido, devolver tal cual (ya está bien)
+  return nombre
+}

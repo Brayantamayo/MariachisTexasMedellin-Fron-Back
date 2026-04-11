@@ -5,7 +5,7 @@ import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 import PDFDocument from 'pdfkit'
 import prisma from '../../config/prisma'
-import { toLocalDate, toLocalTime } from '../../utils/date.helpers'
+import { toLocalDate, toLocalTime, buildClientName } from '../../utils/date.helpers'
 
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO'] as const
 
@@ -190,7 +190,7 @@ export const downloadReservaPdf = asyncHandler(async (req: AuthRequest, res: Res
     const cot           = reserva.cotizacion
     const cliente       = cot?.cliente
     const nombreCliente = cliente
-      ? `${cliente.usuario?.nombre ?? ''} ${cliente.apellido ?? ''}`.trim()
+      ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
       : 'Cliente'
 
     const totalValor  = Number(reserva.totalValor)

@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, DollarSign, AlertCircle } from 'lucide-react';
 import { ventaService } from '../services/ventaService';
-
-// ─── Cliente fijo para ventas directas (ID 28 en BD) ─────────────────────────
-const CLIENTE_DIRECTO = { id: 22, usuarioId: 28, nombre: 'Cliente Directa' } as const
+import { clientService } from '../../clientes/services/clientService';
 
 const METODOS = [
   { value: 'TRANSFERENCIA', label: 'Transferencia' },
   { value: 'EFECTIVO',      label: 'Efectivo'      },
-  { value: 'TARJETA',       label: 'Tarjeta'       },
   { value: 'NEQUI',         label: 'Nequi'         },
   { value: 'DAVIPLATA',     label: 'Daviplata'     },
   { value: 'OTRO',          label: 'Otro'          },
@@ -34,12 +31,13 @@ const initialForm = () => ({
 })
 
 export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
-  const [saleType,       setSaleType]       = useState<'Por Reserva' | 'Directa'>('Por Reserva')
-  const [reservations,   setReservations]   = useState<any[]>([])
-  const [selectedReserva,setSelectedReserva]= useState<any | null>(null)
-  const [formData,       setFormData]       = useState(initialForm())
-  const [saving,         setSaving]         = useState(false)
-  const [error,          setError]          = useState<string | null>(null)
+  const [saleType,        setSaleType]        = useState<'Por Reserva' | 'Directa'>('Por Reserva')
+  const [reservations,    setReservations]    = useState<any[]>([])
+  const [selectedReserva, setSelectedReserva] = useState<any | null>(null)
+  const [formData,        setFormData]        = useState(initialForm())
+  const [saving,          setSaving]          = useState(false)
+  const [error,           setError]           = useState<string | null>(null)
+  const [clienteDirecto,  setClienteDirecto]  = useState<{ id: number; nombre: string } | null>(null)
 
   useEffect(() => {
     if (!isOpen) return
@@ -48,6 +46,22 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
     setSelectedReserva(null)
     setError(null)
     ventaService.getPayableReservations().then(setReservations).catch(() => setReservations([]))
+
+    // Buscar cliente directa por email
+    clientService.searchClients('directa@mariachistexas.com').then(results => {
+      if (results.length > 0) {
+        const c = results[0]
+        const cd = { id: Number(c.id), nombre: `${c.name} ${c.lastName}`.trim() || c.email }
+        setClienteDirecto(cd)
+        // Si ya estamos en modo Directa, actualizar el clienteId
+        setSaleType(prev => {
+          if (prev === 'Directa') {
+            setFormData((f: any) => ({ ...f, clienteId: String(cd.id), clientName: cd.nombre }))
+          }
+          return prev
+        })
+      }
+    }).catch(() => {})
   }, [isOpen])
 
   // ─── Cambiar pestaña ───────────────────────────────────────────────────────
@@ -59,8 +73,8 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
     if (type === 'Directa') {
       setFormData(prev => ({
         ...prev,
-        clienteId:     String(CLIENTE_DIRECTO.id),
-        clientName:    CLIENTE_DIRECTO.nombre,
+        clienteId:     clienteDirecto ? String(clienteDirecto.id) : '',
+        clientName:    clienteDirecto?.nombre ?? 'Cliente Directa',
         reservationId: '',
         amount:        '',
         concept:       'Venta Directa',
@@ -239,8 +253,9 @@ export const VentaCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Cliente</label>
                   <div className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-500 bg-slate-50 flex items-center justify-between">
-                    <span>{CLIENTE_DIRECTO.nombre}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">ID {CLIENTE_DIRECTO.id}</span>
+                    <span>{clienteDirecto?.nombre ?? 'Cliente Directa'}</span>
+                    {clienteDirecto && <span className="text-[10px] text-slate-400 font-mono">ID {clienteDirecto.id}</span>}
+                    {!clienteDirecto && <span className="text-[10px] text-red-400 font-bold">No encontrado</span>}
                   </div>
                 </div>
 

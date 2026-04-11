@@ -1,5 +1,5 @@
 import type { ReservationResponse } from '../../../types/interfaces'
-import { toLocalDate, toLocalTime } from '../../../utils/date.helpers'
+import { toLocalDate, toLocalTime, buildClientName } from '../../../utils/date.helpers'
 
 // ─── Tipo inferido de Prisma para Reserva con relaciones ─────────────────────
 // Se define aquí para tipar correctamente los mappers sin usar any
@@ -65,7 +65,7 @@ export type ReservaPublica = {
 export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse => {
   const cot            = r.cotizacion
   const clientName     = cot.cliente
-    ? `${cot.cliente.usuario?.nombre ?? ''} ${cot.cliente.apellido}`.trim()
+    ? buildClientName(cot.cliente.usuario?.nombre, cot.cliente.apellido)
     : cot.contactoNombre || cot.nombreHomenajeado || ''
   const clientPhone    = cot.cliente?.telefonoPrincipal   || cot.contactoTelefono  || ''
   const secondaryPhone = cot.cliente?.telefonoAlternativo || cot.contactoTelefono2 || ''
@@ -108,8 +108,8 @@ export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse =
 export const mapToPublicReservation = (r: ReservaPublica) => ({
   id:          String(r.id),
   clientId:    String(r.cotizacion?.clienteId ?? ''),
-  clientName:  r.cotizacion?.cliente           // ← nuevo
-    ? `${r.cotizacion.cliente.usuario?.nombre ?? ''} ${r.cotizacion.cliente.apellido ?? ''}`.trim()
+  clientName:  r.cotizacion?.cliente
+    ? buildClientName(r.cotizacion.cliente.usuario?.nombre, r.cotizacion.cliente.apellido)
     : '',
   clientEmail: r.cotizacion?.cliente?.email ?? '', // ← nuevo
   eventDate:   r.cotizacion?.fechaEvento ? toLocalDate(r.cotizacion.fechaEvento) : '',

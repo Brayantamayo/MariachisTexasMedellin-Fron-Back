@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
-import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia } from '../../utils/date.helpers'
+import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
 import { emailReservaCreada } from '../../utils/email.templates'
 import { AppError } from '../../utils/AppError'
@@ -163,7 +163,7 @@ export const getReservasCalendario = async () => {
       const cot = (v.reserva as any)?.cotizacion
       const cliente = (cot?.cliente as any) || (v.cliente as any)
       const nombreCliente = cliente
-        ? `${cliente.usuario?.nombre ?? ''} ${cliente.apellido ?? ''}`.trim()
+        ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
         : 'Cliente'
       
       // Usar fecha de cotización si existe, sino usar fechaVenta
@@ -535,7 +535,7 @@ return abonos.map((a: any) => {
       reservationId:    String(a.reservaId || ''),
       clientId:         String(a.clienteId || ''),
       clientEmail:      a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
-      clientName:       `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
+      clientName:       buildClientName(a.cliente?.usuario?.nombre, a.cliente?.apellido),
       reservationTotal: Number(a.reserva?.totalValor ?? 0),
       newBalance:       Number(a.nuevoSaldo ?? 0),
     }
@@ -580,7 +580,7 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
   }
  
   const metodoPagoRaw = String(data.method ?? '').trim().toUpperCase()
-  const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']
+  const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'OTRO']
   if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new AppError('Método de pago inválido', 400)
  
   const nuevoSaldo = Number((saldoActual - monto).toFixed(2))

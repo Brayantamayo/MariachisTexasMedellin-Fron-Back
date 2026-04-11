@@ -36,7 +36,6 @@ interface ReservaGroup {
 const metodoPagoLabel: Record<string, string> = {
   EFECTIVO:      'Efectivo',
   TRANSFERENCIA: 'Transferencia',
-  TARJETA:       'Tarjeta',
   NEQUI:         'Nequi',
   DAVIPLATA:     'Daviplata',
   OTRO:          'Otro',

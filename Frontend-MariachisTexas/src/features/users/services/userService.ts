@@ -4,16 +4,30 @@ import api from '@/shared/api/api';
 
 // ─── MAPEAR DE BACKEND A FRONTEND ────────────────────────────────────────────
 const mapFromBackend = (backend: any): User => {
-  const nombreCompleto = backend.nombre || '';
-  const nombreParts = nombreCompleto.split(' ');
-  
-  const empleado = backend.empleado;
-  const cliente = backend.cliente;
+  const nombreCompleto = (backend.nombre || '').trim()
+  const empleado = backend.empleado
+  const cliente  = backend.cliente
+
+  // apellido real guardado en la tabla cliente (empleados no tienen campo apellido)
+  const apellido = (cliente?.apellido || '').trim()
+
+  // Si hay apellido separado (cliente), quitarlo del final del nombre completo
+  let nombre = nombreCompleto
+  if (apellido) {
+    const suffix = ' ' + apellido
+    if (nombre.toLowerCase().endsWith(suffix.toLowerCase()))
+      nombre = nombre.slice(0, nombre.length - suffix.length).trim()
+  }
+
+  // Separar por primer espacio para obtener nombre y apellido
+  const spaceIdx  = nombre.indexOf(' ')
+  const firstName = spaceIdx >= 0 ? nombre.slice(0, spaceIdx) : nombre
+  const lastNameFb = apellido || (spaceIdx >= 0 ? nombre.slice(spaceIdx + 1) : '')
 
   return {
   id: String(backend.id),
-  name: nombreParts[0] || '',
-  lastName: nombreParts.slice(1).join(' ') || '',
+  name: firstName,
+  lastName: lastNameFb,
   email: backend.email || '',
   role: backend.rol?.nombre as UserRole,
   isActive: backend.estado ?? false,

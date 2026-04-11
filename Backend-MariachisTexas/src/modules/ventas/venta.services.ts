@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma'
 import { VentaCreateSchema, zodError } from '../schemas'
 import type { VentaCreateInput } from '../../types/interfaces'
-import { toLocalTime } from '../../utils/date.helpers'
+import { toLocalTime, buildClientName } from '../../utils/date.helpers'
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -10,7 +10,7 @@ const mapToSale = (v: any) => {
   const cotizacion = reserva?.cotizacion
   const cliente    = v.cliente ?? cotizacion?.cliente
   const clienteName = cliente
-    ? `${cliente.usuario?.nombre ?? ''} ${cliente.apellido ?? ''}`.trim()
+    ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
     : ''
 
   const ventaFinalizada = v.estado === 'FINALIZADO'
@@ -77,7 +77,7 @@ export class VentaError extends Error {
   }
 }
 
-const METODOS_PAGO_VALIDOS = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO'] as const
+const METODOS_PAGO_VALIDOS = ['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'OTRO'] as const
 type MetodoPago = typeof METODOS_PAGO_VALIDOS[number]
 
 const validarMetodoPago = (metodo: string): MetodoPago => {
@@ -179,7 +179,7 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
       date:              r.createdAt?.toISOString() ?? '',
       type:              'Por Reserva',
       clientName:        cliente
-        ? `${cliente.usuario?.nombre ?? ''} ${cliente.apellido ?? ''}`.trim()
+        ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
         : '',
       clientId:          String(cot?.clienteId ?? ''),
       clientEmail:       cliente?.email ?? '',
@@ -450,7 +450,7 @@ export const getPayableReservations = async (): Promise<any[]> => {
     const totalAbonado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
     return {
       id:            String(r.id),
-      clientName:    `${r.cotizacion?.cliente?.usuario?.nombre ?? ''} ${r.cotizacion?.cliente?.apellido ?? ''}`.trim(),
+      clientName:    buildClientName(r.cotizacion?.cliente?.usuario?.nombre, r.cotizacion?.cliente?.apellido),
       clientId:      String(r.cotizacion?.clienteId ?? ''),
       eventType:     r.cotizacion?.tipoEvento ?? 'Evento',
       totalAmount:   Number(r.totalValor),

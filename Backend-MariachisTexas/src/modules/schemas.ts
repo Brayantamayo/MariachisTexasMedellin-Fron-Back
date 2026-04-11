@@ -666,7 +666,7 @@ export const VentaCreateSchema = z.object({
     .refine(v => Number.isFinite(v),  'El monto debe ser un número válido')
     .refine(v => (v * 100) % 1 === 0, 'El monto no puede tener más de 2 decimales'),
   fechaVenta: fecha,
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO']),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'OTRO']),
 })
 .refine(d => d.montoPagado <= d.montoTotal, {
   message: 'El monto pagado no puede ser mayor al total', path: ['montoPagado']
@@ -1173,8 +1173,8 @@ export const zodError = (e: ZodError): string =>
     .trim()
     .toUpperCase()
     .refine(
-      m => ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA', 'OTRO'].includes(m.toUpperCase()),
-      'Método de pago inválido. Opciones: EFECTIVO, TRANSFERENCIA, TARJETA, NEQUI, DAVIPLATA, OTRO'
+      m => ['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'OTRO'].includes(m.toUpperCase()),
+      'Método de pago inválido. Opciones: EFECTIVO, TRANSFERENCIA, NEQUI, DAVIPLATA, OTRO'
     ),
  
   notes: z.string()

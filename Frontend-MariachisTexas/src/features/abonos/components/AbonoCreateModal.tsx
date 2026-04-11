@@ -21,7 +21,6 @@ interface ReservaOption {
 const metodoPagoOptions = [
   { value: 'TRANSFERENCIA', label: 'Transferencia' },
   { value: 'EFECTIVO',      label: 'Efectivo' },
-  { value: 'TARJETA',       label: 'Tarjeta' },
   { value: 'NEQUI',         label: 'Nequi' },
   { value: 'DAVIPLATA',     label: 'Daviplata' },
   { value: 'OTRO',          label: 'Otro' },

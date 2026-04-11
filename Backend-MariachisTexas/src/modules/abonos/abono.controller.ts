@@ -4,6 +4,7 @@ import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 import PDFDocument from 'pdfkit'
 import prisma from '../../config/prisma'
+import { buildClientName } from '../../utils/date.helpers'
 
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO', 'CLIENTE']
 
@@ -145,7 +146,7 @@ export const getPayableReservations = async (req: Request, res: Response) => {
       return {
         id:         String(r.id),
         clientName: r.cotizacion?.cliente
-          ? `${r.cotizacion.cliente.usuario?.nombre ?? ''} ${r.cotizacion.cliente.apellido ?? ''}`.trim()
+          ? buildClientName(r.cotizacion.cliente.usuario?.nombre, r.cotizacion.cliente.apellido)
           : 'Sin cliente',
         total,
         paid,

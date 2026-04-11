@@ -23,13 +23,18 @@ const getEmpleadoRolId = async (): Promise<number> => {
 
 // ─── MAPEAR DE BACKEND A FRONTEND ────────────────────────────────────────────
 const mapFromBackend = (backend: any): User => {
-  const nombreCompleto = backend.nombre || '';
-  const nombreParts = nombreCompleto.split(' ');
-  
+  const nombreCompleto = (backend.nombre || '').trim()
+
+  // Para empleados no hay campo apellido separado.
+  // Separamos por el primer espacio: todo lo demás es apellido.
+  const spaceIdx  = nombreCompleto.indexOf(' ')
+  const firstName = spaceIdx >= 0 ? nombreCompleto.slice(0, spaceIdx) : nombreCompleto
+  const lastName  = spaceIdx >= 0 ? nombreCompleto.slice(spaceIdx + 1) : ''
+
   return {
   id: String(backend.id),
-  name: nombreParts[0] || '',
-  lastName: nombreParts.slice(1).join(' ') || '',
+  name: firstName,
+  lastName: lastName,
   email: backend.email || '',
   role: backend.rol?.nombre as UserRole,
   isActive: backend.estado ?? false,

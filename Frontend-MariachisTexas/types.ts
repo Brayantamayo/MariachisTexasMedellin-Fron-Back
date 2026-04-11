@@ -95,7 +95,7 @@ export interface Payment {
   amount: number
   date:   string
   type:   'Abono Inicial' | 'Abono Parcial' | 'Saldo Final' | 'Pago Total'
-  method: 'Transferencia' | 'Efectivo' | 'Tarjeta'
+  method: 'Transferencia' | 'Efectivo'
   notes?: string
 }
 
