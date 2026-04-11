@@ -247,6 +247,7 @@ export const ReservasPage: React.FC = () => {
                 <span className="truncate">{b.startTime} Bloqueo</span>
               </div>
             ))}
+
             {dayQuotes.map((quote, index) => (
               <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-red-200 bg-red-50 text-red-700'}`}>
                 {isClient ? <Lock size={9} /> : <FileText size={9} />}
@@ -254,6 +255,7 @@ export const ReservasPage: React.FC = () => {
                 {isClient ? ' Reservado' : ' Cotización'}
               </div>
             ))}
+
             {dayRehearsals.map((reh, index) => (
               <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
                 {isClient ? <Lock size={9} /> : null}
@@ -325,20 +327,35 @@ export const ReservasPage: React.FC = () => {
         document.body
       )}
 
+      {/*Boton de reserva */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
-          <p className="text-slate-500 mt-2 text-sm">Control de agenda, fechas y disponibilidad de eventos.</p>
-        </div>
-        <div className="flex bg-slate-100 p-1 rounded-lg">
-          <button onClick={() => setView('list')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-            <List size={16} /> Lista
-          </button>
-          <button onClick={() => setView('calendar')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-            <CalendarIcon size={16} /> Calendario
-          </button>
-        </div>
-      </div>
+  <div>
+    <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
+    <p className="text-slate-500 mt-2 text-sm">Control de agenda, fechas y disponibilidad de eventos.</p>
+  </div>
+  <div className="flex items-center gap-3">
+    <div className="flex bg-slate-100 p-1 rounded-lg">
+      <button onClick={() => setView('list')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+        <List size={16} /> Lista
+      </button>
+      <button onClick={() => setView('calendar')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+        <CalendarIcon size={16} /> Calendario
+      </button>
+    </div>
+    {canManage && (
+      <button
+        onClick={() => setIsCreateOpen(true)}
+        className="bg-[#dc2626] hover:bg-red-700 text-white px-8 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase"
+      >
+        <Plus size={16} strokeWidth={3} /> NUEVA RESERVA
+      </button>
+    )}
+  </div>
+</div>
+
+
+
+
 
       {isClient && <PendingPaymentBanner reservations={reservations} />}
 

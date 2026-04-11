@@ -58,7 +58,7 @@ export const CotizacionesTable: React.FC<Props> = ({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'EN_ESPERA':  return 'En Espera';
-      case 'CONVERTIDA': return 'Convertida';
+      case 'CONVERTIDA': return 'Aceptada';
       case 'ANULADA':    return 'Anulada';
       default:           return status;
     }

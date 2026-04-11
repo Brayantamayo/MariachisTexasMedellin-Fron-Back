@@ -53,6 +53,7 @@ export const ServicesPage: React.FC = () => {
   const handleCreate = async (serviceData: Omit<Service, 'id' | 'estado'>) => {
       const newService = await servicesService.createService(serviceData);
       setServices(prev => [newService, ...prev]);
+      await fetchServices();
       showNotification('Servicio creado exitosamente.');
       setIsCreateOpen(false);
   };
@@ -62,6 +63,7 @@ export const ServicesPage: React.FC = () => {
     
       const updated = await servicesService.updateService(selectedService.id, serviceData);
       setServices(prev => prev.map(s => s.id === updated.id ? updated : s));
+      await fetchServices();
       showNotification('Servicio actualizado exitosamente.');
       setIsEditOpen(false);
       setSelectedService(null);
@@ -98,9 +100,9 @@ const confirmDelete = async () => {
   };
 
   const filteredServices = services.filter(service =>
-    service.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  service?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  service?.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
   const canManage = user?.role === UserRole.ADMIN;
 

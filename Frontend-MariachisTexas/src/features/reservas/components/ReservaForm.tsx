@@ -172,6 +172,8 @@ export const ReservaForm: React.FC<Props> = ({
     // El padre maneja el estado, aquí solo propagamos
   }
 
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   return (
     <form id="reserva-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
 
@@ -190,23 +192,67 @@ export const ReservaForm: React.FC<Props> = ({
           {isAdmin && !isEditing && !isClient && (
             <div className="mb-4">
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <select
-                  name="clientId"
-                  value={formData.clientId || ''}
-                  onChange={handleClientSelect}
-                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium"
-                >
-                  <option value="">-- Buscar en base de datos --</option>
-                  {(clients ?? []).map(c => (
-                    <option key={String(c.id)} value={String(c.id)}>
-                      {getClienteLabel(c)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
-              </div>
+              
+<div className="relative">
+  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+  <input
+    type="text"
+    placeholder="Escribe nombre, teléfono o correo..."
+    value={clientSearch}
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setShowClientDropdown(true);
+    }}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+    className="w-full pl-9 pr-8 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 text-slate-700 font-medium"
+  />
+  {clientSearch && (
+    <button
+      type="button"
+      onClick={() => {
+        setClientSearch('');
+        setShowClientDropdown(false);
+        handleClientSelect({ target: { name: 'clientId', value: '' } } as any);
+      }}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+    >
+      <X size={14} />
+    </button>
+  )}
+
+  {showClientDropdown && clientSearch.trim() !== '' && (
+    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-orange-200 rounded-lg shadow-xl max-h-[220px] overflow-y-auto">
+      {(clients ?? [])
+        .filter(c => {
+          const label = getClienteLabel(c).toLowerCase();
+          return label.includes(clientSearch.toLowerCase());
+        })
+        .slice(0, 8)
+        .map(c => (
+          <div
+            key={String(c.id)}
+            onMouseDown={() => {
+              setClientSearch(getClienteLabel(c));
+              setShowClientDropdown(false);
+              handleClientSelect({ target: { name: 'clientId', value: String(c.id) } } as any);
+            }}
+            className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-slate-50 last:border-0"
+          >
+            <p className="text-sm font-bold text-slate-700">
+              {`${c.name ?? ''} ${c.lastName ?? ''}`.trim() || c.email}
+            </p>
+            <p className="text-xs text-slate-400">{c.phone ?? c.email}</p>
+          </div>
+        ))}
+      {(clients ?? []).filter(c =>
+        getClienteLabel(c).toLowerCase().includes(clientSearch.toLowerCase())
+      ).length === 0 && (
+        <p className="text-xs text-slate-400 text-center py-4">No se encontraron clientes.</p>
+      )}
+    </div>
+  )}
+</div>
             </div>
           )}
 

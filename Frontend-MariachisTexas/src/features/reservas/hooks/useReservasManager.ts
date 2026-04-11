@@ -81,7 +81,10 @@ export const useReservasManager = () => {
           cotizacionService.getQuotations()
         ]);
         setReservations(resData);
-        setCalendarReservations(calendarData);
+        setCalendarReservations(calendarData.filter((r: any) => 
+          r.clientName !== 'Cliente Directa' && 
+          r.clientName !== 'Cliente Directa Directa'
+          ));
         setRehearsals(rehData);
         setQuotations(quoteData);
       } else {
