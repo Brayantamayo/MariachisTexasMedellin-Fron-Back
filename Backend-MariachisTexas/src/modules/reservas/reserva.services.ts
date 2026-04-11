@@ -1,4 +1,4 @@
-  import prisma from '../../config/prisma'
+import prisma from '../../config/prisma'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia } from '../../utils/date.helpers'
@@ -39,23 +39,10 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones))
 }
 
-<<<<<<< HEAD
-export const getReservasCalendario = async (usuarioId?: number) => {
-  const reservaWhere = usuarioId
-    ? {
-        estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] },
-        cotizacion: { cliente: { usuario: { id: usuarioId } } }
-      }
-    : { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
-
-  const [reservas, ensayos, cotizaciones] = await Promise.all([
-=======
 export const getReservasCalendario = async () => {
-  const now = new Date()
+  const reservaWhere = { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
 
   const [reservas, ensayos, cotizaciones, ventasFinalizadas] = await Promise.all([
-    // PENDIENTE y CONFIRMADA siguen apareciendo normalmente
->>>>>>> origin/brayan
     prisma.reserva.findMany({
       where: reservaWhere,
       include: {
@@ -533,46 +520,27 @@ export const getAbonos = async (usuarioId?: number) => {
   },
     orderBy: { fechaPago: 'desc' }
   })
-<<<<<<< HEAD
 
-  return abonos.map((a: any) => {
-    // Validate required fields
+return abonos.map((a: any) => {
     if (!a.id) {
       throw new Error('Abono sin ID válido')
     }
-
     return {
-      id: String(a.id),
-      amount: Number(a.monto || 0),
-      date: a.fechaPago?.toISOString() ?? '',
-      type: 'Abono Parcial',
-      method: a.metodoPago || '',
-      notes: a.notas ?? '',
-      reservationId: String(a.reservaId || ''),
-      clientId: String(a.clienteId || ''),
-      clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
-      clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
+      id:               String(a.id),
+      amount:           Number(a.monto || 0),
+      date:             a.fechaPago?.toISOString() ?? '',
+      type:             'Abono Parcial',
+      method:           a.metodoPago || '',
+      notes:            a.notas ?? '',
+      reservationId:    String(a.reservaId || ''),
+      clientId:         String(a.clienteId || ''),
+      clientEmail:      a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
+      clientName:       `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
       reservationTotal: Number(a.reserva?.totalValor ?? 0),
-      newBalance: Number(a.nuevoSaldo ?? 0)
+      newBalance:       Number(a.nuevoSaldo ?? 0),
     }
   })
-=======
- 
-  return abonos.map((a: any) => ({
-    id: String(a.id),
-    amount: Number(a.monto),
-    date: a.fechaPago?.toISOString() ?? '',
-    type: 'Abono Parcial',
-    method: a.metodoPago,
-    notes: a.notas ?? '',
-    reservationId: String(a.reservaId),
-    clientId: String(a.clienteId),
-    clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
-    clientName: `${a.cliente?.usuario?.nombre ?? ''} ${a.cliente?.apellido ?? ''}`.trim(),
-    reservationTotal: Number(a.reserva?.totalValor ?? 0),
-    newBalance: Number(a.nuevoSaldo ?? 0)
-  }))
->>>>>>> origin/brayan
+
 }
 
 // ─── CREATE ABONO - 50% RULE ENFORCED ────────────────────────────────────────

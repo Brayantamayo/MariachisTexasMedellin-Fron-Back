@@ -407,16 +407,9 @@ export const AbonosPage: React.FC = () => {
     }
   };
 
-<<<<<<< HEAD
-  const filteredAbonos = abonos.filter(a => 
-      a.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      a.id.includes(searchTerm) ||
-      a.reservationId.includes(searchTerm)
-=======
   const filteredGroups = groups.filter(g =>
     g.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     g.reservationId.includes(searchTerm)
->>>>>>> origin/brayan
   );
 
   const totalPages   = Math.ceil(filteredGroups.length / itemsPerPage);
@@ -610,46 +603,7 @@ export const AbonosPage: React.FC = () => {
         )}
       </div>
 
-<<<<<<< HEAD
-      {/* Main Container */}
-      <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
-        
-        {/* Search */}
-        <div className="p-8 pb-4">
-             <div className="relative max-w-sm">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                    type="text" 
-                    placeholder="Buscar por cliente, reserva o ID..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all placeholder:text-slate-400 text-sm"
-                />
-            </div>
-        </div>
-
-        {/* Modular Table */}
-        <AbonosTable
-            abonos={abonos}
-            reservations={reservations}
-            loading={loading}
-            onView={(abono) => { setSelectedAbono(abono); setIsDetailOpen(true); }}
-            onDownload={handleDownload}
-        />
-      </div>
-
-      {/* Modal Creación */}
-      <AbonoCreateModal 
-        isOpen={isCreateOpen} 
-        onClose={() => setIsCreateOpen(false)} 
-        onSave={handleCreateAbono} 
-      />
-
-      {/* Modal Detalle */}
-      <AbonoDetailModal 
-=======
       <AbonoDetailModal
->>>>>>> origin/brayan
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         abono={selectedAbono}

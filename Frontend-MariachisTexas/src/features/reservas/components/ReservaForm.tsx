@@ -51,6 +51,8 @@ interface Props {
   onServiceChange: (serviceId: string, quantity: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
+  fieldErrors?: Record<string, string | undefined>;
+  isSaving?: boolean;
 }
 
 const getClienteLabel = (cliente: any): string => {

@@ -209,7 +209,7 @@ async function main() {
   })
 
   // ─── CLIENTE DE PRUEBA ────────────────────────────────────
-  await prisma.usuario.upsert({
+  const clientePruebaUser = await prisma.usuario.upsert({
     where: { email: 'cliente@mariachistexas.com' },
     update: {},
     create: {

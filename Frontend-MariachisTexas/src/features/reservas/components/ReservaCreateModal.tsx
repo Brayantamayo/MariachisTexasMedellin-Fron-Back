@@ -128,14 +128,8 @@ useEffect(() => {
   setErrors({});
   setGlobalError(null);
 
-<<<<<<< HEAD
-    if (isAdmin) {
-      clientService.getClients().then(({ clients }) => setClients(clients));
-    }
-=======
   const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
   const timeToUse = selectedTime || '';
->>>>>>> origin/brayan
 
   // ─── Paralelizar todas las cargas ────────────────────────────────────────
   const fetches: Promise<any>[] = [
@@ -143,7 +137,7 @@ useEffect(() => {
     servicesService.getServices(),
     blockService.checkDateStatus(dateToUse),
     reservaService.getAvailableHours(dateToUse),
-    ...(isAdmin ? [clientService.getClients(1, 100)] : [Promise.resolve(null)]),
+    ...(isAdmin ? [clientService.getClients()] : [Promise.resolve(null)]),
   ];
 
   Promise.all(fetches).then(([songs, services, status, hours, clientsData]) => {

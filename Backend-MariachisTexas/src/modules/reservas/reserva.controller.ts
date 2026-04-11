@@ -24,7 +24,7 @@ export const getCalendario = asyncHandler(async (req: AuthRequest, res: Response
   // Si es admin/empleado, mostrar todas las reservas activas
   const isCliente = rol === 'CLIENTE'
 
-  res.json(await reservaService.getReservasCalendario(isCliente ? usuarioId : undefined))
+  res.json(await reservaService.getReservasCalendario())
 })
 
 // ─── GET ABONOS ───────────────────────────────────────────────────────────────
