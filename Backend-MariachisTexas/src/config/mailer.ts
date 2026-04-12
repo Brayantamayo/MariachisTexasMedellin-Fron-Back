@@ -14,13 +14,5 @@ const transporter = nodemailer.createTransport({
   }
 })
 
-// Verificar conexión al arrancar
-transporter.verify((error) => {
-  if (error) {
-    console.error('❌ Error conexión SMTP:', error.message)
-  } else {
-    console.log('✅ SMTP listo — correos habilitados con:', process.env.MAIL_USER)
-  }
-})
 
 export default transporter
