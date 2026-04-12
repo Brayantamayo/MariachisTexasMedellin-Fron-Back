@@ -9,9 +9,17 @@ const transporter = nodemailer.createTransport({
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
-  
   tls: {
     rejectUnauthorized: false
+  }
+})
+
+// Verificar conexión al arrancar
+transporter.verify((error) => {
+  if (error) {
+    console.error('❌ Error conexión SMTP:', error.message)
+  } else {
+    console.log('✅ SMTP listo — correos habilitados con:', process.env.MAIL_USER)
   }
 })
 

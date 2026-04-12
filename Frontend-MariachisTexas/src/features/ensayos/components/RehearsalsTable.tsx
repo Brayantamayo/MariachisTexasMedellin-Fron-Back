@@ -130,14 +130,15 @@ return (
                     <div className="flex items-center justify-center gap-3">
                       {canManage ? (
                         <button
-                          onClick={() => onToggleStatus(rehearsal)}
-                          title={isCompleted ? 'Marcar como Pendiente' : 'Marcar como Listo'}
-                          className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
+                        onClick={() => !isCompleted && onToggleStatus(rehearsal)}
+                        disabled={isCompleted}
+                        title={isCompleted ? 'Ensayo completado' : 'Marcar como Listo'}
+                        className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
                             isCompleted
-                              ? 'bg-emerald-500 focus-visible:ring-emerald-400'
-                              : 'bg-primary-500 focus-visible:ring-primary-400'
+                              ? 'bg-emerald-500 focus-visible:ring-emerald-400 cursor-not-allowed opacity-70'
+                              : 'bg-primary-500 focus-visible:ring-primary-400 cursor-pointer'
                           }`}
-                        >
+                        > 
                           <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
                             isCompleted ? 'translate-x-5' : 'translate-x-0'
                           }`} />
@@ -177,11 +178,16 @@ return (
                               tooltip="Editar ensayo"
                             />
                           )}
-                          <ActionButton
-                            icon={Trash2}
-                            onClick={() => onDelete(rehearsal.id)}
-                            tooltip="Eliminar ensayo"
-                          />
+                          {
+                            !isCompleted && (
+                              <ActionButton
+                                icon={Trash2}
+                                onClick={() => onDelete(rehearsal.id)}
+                                tooltip="Eliminar ensayo"
+                              />
+                            )
+                          }
+                          
                         </>
                       )}
                     </div>

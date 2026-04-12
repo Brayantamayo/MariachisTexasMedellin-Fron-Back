@@ -26,9 +26,12 @@ const metodoPagoOptions = [
   { value: 'OTRO',          label: 'Otro' },
 ];
 
+type TipoPago = '50%' | '100%';
+
 export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialReservationId }) => {
   const [reservations,    setReservations]    = useState<ReservaOption[]>([]);
   const [selectedReserva, setSelectedReserva] = useState<ReservaOption | null>(null);
+  const [tipoPago,        setTipoPago]        = useState<TipoPago>('50%');
   const [method,          setMethod]          = useState('TRANSFERENCIA');
   const [date,            setDate]            = useState(new Date().toISOString().split('T')[0]);
   const [notes,           setNotes]           = useState('');
@@ -45,6 +48,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
     setNotes('');
     setSaving(false);
     setSelectedReserva(null);
+    setTipoPago('50%');
 
     setLoadingReservas(true);
     api.get('/reservas')
@@ -81,20 +85,24 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
     const found = reservations.find(r => r.id === id) ?? null;
     setReservaId(id);
     setSelectedReserva(found);
+    setTipoPago('50%');
     setError(null);
   };
 
-  const totalValor     = selectedReserva ? selectedReserva.totalAmount : 0;
-  const pagado         = selectedReserva ? selectedReserva.paidAmount  : 0;
-  const saldo          = totalValor - pagado;
-  const anticipo50     = Math.ceil(totalValor / 2);
-  const montoRequerido = saldo > 0 ? anticipo50 : 0;
+  const totalValor  = selectedReserva ? selectedReserva.totalAmount : 0;
+  const pagado      = selectedReserva ? selectedReserva.paidAmount  : 0;
+  const saldo       = totalValor - pagado;
+  const anticipo50  = Math.ceil(totalValor / 2);
+
+  // Monto según tipo de pago seleccionado
+  const montoRequerido = tipoPago === '100%' ? saldo : anticipo50;
   const saldoTrasPago  = Math.max(0, saldo - montoRequerido);
+  const hayPendiente   = saldo > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reservaId)        { setError('Selecciona una reserva'); return; }
-    if (!selectedReserva)  { setError('Reserva no encontrada'); return; }
+    if (!reservaId)       { setError('Selecciona una reserva'); return; }
+    if (!selectedReserva) { setError('Reserva no encontrada'); return; }
     if (montoRequerido <= 0) { setError('Esta reserva no tiene saldo pendiente'); return; }
 
     setSaving(true);
@@ -116,8 +124,6 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
 
   if (!isOpen) return null;
 
-
-  ////formulario en reserva 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
@@ -126,7 +132,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
         <div className="bg-[#dc2626] px-5 py-4 flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
             <Receipt size={18} />
-            <h3 className="text-xs font-bold tracking-widest uppercase">Registrar Anticipo (50%)</h3>
+            <h3 className="text-xs font-bold tracking-widest uppercase">Registrar Abono</h3>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white bg-white/10 p-1 rounded-full transition-colors">
             <X size={16} />
@@ -142,6 +148,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             </div>
           )}
 
+          {/* Reserva */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
               Reserva <span className="text-red-500">*</span>
@@ -174,10 +181,52 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             )}
           </div>
 
+          {/* Selector tipo de pago */}
+          {selectedReserva && hayPendiente && (
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                Tipo de Pago
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTipoPago('50%')}
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    tipoPago === '50%'
+                      ? 'bg-red-600 text-white border-red-600 shadow-md'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
+                  }`}
+                >
+                  Anticipo 50%
+                  <span className="block text-[10px] font-normal mt-0.5 opacity-80">
+                    ${anticipo50.toLocaleString('es-CO')}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoPago('100%')}
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    tipoPago === '100%'
+                      ? 'bg-red-600 text-white border-red-600 shadow-md'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
+                  }`}
+                >
+                  Pago Total 100%
+                  <span className="block text-[10px] font-normal mt-0.5 opacity-80">
+                    ${saldo.toLocaleString('es-CO')}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Resumen del monto */}
           {selectedReserva && montoRequerido > 0 && (
             <div className="bg-gradient-to-br from-red-50 to-red-100/50 border border-red-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest">Anticipo Requerido (50%)</p>
+                <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest">
+                  {tipoPago === '100%' ? 'Pago Total (100%)' : 'Anticipo (50%)'}
+                </p>
                 <DollarSign size={16} className="text-red-500" />
               </div>
               <p className="text-3xl font-serif font-black text-red-800">
@@ -185,18 +234,23 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
               </p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-red-200/60 text-[10px] text-red-600">
                 <span>Total: <strong>${totalValor.toLocaleString('es-CO')}</strong></span>
-                <span>Saldo restante: <strong>${saldoTrasPago.toLocaleString('es-CO')}</strong></span>
+                <span>
+                  {tipoPago === '100%'
+                    ? <strong className="text-emerald-600">Saldo: $0 ✓</strong>
+                    : <>Saldo restante: <strong>${saldoTrasPago.toLocaleString('es-CO')}</strong></>
+                  }
+                </span>
               </div>
-              <p className="text-[10px] text-red-400 mt-2 italic">* El anticipo es exactamente el 50% del total</p>
             </div>
           )}
 
-          {selectedReserva && montoRequerido <= 0 && (
+          {selectedReserva && !hayPendiente && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
               Esta reserva ya tiene el anticipo pagado.
             </div>
           )}
 
+          {/* Método de pago */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Método de Pago</label>
             <div className="relative">
@@ -214,6 +268,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             </div>
           </div>
 
+          {/* Fecha */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fecha de Pago</label>
             <div className="relative">
@@ -228,6 +283,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             </div>
           </div>
 
+          {/* Notas */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notas (opcional)</label>
             <textarea
@@ -253,7 +309,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                 ? 'Registrando...'
                 : selectedReserva && montoRequerido > 0
                   ? `Registrar $${montoRequerido.toLocaleString('es-CO')}`
-                  : 'Registrar Anticipo'
+                  : 'Registrar Abono'
               }
             </button>
           </div>

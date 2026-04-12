@@ -1,4 +1,5 @@
-import prisma from '../../config/prisma'
+﻿import prisma from '../../config/prisma'
+import nodemailer from 'nodemailer'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
@@ -328,7 +329,12 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
     loginUrl:      `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/login`,
   })
   await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
-    .catch(err => console.error('Error enviando correo de reserva:', err))
+    .then(info => {
+      console.log('✅ Correo reserva creada enviado a:', cliente.email)
+      const previewUrl = (nodemailer as any).getTestMessageUrl?.(info)
+      if (previewUrl) console.log('📧 Preview URL:', previewUrl)
+    })
+    .catch(err => console.error('❌ Error enviando correo de reserva:', err))
 
   return getReservaById(reserva.id)
 }
@@ -543,50 +549,50 @@ return abonos.map((a: any) => {
 
 }
 
-// ─── CREATE ABONO - 50% RULE ENFORCED ────────────────────────────────────────
+//  CREATE ABONO - 50% OR 100% ALLOWED 
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
   const reserva = await prisma.reserva.findUnique({
     where: { id: reservaId },
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
   })
- 
+
   if (!reserva) throw new AppError('Reserva no encontrada', 404)
   if (reserva.estado === 'ANULADA') throw new AppError('No se puede registrar abono en una reserva anulada', 400)
- 
+
   const monto = Number(data.amount)
   if (isNaN(monto) || monto <= 0) throw new AppError('Monto de abono inválido', 400)
- 
-  const totalValor    = Number(reserva.totalValor)
-  const saldoActual   = Number(reserva.saldoPendiente)
-  const pagadoActual  = totalValor - saldoActual
-  const anticipo50    = Math.ceil(totalValor / 2)
- 
-  // ─── RULE 1: First abono must be exactly 50% ─────────────────────────────
+
+  const totalValor   = Number(reserva.totalValor)
+  const saldoActual  = Number(reserva.saldoPendiente)
+  const pagadoActual = totalValor - saldoActual
+  const anticipo50   = Math.ceil(totalValor / 2)
+
+  // Primer abono: puede ser 50% o 100% del total
   if (pagadoActual === 0) {
-    if (monto !== anticipo50) {
+    if (monto !== anticipo50 && monto !== saldoActual) {
       throw new AppError(
-        `El primer abono debe ser exactamente el 50% del total: $${anticipo50.toLocaleString('es-CO')} COP`,
+        `El primer abono debe ser el 50% ($${anticipo50.toLocaleString('es-CO')} COP) o el total completo ($${saldoActual.toLocaleString('es-CO')} COP)`,
         400
       )
     }
   } else {
-    // ─── RULE 2: Subsequent abono must be exactly the remaining balance ──────
+    // Segundo abono: debe ser exactamente el saldo pendiente
     if (monto !== saldoActual) {
       throw new AppError(
-        `El segundo abono debe ser exactamente el saldo pendiente: $${saldoActual.toLocaleString('es-CO')} COP`,
+        `El abono debe ser exactamente el saldo pendiente: $${saldoActual.toLocaleString('es-CO')} COP`,
         400
       )
     }
   }
- 
+
   const metodoPagoRaw = String(data.method ?? '').trim().toUpperCase()
   const allowedMetodoPago = ['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'OTRO']
-  if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new AppError('Método de pago inválido', 400)
- 
+  if (!allowedMetodoPago.includes(metodoPagoRaw)) throw new AppError('Metodo de pago invalido', 400)
+
   const nuevoSaldo = Number((saldoActual - monto).toFixed(2))
   const clienteId  = reserva.cotizacion?.clienteId
   if (!clienteId) throw new AppError('Reserva sin cliente asociado', 400)
- 
+
   await prisma.abono.create({
     data: {
       reservaId,
@@ -598,19 +604,18 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
       nuevoSaldo
     }
   })
- 
-  // Update saldo pendiente
+
+  // Actualizar saldo
   await prisma.reserva.update({ where: { id: reservaId }, data: { saldoPendiente: nuevoSaldo } })
- 
-  // ─── After first abono (50%) → confirm reservation ───────────────────────
-  if (pagadoActual === 0 && nuevoSaldo > 0) {
+
+  // Si queda saldo > 0 despues del primer abono (50%)  confirmar reserva
+  if (pagadoActual === 0 && nuevoSaldo > 0.01) {
     await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'CONFIRMADA' } })
   }
- 
-  // ─── After second abono (fully paid) → create venta + finalize ───────────
+
+  // Si saldo = 0  crear venta FINALIZADO
   if (nuevoSaldo <= 0.01 && !reserva.venta) {
     const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
- 
     await prisma.venta.create({
       data: {
         reservaId,
@@ -623,11 +628,14 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
         metodoPago:  metodoPagoRaw as any
       }
     })
+    // Marcar reserva como CONFIRMADA (si vino de pago 100% directo estaba PENDIENTE)
+    await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'CONFIRMADA' } })
   }
-    const esUltimoPago = nuevoSaldo <= 0.01
+
+  const esUltimoPago = nuevoSaldo <= 0.01
   return {
     message: esUltimoPago
-      ? 'Pago final registrado. Reserva completamente pagada y venta generada.'
+      ? 'Pago total registrado. Reserva completamente pagada y venta generada.'
       : 'Anticipo del 50% registrado. Reserva confirmada.',
   }
 }
