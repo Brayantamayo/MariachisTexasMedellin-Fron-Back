@@ -50,46 +50,54 @@ const mapFromBackend = (backend: any): User => {
 };
 
 // ─── MAPEAR DE FRONTEND A BACKEND ────────────────────────────────────────────
-const mapToBackend = (user: Omit<User, 'id'>) => ({
-  // nombre guarda nombre completo para que todas las vistas lo muestren bien
-  nombre: `${user.name?.trim() || ''} ${user.lastName?.trim() || ''}`.trim() || 'Usuario',
-  email: user.email,
-  password: user.password || 'defaultpassword',
-  rolId: user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3,
-  ...(user.role === UserRole.EMPLEADO && {
-    empleadoData: {
-      tipoDocumento: user.documentType || 'CC',
-      numeroDocumento: user.documentNumber,
-      fechaNacimiento: user.birthDate || null,
-      telefonoPrincipal: user.phone,
-      telefonoAlternativo: user.secondaryPhone || null,
-      ciudad: user.city || 'Medellín',
-      barrio: user.neighborhood,
-      direccion: user.address,
-      zonaServicio: user.serviceZone || 'URBANA',
-      instrumentoPrincipal: user.mainInstrument,
-      otrosInstrumentos: user.otherInstruments ? user.otherInstruments.join(', ') : null,
-      anosExperiencia: user.experienceYears || 0,
-      foto: user.avatar || null
-    }
-  }),
-  ...(user.role === UserRole.CLIENTE && {
-    clienteData: {
-      apellido: user.lastName?.trim() || '',
-      foto: user.avatar || null,
-      tipoDocumento: user.documentType || 'CC',
-      numeroDocumento: user.documentNumber,
-      fechaNacimiento: user.birthDate || null,
-      telefonoPrincipal: user.phone,
-      telefonoAlternativo: user.secondaryPhone || null,
-      ciudad: user.city || 'Medellín',
-      barrio: user.neighborhood,
-      direccion: user.address,
-      zonaServicio: user.serviceZone || 'URBANA',
-      activo: user.isActive ?? true
-    }
-  })
-});
+// user puede traer roleId (string numérico del select dinámico) o role (nombre del enum)
+const mapToBackend = (user: any) => {
+  const rolId = user.roleId
+    ? Number(user.roleId)
+    : user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3;
+
+  const isEmpleado = user.role === UserRole.EMPLEADO;
+
+  return {
+    nombre: `${user.name?.trim() || ''} ${user.lastName?.trim() || ''}`.trim() || 'Usuario',
+    email: user.email,
+    password: user.password || 'defaultpassword',
+    rolId,
+    ...(isEmpleado ? {
+      empleadoData: {
+        tipoDocumento: user.documentType || 'CC',
+        numeroDocumento: user.documentNumber,
+        fechaNacimiento: user.birthDate || null,
+        telefonoPrincipal: user.phone,
+        telefonoAlternativo: user.secondaryPhone || null,
+        ciudad: user.city || 'Medellín',
+        barrio: user.neighborhood,
+        direccion: user.address,
+        zonaServicio: user.serviceZone || 'URBANA',
+        instrumentoPrincipal: user.mainInstrument,
+        otrosInstrumentos: user.otherInstruments ? user.otherInstruments.join(', ') : null,
+        anosExperiencia: Number(user.experienceYears) || 0,
+        foto: user.avatar || null
+      }
+    } : {
+      // CLIENTE y cualquier rol personalizado guardan datos en clienteData
+      clienteData: {
+        apellido: user.lastName?.trim() || '',
+        foto: user.avatar || null,
+        tipoDocumento: user.documentType || 'CC',
+        numeroDocumento: user.documentNumber,
+        fechaNacimiento: user.birthDate || null,
+        telefonoPrincipal: user.phone,
+        telefonoAlternativo: user.secondaryPhone || null,
+        ciudad: user.city || 'Medellín',
+        barrio: user.neighborhood,
+        direccion: user.address,
+        zonaServicio: user.serviceZone || 'URBANA',
+        activo: user.isActive ?? true
+      }
+    })
+  };
+};
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
@@ -97,23 +105,34 @@ export const userService = {
     return response.data.map(mapFromBackend);
   },
 
-  createUser: async (user: Omit<User, 'id'>): Promise<User> => {
+  createUser: async (user: any): Promise<User> => {
     const data = mapToBackend(user);
+    console.log('📤 createUser payload:', JSON.stringify({ rolId: data.rolId, role: user.role, roleId: user.roleId }));
     const response = await api.post('/usuarios', data);
     return mapFromBackend(response.data);
   },
 
-  updateUser: async (id: string, updates: Partial<User>): Promise<User> => {
+  updateUser: async (id: string, updates: any): Promise<User> => {
     const nombre = updates.name
       ? `${updates.name} ${updates.lastName || ''}`.replace(/\s+/g, ' ').trim()
       : undefined;
-    
+
+    const rolId = updates.roleId
+      ? Number(updates.roleId)
+      : updates.role
+        ? (updates.role === UserRole.ADMIN ? 1 : updates.role === UserRole.EMPLEADO ? 2 : 3)
+        : undefined;
+
+    const isEmpleado = updates.role === UserRole.EMPLEADO;
+    // Hay datos de contacto si viene teléfono o documento
+    const hasContactData = updates.phone || updates.documentNumber;
+
     const data = {
-      ...(nombre && { nombre }),
-      ...(updates.email && { email: updates.email }),
-      ...(updates.isActive !== undefined && { estado: updates.isActive }),
-      ...(updates.role && { rolId: updates.role === UserRole.ADMIN ? 1 : updates.role === UserRole.EMPLEADO ? 2 : 3 }),
-      ...(updates.role === UserRole.EMPLEADO && {
+      ...(nombre                          && { nombre }),
+      ...(updates.email                   && { email: updates.email }),
+      ...(updates.isActive !== undefined  && { estado: updates.isActive }),
+      ...(rolId !== undefined             && { rolId }),
+      ...(isEmpleado && hasContactData ? {
         empleadoData: {
           tipoDocumento: updates.documentType,
           numeroDocumento: updates.documentNumber,
@@ -126,11 +145,11 @@ export const userService = {
           zonaServicio: updates.serviceZone,
           instrumentoPrincipal: updates.mainInstrument,
           otrosInstrumentos: updates.otherInstruments ? updates.otherInstruments.join(', ') : undefined,
-          anosExperiencia: updates.experienceYears,
+          anosExperiencia: updates.experienceYears !== undefined ? Number(updates.experienceYears) : undefined,
           foto: updates.avatar
         }
-      }),
-      ...(updates.role === UserRole.CLIENTE && {
+      } : !isEmpleado && hasContactData ? {
+        // Para CLIENTE y roles personalizados, siempre enviar clienteData si hay datos
         clienteData: {
           apellido: updates.lastName,
           foto: updates.avatar,
@@ -145,7 +164,7 @@ export const userService = {
           zonaServicio: updates.serviceZone,
           activo: updates.isActive
         }
-      })
+      } : {})
     };
     const response = await api.put(`/usuarios/${id}`, data);
     return mapFromBackend(response.data);

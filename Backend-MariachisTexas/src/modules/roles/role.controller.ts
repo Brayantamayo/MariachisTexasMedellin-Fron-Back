@@ -8,6 +8,17 @@ export const getEmpleadoRolId = asyncHandler(async (_req: Request, res: Response
   const rolId = await roleService.getRolIdByName('EMPLEADO')
   res.json({ rolId })
 })
+
+// ─── GET PUBLIC LIST (PÚBLICO) — id + nombre de roles activos ─────────────────
+export const getPublicList = asyncHandler(async (_req: Request, res: Response) => {
+  const roles = await roleService.getRoles()
+  res.json(roles.map((r: any) => ({
+    id:          r.id,
+    name:        r.name,
+    description: r.description,
+    isActive:    r.isActive,
+  })))
+})
                 
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (_req: Request, res: Response) => {

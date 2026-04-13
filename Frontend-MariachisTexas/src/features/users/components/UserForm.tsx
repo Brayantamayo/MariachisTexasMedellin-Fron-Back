@@ -20,6 +20,14 @@ interface Props {
   onSubmit: (e: React.FormEvent) => void;
   showPasswordFields?: boolean;
   errors?: UserFormErrors;
+  availableRoles?: DynamicRole[];
+  loadingRoles?: boolean;
+}
+
+export interface DynamicRole {
+  id: string;
+  name: string;
+  description: string;
 }
 
 // ─── Convierte YYYY-MM-DD → DD/MM/YYYY para mostrar ──────────────────────────
@@ -163,7 +171,7 @@ const BirthDateInput: React.FC<{
   )
 }
 
-export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as UserFormErrors }) => {
+export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as UserFormErrors, availableRoles, loadingRoles }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -177,16 +185,35 @@ export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPa
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
                  <div className="md:col-span-2">
                      <label className="label-form">Tipo de Usuario</label>
-                     <select 
-                        name="role"
-                        value={formData.role}
-                        onChange={onChange}
-                        className="input-form appearance-none cursor-pointer text-slate-700"
-                     >
+                     {loadingRoles ? (
+                       <div className="input-form flex items-center gap-2 text-slate-400 text-xs">
+                         <div className="w-3 h-3 border-2 border-slate-300 border-t-primary-500 rounded-full animate-spin" />
+                         Cargando roles...
+                       </div>
+                     ) : availableRoles && availableRoles.length > 0 ? (
+                       <select
+                         name="roleId"
+                         value={formData.roleId ?? ''}
+                         onChange={onChange}
+                         className="input-form appearance-none cursor-pointer text-slate-700"
+                       >
+                         <option value="" disabled>Selecciona un rol</option>
+                         {availableRoles.map(r => (
+                           <option key={r.id} value={r.id}>{r.name}</option>
+                         ))}
+                       </select>
+                     ) : (
+                       <select
+                         name="role"
+                         value={formData.role}
+                         onChange={onChange}
+                         className="input-form appearance-none cursor-pointer text-slate-700"
+                       >
                          <option value={UserRole.CLIENTE}>Cliente</option>
                          <option value={UserRole.EMPLEADO}>Músico / Empleado</option>
                          <option value={UserRole.ADMIN}>Administrador</option>
-                     </select>
+                       </select>
+                     )}
                  </div>
                  
                  <div className="md:col-span-2">
@@ -378,7 +405,8 @@ export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPa
         </div>
 
         {/* 4. Músico (Condicional) */}
-        {formData.role === UserRole.EMPLEADO && (
+        {(formData.role === UserRole.EMPLEADO ||
+          availableRoles?.find(r => r.id === formData.roleId)?.name === 'EMPLEADO') && (
             <div className="bg-primary-50 rounded-xl p-6 border border-primary-100 animate-fade-in-up">
                 <h4 className="text-xs font-serif font-bold text-primary-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                     <Music size={16} className="text-primary-600" /> Perfil Musical

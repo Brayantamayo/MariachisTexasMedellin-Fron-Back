@@ -189,7 +189,7 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
     })
 
     // Si es empleado y hay datos, crear empleado
-    if (d.rolId === 2 && empleadoData) {
+    if (rol.nombre === 'EMPLEADO' && empleadoData) {
       const { fechaNacimiento, ...restEmpleado } = empleadoData
       if (!fechaNacimiento) throw new AppError('La fecha de nacimiento del empleado es requerida', 400)
       await tx.empleado.create({
@@ -201,10 +201,10 @@ export const createUsuario = async (data: UsuarioCreateInput): Promise<UsuarioRe
       })
     }
 
-    // Si es cliente y hay datos, crear cliente
-    if (d.rolId === 3 && clienteData) {
+    // Para cualquier rol que NO sea EMPLEADO, guardar datos en cliente
+    if (rol.nombre !== 'EMPLEADO' && clienteData) {
       const { fechaNacimiento, activo, ...restCliente } = clienteData
-      if (!fechaNacimiento) throw new AppError('La fecha de nacimiento del cliente es requerida', 400)
+      if (!fechaNacimiento) throw new AppError('La fecha de nacimiento es requerida', 400)
       await tx.cliente.create({
         data: {
           usuarioId: usuario.id,
@@ -299,6 +299,22 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
       const { activo, ...clienteDataSinActivo } = clienteData
       if (Object.keys(clienteDataSinActivo).length > 0) {
         await tx.cliente.update({ where: { usuarioId: id }, data: clienteDataSinActivo })
+      }
+    }
+
+    // Si no tiene cliente ni empleado pero llegan clienteData, crear cliente (rol personalizado)
+    if (!existing.cliente && !existing.empleado && clienteData) {
+      const { fechaNacimiento, activo, ...restCliente } = clienteData
+      if (fechaNacimiento) {
+        await tx.cliente.create({
+          data: {
+            usuarioId: id,
+            email: existing.email,
+            fechaNacimiento: new Date(fechaNacimiento),
+            activo: activo ?? true,
+            ...restCliente
+          }
+        })
       }
     }
   })

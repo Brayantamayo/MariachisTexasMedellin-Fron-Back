@@ -56,18 +56,17 @@ export const UsersPage: React.FC = () => {
 
   // CRUD Handlers
   const handleCreateUser = async (userData: any) => {
-    const newUser = await userService.createUser(userData);
-    setUsers(prev => [newUser, ...prev]);
+    await userService.createUser(userData);
+    // Recargar lista completa para obtener usuario con todas sus relaciones
+    await fetchUsers();
     showNotification('Usuario creado exitosamente.');
     setIsCreateOpen(false);
-    setSelectedUser(newUser);
-    setIsDetailOpen(true);
   };
 
   const handleUpdateUser = async (userData: any) => {
     if (!selectedUser) return;
-    const updatedUser = await userService.updateUser(selectedUser.id, userData);
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    await userService.updateUser(selectedUser.id, userData);
+    await fetchUsers();
     showNotification('Usuario actualizado correctamente.');
     setIsEditOpen(false);
   };
