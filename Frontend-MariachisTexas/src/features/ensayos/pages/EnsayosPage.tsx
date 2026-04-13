@@ -30,6 +30,7 @@ export const EnsayosPage: React.FC = () => {
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<Rehearsal | null>(null);
+  const [selectedDateForCreate, setSelectedDateForCreate] = useState<string | null>(null);
 
   // ── Datos de reservas/cotizaciones/bloqueos del hook compartido ─────────────
   const {
@@ -154,6 +155,7 @@ export const EnsayosPage: React.FC = () => {
         key={day}
         onClick={() => {
             if (!isFullDayBlock && !isPast && canManage) {
+            setSelectedDateForCreate(dateStr);
             setIsCreateOpen(true);
             }
             }}
@@ -246,7 +248,7 @@ export const EnsayosPage: React.FC = () => {
           {!isFullDayBlock && !isPast && canManage && (
             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
               <button
-                onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }}
+                onClick={(e) => { e.stopPropagation(); setSelectedDateForCreate(dateStr); setIsCreateOpen(true); }}
                 className="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-purple-600 hover:border-purple-200 shadow-sm"
               >
                 <Plus size={11} />
@@ -421,7 +423,7 @@ export const EnsayosPage: React.FC = () => {
         )}
       </div>
 
-      <RehearsalCreateModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSave={handleCreateRehearsal} />
+      <RehearsalCreateModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedDateForCreate(null); }} onSave={handleCreateRehearsal} selectedDate={selectedDateForCreate} />
       <RehearsalEditModal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedRehearsal(null); }} onSave={handleUpdateRehearsal} rehearsal={selectedRehearsal} />
       <RehearsalDetailModal isOpen={isDetailOpen} onClose={() => { setIsDetailOpen(false); setSelectedRehearsal(null); }} rehearsal={selectedRehearsal} />
       <ConfirmationModal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })} onConfirm={confirmDelete} title="¿Eliminar Ensayo?" message="Esta acción eliminará el evento del calendario. No se puede deshacer." />

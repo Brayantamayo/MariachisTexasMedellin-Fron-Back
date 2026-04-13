@@ -47,10 +47,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           const reservations = await reservaService.getReservations();
           let relevantEvents: Reservation[] = [];
           if (user) {
-            relevantEvents = reservations.filter(r =>
-              (r.clientEmail?.toLowerCase() === user.email.toLowerCase() || r.clientId === user.id || r.clientName.includes(user.name)) &&
-              (r.status === 'Confirmado' || r.status === 'Pendiente')
-            );
+            relevantEvents = reservations.filter(r => {
+              const userEmail = user.email.toLowerCase();
+              const userName = user.name.toLowerCase();
+              const clientEmail = r.clientEmail?.toLowerCase() || '';
+              const clientName = r.clientName?.toLowerCase() || '';
+              
+              const emailMatch = clientEmail === userEmail;
+              const idMatch = r.clientId === user.id;
+              const nameMatch = clientName.includes(userName) || userName.includes(clientName.split(' ')[0]);
+              
+              return emailMatch || idMatch || nameMatch;
+            });
           }
           relevantEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
           setClientEvents(relevantEvents.slice(0, 5));
@@ -157,7 +165,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600/10 rounded-full blur-[60px] -ml-10 -mb-10 pointer-events-none"></div>
                 <div className="relative z-10">
                   <div className="flex justify-between items-start mb-8">
-                    <div className="bg-white/10 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-center min-w-[70px]">
+                    <div className="bg-white/10 backdrop-blur-md border border-amber-500/15 px-4 py-2 rounded-xl text-center min-w-[70px]">
                       <p className="text-[10px] font-bold uppercase text-white/60">{getMonthDay(nextGig.eventDate).month}</p>
                       <p className="text-2xl font-bold font-serif leading-none mt-0.5">{getMonthDay(nextGig.eventDate).day}</p>
                     </div>
@@ -168,16 +176,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     <div className="flex items-center gap-2 text-slate-400 text-sm"><User size={14} /><span>Cliente: {nextGig.clientName}</span></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                    <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center gap-3">
+                    <div className="bg-white/5 border border-amber-500/15 p-3 rounded-xl flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400"><Clock size={16} /></div>
                       <div><p className="text-[10px] text-slate-400 uppercase font-bold">Hora Inicio</p><p className="font-bold text-sm">{nextGig.eventTime}</p></div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center gap-3">
+                    <div className="bg-white/5 border border-amber-500/15 p-3 rounded-xl flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><MapPin size={16} /></div>
                       <div className="overflow-hidden"><p className="text-[10px] text-slate-400 uppercase font-bold">Ubicación</p><p className="font-bold text-sm truncate">{nextGig.location}</p></div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-t border-white/10 pt-6">
+                  <div className="flex items-center justify-between border-t border-amber-500/15 pt-6">
                     <div className="flex items-center gap-2 text-sm text-slate-300">
                       <Music size={16} className="text-primary-500" />
                       <span className="font-bold">{nextGig.repertoireIds?.length ?? 0} Canciones</span>
@@ -249,230 +257,244 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   // ─── VISTA CLIENTE ────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-10 animate-fade-in-up pb-12">
+    <div className="min-h-screen bg-[#050608] text-white selection:bg-amber-500/30">
+
+      {/* ── Ambient Effects ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-5%] right-[-5%] w-[45%] h-[45%] bg-amber-600/5 rounded-full blur-[130px]" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-600/5 rounded-full blur-[150px]" />
+          <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+      </div>
+
       <WelcomeToast />
 
-      <div className="relative rounded-[2rem] overflow-hidden shadow-2xl min-h-[400px] flex items-center justify-center group">
+      {/* ── HERO SECTION ── */}
+      <div className="relative h-[480px] w-full overflow-hidden border-b border-amber-500/10">
         <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=2874&auto=format&fit=crop"
-            alt="" className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-[3000ms]"
+          <img 
+            src="/shared/assets/images/home-hero.png" 
+            alt="Hero Background" 
+            className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-[5s] opacity-50"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-black/40"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050608] via-[#050608]/40 to-[#050608]/20" />
         </div>
-
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 md:px-12 py-12">
-          {clientEvents.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6 text-left">
-                <h1 className="text-4xl md:text-6xl font-serif font-bold text-white leading-tight">
-                  Hola, <span className="text-[#f1bf00]">{user?.name.split(' ')[0]}</span>
-                </h1>
-                <p className="text-slate-300 text-lg font-light max-w-md">
-                  Tu próximo evento se acerca. Estamos preparando todo para que sea inolvidable.
-                </p>
-                <div className="flex flex-wrap gap-4 pt-2">
-                  {/* ✅ Redirige a reservas (calendario) */}
-                  <button
-                    onClick={() => onNavigate('/reservas')}
-                    className="bg-[#ce1126] hover:bg-[#b91c1c] text-white px-8 py-3.5 rounded-full font-bold text-sm uppercase tracking-widest transition-all shadow-lg hover:shadow-red-900/40 hover:-translate-y-1 flex items-center gap-2">
-                    <Star size={18} className="fill-white" /> Nuevo Evento
-                  </button>
-                  {/* ✅ Redirige a repertorio */}
-                  <button
-                    onClick={() => onNavigate('/repertorio')}
-                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-3.5 rounded-full font-bold text-sm uppercase tracking-widest transition-all backdrop-blur-sm">
-                    Ver Repertorio
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative transform hover:scale-[1.02] transition-transform duration-500">
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#f1bf00]/20 rounded-full blur-[50px] -mr-10 -mt-10"></div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <p className="text-xs font-bold text-[#f1bf00] uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Calendar size={14} /> Próximo Evento
-                      </p>
-                      <h3 className="text-2xl font-serif font-bold leading-tight">{clientEvents[0].eventType}</h3>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-center min-w-[70px]">
-                      <p className="text-[10px] font-bold uppercase text-white/70">{getMonthDay(clientEvents[0].eventDate).month}</p>
-                      <p className="text-2xl font-bold font-serif text-white">{getMonthDay(clientEvents[0].eventDate).day}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3 text-sm text-slate-200">
-                    <p className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                      <Clock size={16} className="text-[#f1bf00]" /><span className="font-medium">{clientEvents[0].eventTime}</span>
-                    </p>
-                    <p className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                      <MapPin size={16} className="text-[#ce1126]" /><span className="truncate font-medium">{clientEvents[0].location}</span>
-                    </p>
-                  </div>
-                  <div className="mt-6 pt-6 border-t border-white/10 flex justify-between items-center">
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                      <CheckCircle size={14} /> Confirmado
-                    </span>
-                    <button
-                      onClick={() => onNavigate('/reservas')}
-                      className="text-sm font-bold text-white hover:underline">
-                      Ver Detalles
-                    </button>
-                  </div>
-                </div>
+        
+        <div className="relative max-w-7xl mx-auto h-full px-6 flex flex-col justify-center items-center text-center">
+          <div className="animate-fade-in-up">
+            <div className="flex justify-center mb-6">
+              <div className="px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em]">Mariachis Texas • Medellín</span>
               </div>
             </div>
-          ) : (
-            <div className="flex flex-col items-center text-center max-w-2xl mx-auto space-y-8">
-              <div className="space-y-4 pt-8">
-                <h1 className="text-5xl md:text-7xl font-serif font-bold text-white leading-none tracking-tight">
-                  Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#f1bf00] to-[#fcd34d]">{user?.name.split(' ')[0]}</span>
-                </h1>
-                <p className="text-slate-300 text-xl font-light leading-relaxed">
-                  "La música es el lenguaje del alma."<br />
-                  <span className="text-base text-slate-400">¿Qué celebraremos juntos esta vez?</span>
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 w-full justify-center pt-4">
-                {/* ✅ Redirige a reservas */}
-                <button
-                  onClick={() => onNavigate('/reservas')}
-                  className="bg-[#ce1126] hover:bg-[#b91c1c] text-white px-10 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all shadow-xl shadow-red-900/30 hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-3 min-w-[200px]">
-                  <Star size={18} className="fill-white" /> Agendar Evento
-                </button>
-                {/* ✅ Redirige a repertorio */}
-                <button
-                  onClick={() => onNavigate('/repertorio')}
-                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-10 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all backdrop-blur-sm flex items-center justify-center gap-3 min-w-[200px]">
-                  <ListMusic size={18} /> Ver Repertorio
-                </button>
-              </div>
+            
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white mb-6 drop-shadow-2xl">
+              HOLA, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">{user?.name.split(' ')[0].toUpperCase()}</span>
+            </h1>
+            
+            <p className="text-slate-300 text-lg md:text-xl font-medium max-w-2xl mx-auto mb-10 leading-relaxed italic opacity-80">
+              &ldquo;La música es el lenguaje del alma.&rdquo;
+              <br />
+              <span className="text-sm font-bold text-slate-500 not-italic uppercase tracking-[0.2em] mt-2 block">¿Qué celebraremos juntos esta vez?</span>
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+              <button
+                onClick={() => onNavigate('/reservas')}
+                className="group relative px-10 py-5 rounded-2xl bg-red-600 text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:scale-105 hover:bg-red-500 shadow-[0_15px_30px_rgba(220,38,38,0.2)]"
+              >
+                <div className="absolute inset-0 rounded-2xl bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
+                <span className="flex items-center gap-3">
+                  <Star size={16} strokeWidth={3} className="fill-white" />
+                  Agendar Evento
+                </span>
+              </button>
+              
+              <button
+                onClick={() => onNavigate('/repertorio')}
+                className="px-10 py-5 rounded-2xl bg-white/5 border border-amber-500/15 backdrop-blur-xl text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:bg-white/10 hover:border-white/20"
+              >
+                <span className="flex items-center gap-3">
+                  <ListMusic size={16} strokeWidth={3} />
+                  Ver Repertorio
+                </span>
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-xl flex items-center gap-3">
-              <span className="w-8 h-8 rounded-lg bg-[#ce1126]/10 flex items-center justify-center text-[#ce1126]"><Calendar size={18} /></span>
-              Mis Reservas
-            </h3>
-            <button
-              onClick={() => onNavigate('/reservas')}
-              className="text-xs font-bold text-slate-400 hover:text-[#ce1126] uppercase tracking-wider transition-colors">
-              Ver Historial
-            </button>
-          </div>
+      <div className="relative max-w-7xl mx-auto px-6 py-16 -mt-16">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
 
-          {clientEvents.length === 0 ? (
-            <div className="bg-white p-16 rounded-[2.5rem] border border-dashed border-slate-300 text-center text-slate-400 flex flex-col items-center justify-center group hover:border-[#ce1126]/30 transition-colors">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Calendar size={40} className="text-slate-300 group-hover:text-[#ce1126] transition-colors" />
-              </div>
-              <h4 className="text-lg font-bold text-slate-700 mb-2">No tienes reservas activas</h4>
-              <p className="text-sm max-w-xs mx-auto">Comienza a planear tu próximo evento con nosotros.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {clientEvents.map((event) => (
-                <div key={event.id} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-6 group relative overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#ce1126] to-[#f1bf00] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="flex items-start gap-5">
-                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-center shadow-inner">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{getMonthDay(event.eventDate).month}</span>
-                      <span className="text-xl font-serif font-bold text-slate-800">{getMonthDay(event.eventDate).day}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="font-bold text-slate-800 text-lg group-hover:text-[#ce1126] transition-colors">{event.eventType}</h4>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-500 border border-slate-200">#{event.id.slice(-4)}</span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-slate-500">
-                        <p className="flex items-center gap-1.5"><Clock size={14} className="text-[#f1bf00]" />{event.eventTime}</p>
-                        <span className="hidden sm:block w-1 h-1 rounded-full bg-slate-300"></span>
-                        <p className="flex items-center gap-1.5"><MapPin size={14} className="text-[#ce1126]" /><span className="truncate max-w-[150px]">{event.location}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0">
-                    <div className="text-right">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                        event.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                        event.status === 'Pendiente'  ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                        'bg-slate-100 text-slate-600 border border-slate-200'
-                      }`}>
-                        {event.status === 'Confirmado' && <CheckCircle size={10} />}{event.status}
-                      </span>
-                      {event.paidAmount < event.totalAmount && (
-                        <p className="text-xs text-[#ce1126] font-bold mt-1">
-                          Pendiente: ${(event.totalAmount - event.paidAmount).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => onNavigate('/reservas')}
-                      className="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors">
-                      <ChevronRight size={20} />
-                    </button>
-                  </div>
+          {/* ══ RESERVATIONS AREA ══ */}
+          <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <Calendar size={24} strokeWidth={2.5} />
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-8 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-[#ce1126]/20 rounded-full blur-[60px] -mr-10 -mt-10 group-hover:bg-[#ce1126]/30 transition-colors duration-500"></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-6 border border-white/10 shadow-lg">
-                <Phone size={24} className="text-[#f1bf00]" />
-              </div>
-              <h3 className="font-serif font-bold text-2xl mb-2">¿Necesitas Ayuda?</h3>
-              <p className="text-sm text-slate-400 mb-8 leading-relaxed">Estamos aquí para resolver tus dudas sobre eventos, pagos o repertorio.</p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group/item">
-                  <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm group-hover/item:scale-110 transition-transform">
-                    <Phone size={14} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">WhatsApp Directo</p>
-                    <p className="font-bold text-sm">312 237 3486</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group/item">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm group-hover/item:scale-110 transition-transform">
-                    <Clock size={14} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Horario Atención</p>
-                    <p className="font-bold text-sm">Lun - Sab: 8am - 8pm</p>
-                  </div>
+                <div>
+                  <h3 className="text-xl font-black text-white tracking-tight italic">Mis Reservas</h3>
+                  <p className="text-xs text-slate-500 font-medium">Gestiona tus próximos eventos y cotizaciones.</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Accesos Rápidos</h4>
-            <div className="grid grid-cols-2 gap-3">
-              {/* ✅ Accesos rápidos con navegación */}
-              <button
-                onClick={() => onNavigate('/repertorio')}
-                className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-[#ce1126]/5 hover:text-[#ce1126] border border-transparent hover:border-[#ce1126]/10 transition-all gap-2 group">
-                <ListMusic size={24} className="text-slate-400 group-hover:text-[#ce1126] transition-colors" />
-                <span className="text-[10px] font-bold uppercase tracking-wide">Repertorio</span>
-              </button>
               <button
                 onClick={() => onNavigate('/reservas')}
-                className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-[#f1bf00]/10 hover:text-[#b45309] border border-transparent hover:border-[#f1bf00]/20 transition-all gap-2 group">
-                <Calendar size={24} className="text-slate-400 group-hover:text-[#f1bf00] transition-colors" />
-                <span className="text-[10px] font-bold uppercase tracking-wide">Reservas</span>
+                className="text-[10px] font-black text-slate-500 hover:text-amber-500 uppercase tracking-widest transition-colors flex items-center gap-2"
+              >
+                Historial completo <ChevronRight size={14} />
               </button>
             </div>
+
+            {clientEvents.length === 0 ? (
+              <div className="group relative bg-slate-900/40 border border-amber-500/10 rounded-[3rem] p-16 text-center backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:border-amber-500/20">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-[60px] pointer-events-none" />
+                <div className="relative z-10">
+                  <div className="w-24 h-24 bg-slate-900/80 border border-amber-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                    <Calendar size={40} className="text-slate-600 group-hover:text-amber-500 transition-colors" strokeWidth={1.5} />
+                  </div>
+                  <h4 className="text-2xl font-black text-white italic mb-4">Aún no tienes reservas activas</h4>
+                  <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed mb-10">
+                    Dale un toque especial a tu próxima celebración con el mejor Mariachi de Medellín.
+                  </p>
+                  <button
+                    onClick={() => onNavigate('/reservas')}
+                    className="inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl shadow-amber-900/20"
+                  >
+                    Cotizar ahora
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {clientEvents.map((event, idx) => (
+                  <div 
+                    key={event.id} 
+                    className="group relative bg-slate-900/40 border border-amber-500/10 rounded-3xl p-6 md:p-8 backdrop-blur-2xl shadow-2xl hover:bg-slate-900/60 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-8 animate-fade-in-up"
+                    style={{ animationDelay: `${300 + (idx * 100)}ms` }}
+                  >
+                    <div className="flex items-center gap-8">
+                      {/* Date Indicator */}
+                      <div className="flex-shrink-0 w-20 h-20 rounded-3xl bg-slate-900/80 border border-amber-500/10 flex flex-col items-center justify-center text-center shadow-xl group-hover:border-amber-500/30 transition-colors">
+                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{getMonthDay(event.eventDate).month}</span>
+                        <span className="text-3xl font-black text-white tracking-tighter">{getMonthDay(event.eventDate).day}</span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-2xl font-black text-white italic tracking-tight group-hover:text-amber-400 transition-colors truncate">{event.eventType}</h4>
+                          <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-amber-500/15 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            ID: {event.id.slice(-4)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-y-2 gap-x-6 text-slate-400">
+                          <div className="flex items-center gap-2 group/info">
+                            <Clock size={14} className="text-amber-500/60 group-hover/info:text-amber-500 transition-colors" />
+                            <span className="text-xs font-bold">{event.eventTime}</span>
+                          </div>
+                          <div className="flex items-center gap-2 group/info">
+                            <MapPin size={14} className="text-red-500/60 group-hover/info:text-red-500 transition-colors" />
+                            <span className="text-xs font-bold truncate max-w-[180px]">{event.location}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between md:flex-col md:items-end gap-4 border-t md:border-t-0 border-amber-500/10 pt-6 md:pt-0">
+                      <div className="flex flex-col items-end">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg
+                          ${event.status === 'Confirmado' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                            event.status === 'Pendiente' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                            'bg-slate-800 text-slate-400 border border-amber-500/10'}`}>
+                          {event.status}
+                        </span>
+                        {event.paidAmount < event.totalAmount && (
+                          <p className="text-[10px] text-red-500 font-bold mt-2 animate-pulse">
+                            Saldo: ${(event.totalAmount - event.paidAmount).toLocaleString('es-CO')}
+                          </p>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => onNavigate('/reservas')}
+                        className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-xl group/btn"
+                      >
+                        <ChevronRight size={20} strokeWidth={3} className="group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ══ SIDEBAR AREA ══ */}
+          <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+            
+            {/* Help / Concierge Card */}
+            <div className="relative overflow-hidden bg-slate-900/40 border border-amber-500/10 rounded-[3rem] p-10 backdrop-blur-2xl shadow-2xl group cursor-default">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[50px] -mr-16 -mt-16 group-hover:bg-amber-500/20 transition-all duration-700" />
+              
+              <div className="relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mb-8 shadow-xl">
+                  <Phone size={28} strokeWidth={2} />
+                </div>
+                
+                <h3 className="text-2xl font-black text-white italic mb-4">¿Necesitas Ayuda?</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed mb-10">
+                  Nuestro equipo de atención está disponible para cualquier duda con tu reserva o pagos.
+                </p>
+
+                <div className="space-y-3">
+                  <a href="https://wa.me/573122373486" target="_blank" rel="noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/60 border border-amber-500/10 hover:bg-slate-900 hover:border-emerald-500/30 transition-all group/item">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
+                      <Phone size={18} strokeWidth={3} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">WhatsApp Directo</p>
+                      <p className="text-sm font-black text-white">312 237 3486</p>
+                    </div>
+                  </a>
+
+                  <div className="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/60 border border-amber-500/10 opacity-80">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Horario Atención</p>
+                      <p className="text-sm font-black text-white">8:00 AM - 8:00 PM</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Card */}
+            <div className="bg-slate-900/40 border border-amber-500/10 rounded-[2.5rem] p-8 backdrop-blur-2xl shadow-2xl">
+              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] mb-6">Accesos Rápidos</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => onNavigate('/repertorio')}
+                  className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-amber-500 transition-colors">
+                    <ListMusic size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors">Repertorio</span>
+                </button>
+                
+                <button
+                  onClick={() => onNavigate('/reservas')}
+                  className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-red-500 transition-colors">
+                    <Calendar size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors">Calendario</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
