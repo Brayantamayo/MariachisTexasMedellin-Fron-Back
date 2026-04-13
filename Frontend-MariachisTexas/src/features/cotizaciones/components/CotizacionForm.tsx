@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
@@ -7,6 +8,7 @@ export interface CotizacionFormErrors {
   clientName?:  string
   clientPhone?: string
   clientEmail?: string
+  eventDate?:   string
   startTime?:   string
   baseService?: string
   location?:    string
@@ -23,6 +25,7 @@ interface Props {
   services: Service[];
   availableHours?: string[];
   fieldErrors?: CotizacionFormErrors;
+  registerFieldRef?: (name: string, el: HTMLElement | null) => void;
   isSaving?:    boolean;
   blockStatus?: {
     isBlocked: boolean;
@@ -45,7 +48,7 @@ export const CotizacionForm: React.FC<Props> = ({
   clients, songs, services,
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
-  fieldErrors = {} as CotizacionFormErrors, isSaving = false,
+  fieldErrors = {} as CotizacionFormErrors, registerFieldRef, isSaving = false,
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
 }) => {
   const [searchTerm,      setSearchTerm]      = useState('');
@@ -93,6 +96,24 @@ export const CotizacionForm: React.FC<Props> = ({
   React.useEffect(() => {
     if (formData.startTime) {
       const newEndTime = calculateEndTime(formData.startTime, extraHoursQuantity)
+      
+      // ✅ Restricción horaria: El evento no puede terminar después de la medianoche
+      const [h] = newEndTime.split(':').map(Number)
+      if (h >= 1 && h < 8) {
+        toast.error("No trabajamos en más horarios de los establecidos", {
+          id: 'working-hours-limit',
+          duration: 3000
+        })
+        // Si hay una hora extra sumada, la reducimos para volver al límite permitido
+        if (extraHoursQuantity > 0 && extraHoursService) {
+          onServiceChange(String(extraHoursService.id), extraHoursQuantity - 1)
+        } else {
+          // Si es el servicio base el que se pasa (ej. empieza a medianoche y dura 1h), reset de inicio
+          onChange({ target: { name: 'startTime', value: '' } } as any)
+        }
+        return
+      }
+
       if (formData.endTime !== newEndTime) {
         onChange({ target: { name: 'endTime', value: newEndTime } } as any)
       }
@@ -148,7 +169,7 @@ export const CotizacionForm: React.FC<Props> = ({
     const [clientSearch, setClientSearch] = useState('');
     const [showClientDropdown, setShowClientDropdown] = useState(false);
   return (
-    <form id="cotizacion-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
+    <form id="cotizacion-form" onSubmit={onSubmit} noValidate className="flex flex-col lg:flex-row h-full">
 
       {/* ── COLUMNA IZQUIERDA ─────────────────────────────────────────────── */}
       <div className={`w-full lg:w-7/12 p-8 lg:p-10 space-y-10 ${isPublic ? 'bg-white' : 'bg-white border-r border-slate-100'}`}>
@@ -263,18 +284,19 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="text"
                   name="clientName"
-                  required
+                  
                   value={formData.clientName || ''}
                   onChange={onChange}
                   disabled={isEditing}
                   className={`${isEditing ? lockedInputClass : inputClass} ${
                     fieldErrors.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
                   }`}
+                  ref={el => registerFieldRef?.('clientName', el)}
                   placeholder="Tu nombre completo"
                 />
                 {fieldErrors.clientName && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
-                    <AlertCircle size={12} /> {fieldErrors.clientName}
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                    <AlertCircle size={12} className="shrink-0" /> {fieldErrors.clientName}
                   </p>
                 )}
               </div>
@@ -285,18 +307,19 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="tel"
                   name="clientPhone"
-                  required
+                  
                   value={formData.clientPhone || ''}
                   onChange={onChange}
                   disabled={isEditing}
                   className={`${isEditing ? lockedInputClass : inputClass} ${
                     fieldErrors.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
                   }`}
+                  ref={el => registerFieldRef?.('clientPhone', el)}
                   placeholder="Ej: 300 123 4567"
                 />
                 {fieldErrors.clientPhone && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
-                    <AlertCircle size={12} /> {fieldErrors.clientPhone}
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                    <AlertCircle size={12} className="shrink-0" /> {fieldErrors.clientPhone}
                   </p>
                 )}
               </div>
@@ -319,18 +342,19 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="email"
                   name="clientEmail"
-                  required
+                  
                   value={formData.clientEmail || ''}
                   onChange={onChange}
                   disabled={isEditing}
                   className={`${isEditing ? lockedInputClass : inputClass} ${
                     fieldErrors.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
                   }`}
+                  ref={el => registerFieldRef?.('clientEmail', el)}
                   placeholder="tucorreo@ejemplo.com"
                 />
                 {fieldErrors.clientEmail && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
-                    <AlertCircle size={12} /> {fieldErrors.clientEmail}
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                    <AlertCircle size={12} className="shrink-0" /> {fieldErrors.clientEmail}
                   </p>
                 )}
               </div>
@@ -380,10 +404,18 @@ export const CotizacionForm: React.FC<Props> = ({
                 label={isPublic ? undefined : "FECHA EVENTO"}
                 value={formData.eventDate}
                 onChange={onDateChange}
-                required
+                
                 minDate={today}
-                className={isPublic ? `${inputClass} !pl-12` : undefined}
+                className={`${isPublic ? `${inputClass} !pl-12` : ''} ${
+                  fieldErrors.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                }`}
+                ref={el => registerFieldRef?.('eventDate', el)}
               />
+              {fieldErrors.eventDate && (
+                <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                  <AlertCircle size={12} className="shrink-0" /> {fieldErrors.eventDate}
+                </p>
+              )}
             </div>
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
@@ -406,13 +438,14 @@ export const CotizacionForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
-                    <select name="startTime" required value={formData.startTime} onChange={onChange}
+                    <select name="startTime"  value={formData.startTime} onChange={onChange}
                       className={`w-full bg-white border text-sm rounded-lg p-2.5 outline-none cursor-pointer text-slate-700 appearance-none font-medium ${
                         fieldErrors.startTime
                           ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
                           : 'border-orange-200 focus:border-orange-400'
-                      }`}>
-                      <option value="">Seleccionar</option>
+                      }`}
+                      ref={el => registerFieldRef?.('startTime', el)}>
+                      <option value="">{availableHours.length === 0 ? "Ya no hay más horas disponibles" : "Seleccionar"}</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
                       ))}
@@ -423,8 +456,8 @@ export const CotizacionForm: React.FC<Props> = ({
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
                   </div>
                   {fieldErrors.startTime && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
-                      <AlertCircle size={12} /> {fieldErrors.startTime}
+                    <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                      <AlertCircle size={12} className="shrink-0" /> {fieldErrors.startTime}
                     </p>
                   )}
                 </div>
@@ -451,13 +484,22 @@ export const CotizacionForm: React.FC<Props> = ({
           {/* Tipo de Serenata */}
           <div className="mb-6">
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              ref={el => registerFieldRef?.('baseService', el)}
+            >
               {baseServices.map(service => {
                 const id         = String(service.id)
                 const isSelected = formData.selectedServices?.find((s: any) => s.serviceId === id)?.quantity > 0
                 return (
                   <div key={id} onClick={() => handleBaseServiceSelect(id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                      isSelected 
+                        ? 'border-orange-500 bg-orange-50 shadow-md' 
+                        : fieldErrors.baseService 
+                          ? 'border-red-200 bg-red-50/30 hover:border-red-300' 
+                          : 'border-slate-200 bg-white hover:border-orange-300'
+                    }`}>
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
                         <Check size={12} strokeWidth={3} />
@@ -473,8 +515,8 @@ export const CotizacionForm: React.FC<Props> = ({
               })}
             </div>
             {fieldErrors.baseService && (
-              <p className="text-red-500 text-xs mt-2 flex items-center gap-1 animate-pulse">
-                <AlertCircle size={12} /> {fieldErrors.baseService}
+              <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-3 flex items-center gap-1.5 animate-pulse pl-1">
+                <AlertCircle size={12} className="shrink-0" /> {fieldErrors.baseService}
               </p>
             )}
           </div>
@@ -487,18 +529,19 @@ export const CotizacionForm: React.FC<Props> = ({
               <input
                 type="text"
                 name="location"
-                required
+                
                 value={formData.location}
                 onChange={onChange}
                 className={`${inputClass} !pl-12 ${
                   fieldErrors.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
                 }`}
+                ref={el => registerFieldRef?.('location', el)}
                 placeholder="Dirección completa (Calle, Barrio, Ciudad)"
               />
             </div>
             {fieldErrors.location && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1 animate-pulse">
-                <AlertCircle size={12} /> {fieldErrors.location}
+              <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">
+                <AlertCircle size={12} className="shrink-0" /> {fieldErrors.location}
               </p>
             )}
           </div>
