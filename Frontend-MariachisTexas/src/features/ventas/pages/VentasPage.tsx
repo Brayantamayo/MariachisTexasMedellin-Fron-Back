@@ -479,8 +479,8 @@ const handleCreateSale = async (data: any) => {
   ///pendiente de revision
   const getStatusBadge = (sale: SaleRecord) => {
     const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
-    if (isFinalizado) return { label: 'Finalizado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    if (sale.reservationId) return { label: 'Confirmado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (isFinalizado) return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (sale.reservationId) return { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     return { label: 'Venta Directa', cls: 'bg-slate-50 text-slate-500 border-slate-200' };
   };
 

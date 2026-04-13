@@ -80,11 +80,13 @@ export const useReservasManager = () => {
           rehearsalService.getRehearsals(),
           cotizacionService.getQuotations()
         ]);
+        const filteredCalendar = calendarData.filter((r: any) => {
+          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
+          return !isVentaDirecta && !isClienteDirecto;
+        });
         setReservations(resData);
-        setCalendarReservations(calendarData.filter((r: any) => 
-          r.clientName !== 'Cliente Directa' && 
-          r.clientName !== 'Cliente Directa Directa'
-          ));
+        setCalendarReservations(filteredCalendar);
         setRehearsals(rehData);
         setQuotations(quoteData);
       } else {
@@ -96,7 +98,14 @@ export const useReservasManager = () => {
         ]);
 
         setReservations(misReservas);
-        setCalendarReservations(todasReservas);
+        
+        // Filtrar ventas directas y clientes directos para usuarios finales
+        const filteredPublicCalendar = todasReservas.filter((r: any) => {
+          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
+          return !isVentaDirecta && !isClienteDirecto;
+        });
+        setCalendarReservations(filteredPublicCalendar);
 
         setRehearsals(
           (ensayosDisp as any[]).map((e, i) => ({
@@ -151,6 +160,7 @@ export const useReservasManager = () => {
   }, [user]);
 
   const handleViewReserva = async (res: Reservation) => {
+    // Cliente: solo puede ver sus propias reservas
     if (isClient) {
       const full = reservations.find(r => r.id === res.id);
       if (!full) { showNotification('No tienes permiso para ver esta reserva.', 'error'); return; }
@@ -158,8 +168,24 @@ export const useReservasManager = () => {
       setIsDetailOpen(true);
       return;
     }
+
+    // Admin/Empleado: buscar primero en las reservas activas cargadas
     const full = reservations.find(r => r.id === res.id);
     if (full) { setSelectedReserva(full); setIsDetailOpen(true); return; }
+
+    // Si es una venta finalizada (ID tipo VENTA-X), usar los datos del calendario directamente
+    if (res.id?.startsWith('VENTA-')) {
+      const calRes = calendarReservations.find(r => r.id === res.id);
+      if (calRes) {
+        setSelectedReserva(calRes as unknown as Reservation);
+        setIsDetailOpen(true);
+        return;
+      }
+      showNotification('No se encontraron los detalles de este evento.', 'error');
+      return;
+    }
+
+    // Intentar fetch por ID para reservas finalizadas con ID numérico
     try {
       const fetched = await reservaService.getReservationById(res.id);
       setSelectedReserva(fetched);

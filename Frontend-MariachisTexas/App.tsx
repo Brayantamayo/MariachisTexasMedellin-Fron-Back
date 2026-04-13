@@ -179,7 +179,9 @@ const MainLayout: React.FC = () => {
         />
       )}
 
-      <main className={`flex-1 p-4 pt-20 lg:p-8 lg:pt-8 transition-all duration-300 bg-slate-50 text-slate-800 w-full min-w-0 ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
+      <main className={`flex-1 transition-all duration-300 w-full min-w-0 
+        ${(currentPath === '/perfil' || currentPath === '/home') ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-20 lg:p-8 lg:pt-8 text-slate-800'} 
+        ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
         {renderAppContent()}
       </main>
     </div>

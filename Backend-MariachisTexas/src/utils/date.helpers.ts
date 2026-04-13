@@ -79,6 +79,7 @@ export const buildClientName = (
   const lower    = nombre.toLowerCase()
   if (lower.endsWith(suffix.toLowerCase()))
     return nombre.slice(0, nombre.length - suffix.length).trim() + ' ' + apell
-  // Si no termina con el apellido, devolver tal cual (ya está bien)
-  return nombre
+  
+  // Si no termina con el apellido, concatenarlos
+  return (nombre + ' ' + apell).trim()
 }

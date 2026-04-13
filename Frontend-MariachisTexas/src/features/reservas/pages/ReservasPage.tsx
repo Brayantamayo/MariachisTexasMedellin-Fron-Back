@@ -4,14 +4,14 @@ import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight
 import { UserRole } from '@/types';
 import { useReservasManager } from '../hooks/useReservasManager';
 
-import { ReservasTable }      from '../components/ReservasTable';
+import { ReservasTable } from '../components/ReservasTable';
 import { ReservaCreateModal } from '../components/ReservaCreateModal';
-import { ReservaEditModal }   from '../components/ReservaEditModal';
+import { ReservaEditModal } from '../components/ReservaEditModal';
 import { ReservaDetailModal } from '../components/ReservaDetailModal';
-import { DateDetailsModal }   from '@/src/features/reservas/components/DateDetailsModal';
-import { AbonoCreateModal }   from '../../abonos/components/AbonoCreateModal';
-import { BlockFormModal }     from '../../bloqueos/components/BlockFormModal';
-import { ConfirmationModal }  from '@/shared/components/ConfirmationModal';
+import { DateDetailsModal } from '@/src/features/reservas/components/DateDetailsModal';
+import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
+import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
+import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 
 const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
   const [now, setNow] = useState(new Date())
@@ -24,11 +24,11 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
   )
   if (!pendingReservations.length) return null
   const formatCountdown = (eventDate: string) => {
-    const target  = new Date(eventDate + 'T00:00:00')
-    const diff    = target.getTime() - now.getTime()
+    const target = new Date(eventDate + 'T00:00:00')
+    const diff = target.getTime() - now.getTime()
     if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, urgent: true }
-    const days    = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
     return { days, hours, minutes, seconds, urgent: days <= 3 }
@@ -156,9 +156,9 @@ export const ReservasPage: React.FC = () => {
     setSelectedDateForDetails(dateStr); setIsDateDetailsOpen(true);
   };
 
-  const daysInMonth     = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   const changeMonth = (offset: number) => {
     setCurrentDate(prev => { const d = new Date(prev); d.setMonth(d.getMonth() + offset); return d; });
@@ -179,30 +179,30 @@ export const ReservasPage: React.FC = () => {
 
   const renderCalendar = () => {
     const totalDays = daysInMonth(currentDate);
-    const startDay  = firstDayOfMonth(currentDate);
-    const days      = [];
-    const today     = new Date();
-    const todayStr  = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const startDay = firstDayOfMonth(currentDate);
+    const days = [];
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
     for (let i = 0; i < startDay; i++) {
       days.push(<div key={`empty-${i}`} className="h-32 bg-slate-50/50 border border-slate-100" />);
     }
 
     for (let day = 1; day <= totalDays; day++) {
-      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const isPast  = dateStr < todayStr;
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isPast = dateStr < todayStr;
 
-      const dayEvents     = calendarReservations.filter(r => r.eventDate === dateStr && r.status !== 'ANULADA');
-      const dayBlocks     = blocks.filter(b => b.startDate <= dateStr && b.endDate >= dateStr && b.isActive);
+      const dayEvents = calendarReservations.filter(r => r.eventDate === dateStr && r.status !== 'ANULADA');
+      const dayBlocks = blocks.filter(b => b.startDate <= dateStr && b.endDate >= dateStr && b.isActive);
       const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'Completado');
-      const dayQuotes     = quotations.filter(q => q.eventDate === dateStr && q.status === 'EN_ESPERA');
+      const dayQuotes = quotations.filter(q => q.eventDate === dateStr && q.status === 'EN_ESPERA');
 
       const isFullDayBlock = dayBlocks.some(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE');
-      const isToday        = dateStr === todayStr;
-      const isSelected     = isDateSelected(dateStr);
+      const isToday = dateStr === todayStr;
+      const isSelected = isDateSelected(dateStr);
 
       const totalItems = dayEvents.length + dayRehearsals.length + dayQuotes.length;
-      
+
       // Color del indicador según prioridad: Azul (FINALIZADO) > Verde (CONFIRMADA) > Naranja (PENDIENTE)
       // Prioridad: PENDIENTE (naranja) → CONFIRMADA (verde) → FINALIZADO (azul)
       const s = (ev: any) => (ev.status ?? '').toUpperCase()
@@ -263,29 +263,43 @@ export const ReservasPage: React.FC = () => {
               </div>
             ))}
 
-{dayEvents
-  .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
-  .map(ev => {
-    const s = (ev.status ?? '').toUpperCase()
-    let statusStyle = 'bg-amber-50 border-amber-200 text-amber-800'
-    let timeStyle   = 'text-amber-600'
-    if (s === 'CONFIRMADA') {
-      statusStyle = 'bg-emerald-50 border-emerald-200 text-emerald-800'
-      timeStyle   = 'text-emerald-600'
-    }
-    if (s === 'FINALIZADO') {
-      statusStyle = 'bg-blue-50 border-blue-200 text-blue-800'
-      timeStyle   = 'text-blue-500'
-    }
-    return (
-      <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${statusStyle}`}>
-        <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-        <span className="truncate font-medium">
-          {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
-        </span>
-      </div>
-    )
-})}
+            {dayEvents
+              .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
+              .map(ev => {
+                const s = (ev.status ?? '').toUpperCase()
+                const isMine = reservations.some(r => r.id === ev.id)
+
+                let statusStyle = 'bg-amber-50 border-amber-200 text-amber-800'
+                let timeStyle = 'text-amber-600'
+
+                if (s === 'CONFIRMADA') {
+                  statusStyle = 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  timeStyle = 'text-emerald-600'
+                }
+                if (s === 'FINALIZADO') {
+                  statusStyle = 'bg-blue-50 border-blue-200 text-blue-800'
+                  timeStyle = 'text-blue-500'
+                }
+
+                // Si es cliente y no es su reserva, mostrar en gris y como "Reservado"
+                if (isClient && !isMine) {
+                  statusStyle = 'bg-slate-100 border-slate-100 text-slate-400'
+                  timeStyle = 'text-slate-400'
+                }
+
+                const label = isClient
+                  ? (isMine ? 'Tu reserva' : 'Reservado')
+                  : (canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType)
+
+                return (
+                  <div key={ev.id} title={label} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${statusStyle}`}>
+                    <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+                    <span className="font-medium truncate flex-1">
+                      {label}
+                    </span>
+                  </div>
+                )
+              })}
 
           </div>
 
@@ -329,29 +343,29 @@ export const ReservasPage: React.FC = () => {
 
       {/*Boton de reserva */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-  <div>
-    <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
-    <p className="text-slate-500 mt-2 text-sm">Control de agenda, fechas y disponibilidad de eventos.</p>
-  </div>
-  <div className="flex items-center gap-3">
-    <div className="flex bg-slate-100 p-1 rounded-lg">
-      <button onClick={() => setView('list')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-        <List size={16} /> Lista
-      </button>
-      <button onClick={() => setView('calendar')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-        <CalendarIcon size={16} /> Calendario
-      </button>
-    </div>
-    {canManage && (
-      <button
-        onClick={() => setIsCreateOpen(true)}
-        className="bg-[#dc2626] hover:bg-red-700 text-white px-8 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase"
-      >
-        <Plus size={16} strokeWidth={3} /> NUEVA RESERVA
-      </button>
-    )}
-  </div>
-</div>
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
+          <p className="text-slate-500 mt-2 text-sm">Control de agenda, fechas y disponibilidad de eventos.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button onClick={() => setView('list')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+              <List size={16} /> Lista
+            </button>
+            <button onClick={() => setView('calendar')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+              <CalendarIcon size={16} /> Calendario
+            </button>
+          </div>
+          {canManage && (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-[#dc2626] hover:bg-red-700 text-white px-8 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase"
+            >
+              <Plus size={16} strokeWidth={3} /> NUEVA RESERVA
+            </button>
+          )}
+        </div>
+      </div>
 
 
 
@@ -378,7 +392,7 @@ export const ReservasPage: React.FC = () => {
               onEdit={(res) => { setEditingReserva(res); setIsEditOpen(true); }}
               onAddPayment={(id) => { setAbonoReservationId(id); setIsAbonoModalOpen(true); }}
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
-              onCancel={processCancel}     
+              onCancel={processCancel}
               onDelete={(id) => setDeleteReservaModal({ isOpen: true, id })}
             />
           </div>
@@ -393,7 +407,7 @@ export const ReservasPage: React.FC = () => {
             </div>
             <div className="flex-1 p-6">
               <div className="grid grid-cols-7 mb-4 text-center">
-                {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => (
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
                   <div key={d} className="text-xs font-bold text-slate-400 uppercase tracking-widest">{d}</div>
                 ))}
               </div>
@@ -404,18 +418,18 @@ export const ReservasPage: React.FC = () => {
       </div>
 
       <ReservaCreateModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSave={handleCreate} selectedDate={selectedDateForForm} selectedTime={selectedTimeForForm} />
-      <ReservaEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdate} reservation={editingReserva} />
+      <ReservaEditModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSave={handleUpdate} reservation={editingReserva} />
       <ReservaDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} reservation={selectedReserva} onFinalize={processFinalization} />
-      <AbonoCreateModal   isOpen={isAbonoModalOpen} onClose={() => setIsAbonoModalOpen(false)} onSave={handleSaveAbono} initialReservationId={abonoReservationId} />
+      <AbonoCreateModal isOpen={isAbonoModalOpen} onClose={() => setIsAbonoModalOpen(false)} onSave={handleSaveAbono} initialReservationId={abonoReservationId} />
 
       <DateDetailsModal
         isOpen={isDateDetailsOpen} onClose={() => setIsDateDetailsOpen(false)} date={selectedDateForDetails}
         reservations={calendarReservations.filter(r => r.eventDate === selectedDateForDetails && r.status !== 'ANULADA')}
-        blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails||'') && b.endDate >= (selectedDateForDetails||'') && b.isActive)}
+        blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails || '') && b.endDate >= (selectedDateForDetails || '') && b.isActive)}
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'Completado')}
         quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
-        onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time||null); setIsCreateOpen(true); }}
+        onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time || null); setIsCreateOpen(true); }}
         onBlockTime={handleTimeSlotBlock}
         onDeleteBlock={(id) => setDeleteBlockModal({ isOpen: true, blockId: id })}
       />

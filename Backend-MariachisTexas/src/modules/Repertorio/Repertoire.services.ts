@@ -105,9 +105,6 @@ export const deleteSong = async (id: number) => {
   const exists = await prisma.repertorio.findUnique({ where: { id } })
   if (!exists) throw new AppError('Canción no encontrada', 404)
 
-  if (exists.activa)
-    throw new AppError('Debes desactivar la canción antes de eliminarla', 409)
-
   const enUso = await prisma.cotizacionRepertorio.findFirst({
     where: {
       repertorioId: id,

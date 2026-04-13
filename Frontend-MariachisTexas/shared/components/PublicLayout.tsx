@@ -67,13 +67,26 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
           <div className="flex justify-between items-center">
             
             {/* Logo */}
-            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onNavigate('/')}>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-red-600 to-red-900 shadow-lg shadow-red-900/20 group-hover:scale-105 transition-transform">
-                  <Music className="h-6 w-6 text-white" />
+            <div className="flex items-center cursor-pointer group" onClick={() => onNavigate('/')}>
+              <div className="relative w-12 h-12 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
+                  <div className="absolute inset-0 bg-red-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <img 
+                    src="shared/assets/images/Logo.png" 
+                    alt="Logo Mariachis Texas" 
+                    className="relative w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]"
+                  />
               </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-serif font-bold tracking-widest leading-none text-white drop-shadow-md">MARIACHIS</span>
-                <span className="text-[10px] font-bold text-red-500 tracking-[0.3em] leading-none mt-1 uppercase">Texas</span>
+
+              {/* Separador elegante */}
+              <div className="mx-4 w-px h-8 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+
+              <div className="flex flex-col justify-center">
+                <span className="text-xl font-serif font-black tracking-[0.1em] leading-none text-white drop-shadow-md uppercase group-hover:text-red-50 transition-colors">
+                  Mariachis
+                </span>
+                <span className="text-[9px] font-black text-red-500 tracking-[0.4em] leading-none mt-1.5 uppercase transition-all group-hover:tracking-[0.5em]">
+                  Texas
+                </span>
               </div>
             </div>
 

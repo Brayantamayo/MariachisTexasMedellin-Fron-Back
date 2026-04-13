@@ -37,9 +37,17 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
 
   return (
     <div
-      className="relative h-screen w-full flex items-center justify-center pt-32 pb-12 bg-dark-900 overflow-hidden"
+      className="relative h-screen w-full flex items-center justify-center pt-32 pb-12 overflow-hidden"
+      style={{
+        backgroundImage: 'url(shared/assets/images/login-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
       onClick={handleBackgroundClick}
     >
+      {/* Dark overlay para mantener la card legible */}
+      <div className="absolute inset-0 bg-black/65 z-0" />
       <style>{`
         @keyframes ripple-expand {
           0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.8; }

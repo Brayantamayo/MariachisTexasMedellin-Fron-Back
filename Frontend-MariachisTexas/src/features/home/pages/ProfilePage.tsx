@@ -37,51 +37,56 @@ PAS: 'Pasaporte',
 // ─── Field Component ──────────────────────────────────────────────────────────
 
 const Field: React.FC<FieldProps> = ({
-label, value, name, icon, type = 'text',
-editing, onChange, readOnly, hint, colSpan
+  label, value, name, icon, type = 'text',
+  editing, onChange, readOnly, hint, colSpan
 }) => (
-<div className={colSpan ? 'md:col-span-2' : ''}>
-    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">
-    {label}
-    </label>
-    <div className="relative">
-    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-        ${editing && !readOnly ? 'text-amber-400' : 'text-slate-600'}`}>
-        {icon}
-    </span>
-    <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={!editing || readOnly}
-        className={`
-        w-full pl-10 pr-4 py-3 rounded-lg text-sm font-medium outline-none transition-all duration-200
-        ${readOnly
-            ? 'bg-slate-800/20 text-slate-600 cursor-not-allowed border border-transparent'
-            : editing
-            ? 'bg-slate-800/70 border border-slate-600/80 text-white focus:border-amber-500/70 focus:ring-1 focus:ring-amber-500/20'
-            : 'bg-transparent border border-transparent text-slate-300 cursor-default'
-        }
-        `}
-    />
-    </div>
-    {hint && <p className="text-[10px] text-slate-600 mt-1 ml-0.5">{hint}</p>}
-</div>
+  <div className={`group ${colSpan ? 'md:col-span-2' : ''} animate-fade-in-up`} style={{ animationDelay: '100ms' }}>
+      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2.5 ml-1 group-hover:text-amber-500/50 transition-colors">
+        {label}
+      </label>
+      <div className="relative">
+        <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 z-10
+            ${editing && !readOnly ? 'text-amber-500 scale-110' : 'text-slate-500 group-hover:text-slate-400'}`}>
+            {icon}
+        </span>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            disabled={!editing || readOnly}
+            className={`
+            w-full pl-11 pr-4 py-4 rounded-xl text-sm font-bold outline-none transition-all duration-300
+            ${readOnly
+                ? 'bg-white/3 text-slate-500 cursor-not-allowed border border-white/[0.03] opacity-70'
+                : editing
+                ? 'bg-slate-900/40 border border-amber-500/15 text-white focus:bg-slate-900/60 focus:border-amber-500/40 focus:ring-4 focus:ring-amber-500/5 shadow-inner'
+                : 'bg-transparent border border-transparent text-slate-200 cursor-default'
+            }
+            `}
+        />
+        {editing && !readOnly && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          </div>
+        )}
+      </div>
+      {hint && <p className="text-[10px] text-slate-600 mt-2 ml-1 font-medium">{hint}</p>}
+  </div>
 );
 
 // ─── Stat Badge ───────────────────────────────────────────────────────────────
 
 const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
-<div className="flex items-center gap-3 py-3 border-b border-white/5 last:border-0">
-    <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-white/6 flex items-center justify-center text-slate-500 flex-shrink-0">
-    {icon}
-    </div>
-    <div className="min-w-0">
-    <p className="text-[10px] text-slate-600 uppercase tracking-wider font-bold">{label}</p>
-    <p className="text-sm text-slate-300 font-semibold truncate">{value || '—'}</p>
-    </div>
-</div>
+  <div className="flex items-center gap-4 py-4 border-b border-white/[0.03] last:border-0 group hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors">
+      <div className="w-9 h-9 rounded-xl bg-slate-900/60 border border-amber-500/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-all group-hover:scale-110 shadow-lg">
+      {icon}
+      </div>
+      <div className="min-w-0">
+      <p className="text-[9px] text-slate-600 uppercase tracking-[0.2em] font-black group-hover:text-slate-500 transition-colors">{label}</p>
+      <p className="text-sm text-slate-300 font-bold truncate mt-0.5">{value || '—'}</p>
+      </div>
+  </div>
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -244,214 +249,181 @@ if (isLoadingGet) {
 const initials = `${formData.nombre?.[0] ?? ''}${formData.apellido?.[0] ?? ''}`.toUpperCase();
 
 return (
-    <div className="min-h-screen bg-[#07080a] text-white">
+    <div className="min-h-screen bg-[#050608] text-white selection:bg-amber-500/30">
 
-      {/* ── Ambient background ── */}
-    <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-amber-500/3 rounded-full blur-[160px]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-slate-700/5 rounded-full blur-[120px]" />
-        {/* Subtle grid */}
-        <div
-        className="absolute inset-0 opacity-[0.015]"
-        style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-        }}
-        />
-    </div>
+      {/* ── Ambient Effects ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-red-600/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-600/5 rounded-full blur-[150px]" />
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      </div>
 
       {/* ── Toast notification ── */}
-    {notification && createPortal(
-        <div className="fixed top-5 right-5 z-[200]" style={{ animation: 'slideIn 0.3s ease' }}>
-        <style>{`@keyframes slideIn { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }`}</style>
-        <div className={`flex items-center gap-3 pl-4 pr-5 py-3.5 rounded-xl shadow-2xl border backdrop-blur-xl min-w-[300px]
-            ${notification.type === 'success'
-            ? 'bg-slate-900/95 border-emerald-500/30'
-            : 'bg-slate-900/95 border-red-500/30'
-            }`}>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
-            ${notification.type === 'success' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-            {notification.type === 'success'
-                ? <CheckCircle size={15} strokeWidth={2.5} />
-                : <AlertCircle size={15} strokeWidth={2.5} />
-            }
+      {notification && createPortal(
+          <div className="fixed top-8 right-8 z-[200] animate-fade-in-up">
+            <div className={`flex items-center gap-4 pl-5 pr-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border backdrop-blur-2xl min-w-[320px]
+                ${notification.type === 'success' ? 'bg-slate-900/90 border-emerald-500/20' : 'bg-slate-900/90 border-red-500/20'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg
+                ${notification.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                {notification.type === 'success' ? <CheckCircle size={20} strokeWidth={2.5} /> : <AlertCircle size={20} strokeWidth={2.5} />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{notification.type === 'success' ? 'Éxito' : 'Atención'}</p>
+                  <p className="text-sm text-slate-200 font-bold">{notification.message}</p>
+                </div>
+                <button onClick={() => setNotification(null)} className="text-slate-500 hover:text-white transition-colors">
+                  <X size={18} />
+                </button>
             </div>
-            <p className="text-sm text-slate-300 font-medium flex-1">{notification.message}</p>
-            <button onClick={() => setNotification(null)} className="text-slate-600 hover:text-slate-400 transition-colors ml-1">
-            <X size={14} />
-            </button>
+          </div>,
+          document.body
+      )}
+
+      {/* ── HERO SECTION ── */}
+      <div className="relative h-[280px] w-full overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0">
+          <img 
+            src="/shared/assets/images/profile-bg.png" 
+            alt="Hero Background" 
+            className="w-full h-full object-cover scale-105 blur-[2px] opacity-40"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050608] via-[#050608]/40 to-transparent" />
         </div>
-        </div>,
-        document.body
-    )}
-
-    <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 pb-20">
-
-        {/* ── Breadcrumb + Header ── */}
-        <div className="mb-10">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mb-4 font-medium uppercase tracking-[0.15em]">
+        
+        <div className="relative max-w-6xl mx-auto h-full px-6 flex flex-col justify-end pb-10">
+          <div className="flex items-center gap-2 text-[10px] font-black text-amber-500/60 uppercase tracking-[0.3em] mb-4 animate-fade-in-up">
             <span>Inicio</span>
-            <ChevronRight size={11} />
-            <span className="text-amber-500/80">Mi Perfil</span>
-        </div>
-        <div className="flex items-end justify-between">
-            <div>
-            <h1 className="text-2xl font-black tracking-tight text-white">Mi Perfil</h1>
-            <p className="text-slate-600 text-sm mt-1">Gestiona tu información personal y de contacto.</p>
-            </div>
-            {/* Edit toggle — top level on desktop */}
-            <button
-            onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
-            className={`hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all duration-200
-                ${isEditing
-                ? 'bg-slate-800 text-slate-400 hover:bg-slate-700/80 border border-slate-700'
-                : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40'
-                }`}
-            >
-            {isEditing ? <><X size={12} /> Cancelar</> : <><Edit2 size={12} /> Editar perfil</>}
-            </button>
-        </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-
-          {/* ══ LEFT SIDEBAR ══ */}
-        <div className="space-y-4">
-
-            {/* Identity card */}
-            <div className="bg-slate-900/50 border border-white/6 rounded-2xl p-6 backdrop-blur-sm">
-              {/* Avatar — Photo upload widget */}
-            <div className="flex flex-col items-center text-center mb-6">
-                {isEditing ? (
-                  <PhotoUploadWidget photo={photo} currentUrl={formData.foto} size="md" />
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/20 flex items-center justify-center mb-4 shadow-lg shadow-amber-900/10 overflow-hidden">
+            <ChevronRight size={12} strokeWidth={3} className="opacity-40" />
+            <span className="text-amber-500">Mi Perfil</span>
+          </div>
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex items-center gap-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+               {/* Large Avatar container */}
+               <div className="relative group">
+                 <div className="absolute -inset-1 bg-gradient-to-br from-amber-500 to-red-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
+                 <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-3xl bg-slate-900/80 border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105">
                     {formData.foto ? (
                       <img src={formData.foto} alt="Perfil" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl font-black text-amber-400 tracking-tight">{initials}</span>
+                      <span className="text-4xl font-black text-amber-500 tracking-tighter">{initials}</span>
                     )}
-                  </div>
-                )}
-                <h2 className="text-base font-black text-white tracking-tight mt-4">
-                {formData.nombre} {formData.apellido}
-                </h2>
-                <div className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/8 border border-amber-500/15">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">
-                    {perfil?.rol || 'CLIENTE'}
-                </span>
-                </div>
+                 </div>
+                 {isEditing && (
+                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                     <div className="bg-black/60 backdrop-blur-sm rounded-full p-2">
+                       <Camera size={24} className="text-white" />
+                     </div>
+                   </div>
+                 )}
+               </div>
+
+               <div>
+                 <div className="flex items-center gap-3 mb-2">
+                   <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white drop-shadow-xl">{formData.nombre} {formData.apellido}</h1>
+                   <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
+                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{perfil?.rol || 'CLIENTE'}</span>
+                   </div>
+                 </div>
+                 <div className="flex flex-wrap items-center gap-4 text-slate-400">
+                   <div className="flex items-center gap-1.5 text-xs font-bold">
+                     <Mail size={14} className="text-amber-500/50" />
+                     {formData.email}
+                   </div>
+                   <div className="w-1 h-1 rounded-full bg-slate-700" />
+                   <div className="flex items-center gap-1.5 text-xs font-bold">
+                     <MapPin size={14} className="text-amber-500/50" />
+                     {formData.ciudad || 'Sin ubicación'}
+                   </div>
+                 </div>
+               </div>
             </div>
 
-              {/* Quick info rows */}
-            <div className="space-y-0">
-                <InfoRow icon={<Mail size={14} />}  label="Correo"   value={formData.email} />
-                <InfoRow icon={<Phone size={14} />} label="Teléfono" value={formData.telefonoPrincipal} />
-                <InfoRow icon={<MapPin size={14} />} label="Ciudad"  value={formData.ciudad} />
-            </div>
-            </div>
-
-            {/* Document card */}
-            <div className="bg-slate-900/50 border border-white/6 rounded-2xl p-5 backdrop-blur-sm">
-            <p className="text-[10px] text-slate-600 uppercase tracking-[0.15em] font-bold mb-4">Documento</p>
-            <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-white/6 flex items-center justify-center text-slate-500">
-                <FileText size={15} />
-                </div>
-                <div>
-                <p className="text-[11px] text-slate-500 font-semibold">{tipoDocLabel[formData.tipoDocumento]}</p>
-                <p className="text-sm text-white font-black tracking-wide">{formData.numeroDocumento}</p>
-                </div>
-            </div>
-            </div>
-
-            {/* Info tip */}
-            <div className="bg-slate-900/50 border border-amber-500/10 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Shield size={13} className="text-amber-400/70" />
-                </div>
-                <div>
-                <p className="text-[11px] font-bold text-amber-400/70 mb-1.5">Datos en reservas</p>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Tu <span className="text-slate-400">nombre, teléfono y correo</span> se usan automáticamente al crear una reserva.
-                </p>
-                </div>
-            </div>
-            </div>
-
+            <button
+              onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
+              className={`flex items-center gap-3 px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 shadow-xl animate-fade-in-up
+                ${isEditing
+                ? 'bg-slate-800/80 text-slate-300 border border-white/10 hover:bg-slate-700 backdrop-blur-xl'
+                : 'bg-gradient-to-br from-amber-500 to-amber-600 text-white border border-amber-400/30 hover:scale-105 hover:shadow-amber-500/20 active:scale-95'
+                }`}
+                style={{ animationDelay: '200ms' }}
+            >
+              {isEditing ? <><X size={14} strokeWidth={3} /> Cancelar</> : <><Edit2 size={14} strokeWidth={3} /> Editar perfil</>}
+            </button>
+          </div>
         </div>
+      </div>
 
-          {/* ══ RIGHT MAIN AREA ══ */}
-        <div className="space-y-4">
+      <div className="relative max-w-6xl mx-auto px-6 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
 
-            {/* ── Personal info card ── */}
-            <div className="bg-slate-900/50 border border-white/6 rounded-2xl overflow-hidden backdrop-blur-sm">
+          {/* ══ SIDEBAR AREA ══ */}
+          <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+            
+            {/* Quick Stats / Info */}
+            <div className="bg-slate-900/40 border border-amber-500/10 rounded-[2rem] p-8 backdrop-blur-2xl shadow-2xl">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] mb-6">Información Básica</h3>
+              <div className="space-y-2">
+                  <InfoRow icon={<Phone size={14} />} label="Teléfono" value={formData.telefonoPrincipal} />
+                  <InfoRow icon={<MapPin size={14} />} label="Ciudad"  value={formData.ciudad} />
+                  <InfoRow icon={<Map size={14} />} label="Barrio"  value={formData.barrio} />
+              </div>
 
-              {/* Card header */}
-            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/15 flex items-center justify-center">
-                    <User size={13} className="text-amber-400/80" />
+              {/* Document Info as a specialized field */}
+              <div className="mt-8 pt-8 border-t border-white/5">
+                <p className="text-[10px] text-slate-500 uppercase tracking-[0.25em] font-black mb-4">Documentación</p>
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-amber-500/10 flex items-center gap-4 group hover:bg-white/[0.05] transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-colors">
+                      <FileText size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{tipoDocLabel[formData.tipoDocumento]}</p>
+                      <p className="text-sm text-white font-black tracking-wider mt-0.5">{formData.numeroDocumento}</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-black text-white text-sm tracking-tight">Información Personal</h3>
-                    <p className="text-[11px] text-slate-600 mt-0.5">Datos de contacto y ubicación</p>
-                </div>
-                </div>
-                {/* Mobile edit toggle */}
-                <button
-                onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
-                className={`sm:hidden flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all
-                    ${isEditing
-                    ? 'bg-slate-800 text-slate-400 border border-slate-700'
-                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}
-                >
-                {isEditing ? <><X size={11} /> Cancelar</> : <><Edit2 size={11} /> Editar</>}
-                </button>
+              </div>
             </div>
 
-            <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                <Field label="Nombre"   name="nombre"   value={formData.nombre}
-                    icon={<User size={14} />} editing={isEditing} onChange={handleChange as any} />
-                <Field label="Apellido" name="apellido" value={formData.apellido}
-                    icon={<User size={14} />} editing={isEditing} onChange={handleChange as any} />
-
-                  {/* Tipo documento — read only */}
-                <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">Tipo Documento</label>
-                    <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600"><FileText size={14} /></span>
-                    <div className="w-full pl-10 pr-4 py-3 rounded-lg text-sm font-medium text-slate-600 bg-slate-800/20 border border-transparent cursor-default">
-                        {tipoDocLabel[formData.tipoDocumento]}
-                    </div>
-                    </div>
-                    <p className="text-[10px] text-slate-700 mt-1">No editable una vez registrado.</p>
+            {/* Smart Tips Card */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-red-600 rounded-[2rem] p-8 shadow-2xl group cursor-default">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 group-hover:scale-150 transition-transform duration-700" />
+              <div className="relative flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0">
+                  <Shield size={18} className="text-white" />
                 </div>
-
-                  {/* Número documento — read only */}
                 <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">N° Documento</label>
-                    <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600"><Hash size={14} /></span>
-                    <div className="w-full pl-10 pr-4 py-3 rounded-lg text-sm font-medium text-slate-600 bg-slate-800/20 border border-transparent cursor-default">
-                        {formData.numeroDocumento}
-                    </div>
-                    </div>
-                    <p className="text-[10px] text-slate-700 mt-1">No editable una vez registrado.</p>
+                  <h4 className="text-sm font-black text-white uppercase tracking-tight mb-2">Seguridad de Datos</h4>
+                  <p className="text-xs text-white/80 leading-relaxed font-medium">Sus datos están protegidos. El número de identificación no es editable por seguridad pública.</p>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                  {/* Fecha nacimiento */}
+          {/* ══ MAIN FORM AREA ══ */}
+          <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+            
+            {/* Personal Details Form */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-2xl shadow-2xl">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <User size={24} strokeWidth={2.5} />
+                </div>
                 <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">Fecha de Nacimiento</label>
-                    <div className="relative">
-                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                        ${isEditing ? 'text-amber-400' : 'text-slate-600'}`}>
-                        <Calendar size={14} />
+                  <h3 className="text-xl font-black text-white tracking-tight italic">Detalles de la Cuenta</h3>
+                  <p className="text-xs text-slate-500 font-medium">Actualiza tu información personal y de contacto para tus reservas.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
+                <Field label="Primer Nombre" name="nombre" value={formData.nombre} icon={<User size={16} />} editing={isEditing} onChange={handleChange as any} />
+                <Field label="Apellidos" name="apellido" value={formData.apellido} icon={<User size={16} />} editing={isEditing} onChange={handleChange as any} />
+                
+                {/* DatePicker Custom style */}
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2.5 ml-1">Fecha de Nacimiento</label>
+                  <div className="relative">
+                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 z-10 ${isEditing ? 'text-amber-500' : 'text-slate-500'}`}>
+                      <Calendar size={16} />
                     </span>
                     <input
                         type="date"
@@ -459,166 +431,154 @@ return (
                         value={formData.fechaNacimiento}
                         onChange={handleChange as any}
                         disabled={!isEditing}
-                        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-                        className={`w-full pl-10 pr-4 py-3 rounded-lg text-sm font-medium outline-none transition-all duration-200 [color-scheme:dark]
+                        className={`w-full pl-11 pr-4 py-4 rounded-xl text-sm font-bold outline-none transition-all duration-300 [color-scheme:dark]
                         ${isEditing
-                            ? 'bg-slate-800/70 border border-slate-600/80 text-white focus:border-amber-500/70 focus:ring-1 focus:ring-amber-500/20'
-                            : 'bg-transparent border border-transparent text-slate-300 cursor-default'
+                            ? 'bg-slate-900/40 border border-white/10 text-white focus:bg-slate-900/60 focus:border-amber-500/50 focus:ring-4 focus:ring-amber-500/5 shadow-inner'
+                            : 'bg-transparent border border-transparent text-slate-200 cursor-default uppercase tracking-widest'
                         }`}
                     />
-                    </div>
+                  </div>
                 </div>
 
-                {/* Email — always read only */}
-                <Field
-                    label="Correo Electrónico" name="email" value={formData.email} type="email"
-                    icon={<Mail size={14} />} editing={false} onChange={handleChange as any}
-                    readOnly hint="El correo no puede modificarse."
-                />
+                <Field label="Correo de Facturación" name="email" value={formData.email} type="email" icon={<Mail size={16} />} editing={false} readOnly hint="Solo modificable por administración." />
+                
+                <Field label="Teléfono Móvil" name="telefonoPrincipal" value={formData.telefonoPrincipal} type="tel" icon={<Phone size={16} />} editing={isEditing} onChange={handleChange as any} />
+                <Field label="Teléfono Respaldo" name="telefonoAlternativo" value={formData.telefonoAlternativo} type="tel" icon={<Phone size={16} />} editing={isEditing} onChange={handleChange as any} />
+                
+                <Field label="Ciudad Residencia" name="ciudad" value={formData.ciudad} icon={<MapPin size={16} />} editing={isEditing} onChange={handleChange as any} />
+                <Field label="Barrio / Sector" name="barrio" value={formData.barrio} icon={<Map size={16} />} editing={isEditing} onChange={handleChange as any} />
+                
+                <Field label="Dirección Completa" name="direccion" value={formData.direccion} icon={<Home size={16} />} editing={isEditing} onChange={handleChange as any} colSpan />
 
-                <Field label="Teléfono Principal"   name="telefonoPrincipal"   value={formData.telefonoPrincipal}   type="tel"
-                    icon={<Phone size={14} />} editing={isEditing} onChange={handleChange as any} />
-                <Field label="Teléfono Alternativo" name="telefonoAlternativo" value={formData.telefonoAlternativo} type="tel"
-                    icon={<Phone size={14} />} editing={isEditing} onChange={handleChange as any} />
-
-                <Field label="Ciudad" name="ciudad" value={formData.ciudad}
-                    icon={<MapPin size={14} />} editing={isEditing} onChange={handleChange as any} />
-                <Field label="Barrio"  name="barrio"  value={formData.barrio}
-                    icon={<Map size={14} />} editing={isEditing} onChange={handleChange as any} />
-
-                <Field label="Dirección" name="direccion" value={formData.direccion}
-                    icon={<Home size={14} />} editing={isEditing} onChange={handleChange as any} colSpan />
-
-                  {/* Zona servicio */}
                 <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">Zona de Servicio</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2.5 ml-1">Zona de Servicio Preferida</label>
                     <div className="relative">
-                    <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                        ${isEditing ? 'text-amber-400' : 'text-slate-600'}`}>
-                        <MapPin size={14} />
-                    </span>
-                    <select
-                        name="zonaServicio"
-                        value={formData.zonaServicio}
-                        onChange={handleChange as any}
-                        disabled={!isEditing}
-                        className={`w-full pl-10 pr-4 py-3 rounded-lg text-sm font-medium outline-none transition-all duration-200 appearance-none
-                        ${isEditing
-                            ? 'bg-slate-800/70 border border-slate-600/80 text-white focus:border-amber-500/70 focus:ring-1 focus:ring-amber-500/20 cursor-pointer'
-                            : 'bg-transparent border border-transparent text-slate-300 cursor-default'
-                        }`}
-                    >
-                        <option value="URBANA" className="bg-slate-900">Urbana</option>
-                        <option value="RURAL"  className="bg-slate-900">Rural</option>
-                    </select>
+                      <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 z-10 ${isEditing ? 'text-amber-500' : 'text-slate-500'}`}>
+                        <MapPin size={16} />
+                      </span>
+                      <select
+                          name="zonaServicio"
+                          value={formData.zonaServicio}
+                          onChange={handleChange as any}
+                          disabled={!isEditing}
+                          className={`w-full pl-11 pr-4 py-4 rounded-xl text-sm font-bold outline-none transition-all duration-300 appearance-none
+                          ${isEditing
+                              ? 'bg-slate-900/40 border border-white/10 text-white focus:bg-slate-900/60 focus:border-amber-500/50 cursor-pointer'
+                              : 'bg-transparent border border-transparent text-slate-200 cursor-default'
+                          }`}
+                      >
+                          <option value="URBANA" className="bg-slate-900 font-bold uppercase tracking-widest">Zona Urbana</option>
+                          <option value="RURAL"  className="bg-slate-900 font-bold uppercase tracking-widest">Zona Rural / Especial</option>
+                      </select>
                     </div>
                 </div>
+              </div>
 
-                </div>
-
-                {/* Save / Cancel actions */}
-                {isEditing && (
-                <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-end gap-3">
-                    <button
-                    onClick={handleCancel}
-                    className="px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-slate-500 border border-slate-700/80 hover:bg-slate-800/60 transition-all duration-200"
-                    >
-                    Cancelar
-                    </button>
-                    <button
+              {isEditing && (
+                <div className="mt-12 pt-8 border-t border-white/10 flex items-center justify-end gap-4">
+                  <button onClick={handleCancel} className="px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                    Descartar
+                  </button>
+                  <button
                     onClick={handleSave}
                     disabled={isLoading}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-amber-900/20"
-                    >
-                    {isLoading
-                        ? <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Guardando...</>
-                        : <><Save size={13} /> Guardar cambios</>
-                    }
-                    </button>
+                    className="flex items-center gap-3 px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-amber-500 hover:bg-amber-400 disabled:opacity-50 transition-all shadow-xl shadow-amber-900/20 active:scale-95"
+                  >
+                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} strokeWidth={2.5} />}
+                    Guardar Perfil
+                  </button>
                 </div>
+              )}
+            </div>
+
+            {/* Account Status Segment */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-2 overflow-hidden backdrop-blur-2xl shadow-2xl">
+               <div className="flex flex-col md:flex-row items-center gap-4 p-6 bg-slate-800/20 rounded-[2rem] border border-white/5">
+                 <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-lg shadow-emerald-900/10">
+                   <Shield size={24} strokeWidth={2.5} />
+                 </div>
+                 <div className="flex-1 text-center md:text-left">
+                   <h4 className="text-base font-black text-white italic">Acceso Verificado</h4>
+                   <p className="text-xs text-slate-500 font-medium">Tu cuenta está protegida y verificada. El correo electrónico principal está vinculado a tu identidad.</p>
+                 </div>
+                 <div className="px-6 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">ACTIVA</span>
+                 </div>
+               </div>
+            </div>
+
+            {/* Payments History Card */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-2xl shadow-2xl">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                    <CreditCard size={24} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white tracking-tight italic">Transacciones Recientes</h3>
+                    <p className="text-xs text-slate-500 font-medium">Visualiza tus últimos abonos realizados a reservas.</p>
+                  </div>
+                </div>
+                {!isLoadingAbonos && abonos.length > 0 && (
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Total Histórico</p>
+                    <p className="text-2xl font-black text-emerald-400 tracking-tighter shadow-sm">
+                      ${abonos.reduce((sum, pago) => sum + pago.amount, 0).toLocaleString('es-CO')}
+                    </p>
+                  </div>
                 )}
-            </div>
-            </div>
+              </div>
 
-            {/* ── Email / security read-only card ── */}
-            <div className="bg-slate-900/50 border border-white/6 rounded-2xl overflow-hidden backdrop-blur-sm">
-            <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-slate-800 border border-white/6 flex items-center justify-center">
-                <Shield size={13} className="text-slate-500" />
-                </div>
-                <h3 className="font-black text-white text-sm tracking-tight">Acceso a la cuenta</h3>
-            </div>
-            <div className="px-6 py-5">
-                <div className="flex items-center justify-between gap-4 p-4 bg-slate-800/30 rounded-xl border border-white/5">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/6 flex items-center justify-center text-slate-500">
-                    <Mail size={15} />
+              {isLoadingAbonos ? (
+                 <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-600">
+                    <Loader2 size={32} className="animate-spin text-amber-500" />
+                    <p className="text-xs font-black uppercase tracking-[0.3em]">Procesando historial</p>
+                 </div>
+              ) : abonos.length === 0 ? (
+                 <div className="flex flex-col items-center justify-center py-20 px-10 text-center border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.01]">
+                    <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center text-slate-600 mb-4">
+                      <CreditCard size={32} strokeWidth={1} />
                     </div>
-                    <div>
-                    <p className="text-xs font-bold text-white">Correo de acceso</p>
-                    <p className="text-[12px] text-slate-500 mt-0.5">{formData.email}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/8 border border-emerald-500/15">
-                    <CheckCircle size={11} className="text-emerald-400" strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider">Verificado</span>
-                </div>
-                </div>
-            </div>
-            </div>
-
-            {/* ── Historial de Abonos ── */}
-            <div className="bg-slate-900/50 border border-white/6 rounded-2xl overflow-hidden backdrop-blur-sm">
-            <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
-                <CreditCard size={13} className="text-emerald-400" />
-                </div>
-                <div>
-                <h3 className="font-black text-white text-sm tracking-tight">Historial de Abonos</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Tus pagos registrados en reservas.</p>
-                </div>
-            </div>
-            <div className="p-6 space-y-3">
-                {isLoadingAbonos ? (
-                <div className="flex items-center justify-center gap-3 py-10 text-slate-400">
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>Cargando abonos...</span>
-                </div>
-                ) : abonos.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 italic border border-dashed border-slate-700 rounded-2xl bg-slate-900/40">
-                    No se han registrado abonos para tu perfil.
-                </div>
-                ) : (
-                <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-[11px] uppercase tracking-widest text-slate-500 font-bold">
-                    <span>Total abonos</span>
-                    <span className="text-right">${abonos.reduce((sum, pago) => sum + pago.amount, 0).toLocaleString('es-CO')}</span>
-                    </div>
-                    <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 text-[11px] uppercase tracking-widest text-slate-500">
-                    <span>Fecha</span>
-                    <span>Monto</span>
-                    <span className="text-right">Método</span>
-                    </div>
-                    <div className="space-y-2">
-                    {abonos.map((abono) => (
-                        <div key={abono.id} className="grid grid-cols-[1fr_1fr_1fr] gap-3 p-4 rounded-2xl bg-slate-900/70 border border-white/5">
-                        <span className="text-sm text-slate-300">{new Date(abono.date).toLocaleDateString('es-CO')}</span>
-                        <span className="text-sm text-emerald-300">${abono.amount.toLocaleString('es-CO')}</span>
-                        <span className="text-right text-slate-400 uppercase text-[11px] font-semibold">{abono.method}</span>
-                        <div className="md:col-span-3 text-[11px] text-slate-500 mt-2">
-                            Reserva #{abono.reservationId}{abono.notes ? ` • ${abono.notes}` : ''}
+                    <p className="text-sm font-bold text-slate-500 max-w-xs">No hemos encontrado registros de abonos asociados a tu cuenta por el momento.</p>
+                 </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {abonos.map((abono, idx) => (
+                    <div key={abono.id} className="group p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: `${500 + (idx * 50)}ms` }}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10">
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                            {new Date(abono.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
                         </div>
-                        </div>
-                    ))}
+                        <span className="text-lg font-black text-emerald-400 tracking-tight">${abono.amount.toLocaleString('es-CO')}</span>
+                      </div>
+                      <div className="space-y-3">
+                         <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest">Método de pago</p>
+                            <span className="text-xs font-bold text-slate-300 uppercase">{abono.method}</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest">ID Reserva</p>
+                            <span className="text-xs font-bold text-amber-500/80">#{abono.reservationId}</span>
+                         </div>
+                         {abono.notes && (
+                           <div className="mt-4 pt-4 border-t border-white/5">
+                             <p className="text-[10px] italic text-slate-500 font-medium leading-relaxed">
+                               &ldquo;{abono.notes}&rdquo;
+                             </p>
+                           </div>
+                         )}
+                      </div>
                     </div>
+                  ))}
                 </div>
-                )}
-            </div>
+              )}
             </div>
 
+          </div>
         </div>
-        </div>
-</div>
+      </div>
     </div>
 );
 };

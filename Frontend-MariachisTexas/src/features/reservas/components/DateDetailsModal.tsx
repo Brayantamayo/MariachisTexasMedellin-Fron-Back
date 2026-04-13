@@ -219,7 +219,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                     </div>
                   ) : (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> Reservado</span>
                     </div>
                   );
 
@@ -238,7 +238,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                         </div>
                         <div>
                           {/* CLIENT NAME — prominent */}
-                          <p className={`text-sm font-bold ${clrs.text}`}>{res.clientName}</p>
+                          <p className={`text-sm font-bold ${clrs.text}`}>{res.clientName} </p>
                           <p className={`text-[10px] font-mono mt-0.5 ${clrs.sub}`}>{range}</p>
                           {/* Status badge */}
                           <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${clrs.badge}`}>
@@ -254,7 +254,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Lock size={10} /> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Lock size={10} /> Reservado</span>
                     </div>
                   );
                 }
@@ -288,7 +288,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> Reservado</span>
                     </div>
                   );
                 }
@@ -319,7 +319,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                     </div>
                   );
                 }
@@ -332,7 +332,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                 containerClass   = "border-slate-200 bg-slate-100 cursor-not-allowed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between w-full">
@@ -362,7 +362,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                 containerClass = "border-slate-100 bg-slate-50/80 cursor-not-allowed border-dashed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between w-full text-slate-400 opacity-70">
@@ -380,7 +380,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const block = data as CalendarBlock;
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-red-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> No disponible</span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-800 w-full">
