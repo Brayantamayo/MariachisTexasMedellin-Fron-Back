@@ -7,7 +7,7 @@ import { reservaService } from '../../reservas/services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
 import { cotizacionService } from '../../cotizaciones/services/cotizacionService';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { CotizacionForm } from '../../cotizaciones/components/CotizacionForm';
+import { CotizacionForm, CotizacionFormErrors } from '../../cotizaciones/components/CotizacionForm';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -39,6 +39,7 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
   };
 
   const [formData,             setFormData]             = useState<any>(initialFormState);
+  const [errors,               setErrors]               = useState<CotizacionFormErrors>({});
   const [songs,                setSongs]                = useState<Song[]>([]);
   const [services,             setServices]             = useState<Service[]>([]);
   const [availableHours,       setAvailableHours]       = useState<string[]>([]);
@@ -46,6 +47,11 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
   const [isSubmitting,         setIsSubmitting]         = useState(false);
   const [isSuccess,            setIsSuccess]            = useState(false);
   const [isManuallyOverridden, setIsManuallyOverridden] = useState(false);
+
+  const fieldRefs = React.useRef<{ [key: string]: HTMLElement | null }>({});
+  const registerFieldRef = (name: string, el: HTMLElement | null) => {
+    fieldRefs.current[name] = el;
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -115,12 +121,19 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
     const { name, value } = e.target
     if (['startTime', 'endTime'].includes(name)) setIsManuallyOverridden(false)
     setFormData((prev: any) => ({ ...prev, [name]: value }))
+    // Limpiar error al escribir
+    if (errors[name as keyof CotizacionFormErrors]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }))
+    }
   }
 
   const handleDateChange = (name: string, value: string) => {
     setFormData((prev: any) => ({ ...prev, [name]: value, startTime: '', endTime: '' }))
     setIsManuallyOverridden(false)
-    if (name === 'eventDate') checkBlockAndHours(value)
+    if (name === 'eventDate') {
+      checkBlockAndHours(value)
+      if (errors.eventDate) setErrors(prev => ({ ...prev, eventDate: undefined }))
+    }
   }
 
   const toggleSong = (songId: string) => {
@@ -151,20 +164,63 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
       return { ...prev, selectedServices: updated }
     })
     setIsManuallyOverridden(false)
+    if (errors.baseService) setErrors(prev => ({ ...prev, baseService: undefined }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (isSubmitting) return // evitar doble submit
+  const validateForm = (): boolean => {
+    const newErrors: CotizacionFormErrors = {}
 
-    if (blockStatus.isBlocked) { toast.error(`Fecha bloqueada: ${blockStatus.reason}`); return }
-    if (!formData.startTime || !formData.endTime) { toast.error('Selecciona la hora de inicio y fin.'); return }
+    if (!formData.clientName?.trim())   newErrors.clientName  = 'El nombre es obligatorio'
+    if (!formData.clientPhone?.trim())  newErrors.clientPhone = 'El teléfono es obligatorio'
+    
+    // Validación de Email
+    if (!formData.clientEmail?.trim()) {
+      newErrors.clientEmail = 'El correo es obligatorio'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) {
+      newErrors.clientEmail = 'Formato de correo inválido'
+    }
+
+    if (!formData.location?.trim())     newErrors.location    = 'La dirección es obligatoria'
+    if (!formData.eventDate)            newErrors.eventDate   = 'La fecha es obligatoria'
+    if (!formData.startTime)            newErrors.startTime   = 'La hora de inicio es obligatoria'
 
     const hasBaseService = formData.selectedServices?.some((s: any) => {
       const service = services.find(srv => String(srv.id) === s.serviceId)
       return service && service.nombre.toLowerCase().includes('serenata')
     })
-    if (!hasBaseService) { toast.error('Selecciona un Tipo de Serenata.'); return }
+    if (!hasBaseService) {
+      newErrors.baseService = 'Debes seleccionar un tipo de serenata'
+    }
+
+    setErrors(newErrors)
+
+    // Enfocar el primer error
+    const firstError = Object.keys(newErrors)[0] as keyof CotizacionFormErrors
+    if (firstError) {
+      const el = fieldRefs.current[firstError]
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.focus()
+      }
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (isSubmitting) return
+
+    if (!validateForm()) {
+      toast.error('Por favor, completa los campos obligatorios correctamente.')
+      return
+    }
+
+    if (blockStatus.isBlocked) { 
+      toast.error(`Fecha bloqueada: ${blockStatus.reason}`)
+      return 
+    }
 
     setIsSubmitting(true)
     try {
@@ -250,6 +306,8 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
             services={services}
             availableHours={availableHours}
             blockStatus={blockStatus}
+            fieldErrors={errors}
+            registerFieldRef={registerFieldRef}
             onChange={handleChange}
             onDateChange={handleDateChange}
             onClientSelect={() => {}}

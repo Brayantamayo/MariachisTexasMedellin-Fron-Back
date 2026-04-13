@@ -54,11 +54,20 @@ const fecha = z.string()
   }, 'La fecha no existe en el calendario (ej: 31 de febrero)')
 
 const fechaFutura = fecha
-  .refine(d => new Date(d) >= new Date(new Date().toDateString()), 'La fecha no puede ser en el pasado')
   .refine(d => {
-  const limite = new Date()
-  limite.setFullYear(limite.getFullYear() + 2)
-  return new Date(d) <= limite}, 'No se pueden agendar eventos con más de 2 años de anticipación')
+    const [y, m, day] = d.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, day);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return dateObj >= hoy;
+  }, 'La fecha no puede ser en el pasado')
+  .refine(d => {
+    const limite = new Date();
+    limite.setFullYear(limite.getFullYear() + 2);
+    const [y, m, day] = d.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, day);
+    return dateObj <= limite;
+  }, 'No se pueden agendar eventos con más de 2 años de anticipación')
 
 const duracion = z.string()
   .trim()
@@ -300,9 +309,15 @@ export const CotizacionCreateSchema = z.object({
 .refine(d => d.clientId || d.clientName?.trim(), {
   message: 'El nombre del cliente es requerido', path: ['clientName']
 })
-.refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-  message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
-})
+.refine(d => {
+  const [sh] = d.startTime.split(':').map(Number);
+  const [eh] = d.endTime.split(':').map(Number);
+  if (d.startTime < d.endTime) {
+    if (eh >= 1 && eh < 8) return false;
+    return true;
+  }
+  return d.endTime === '00:00';
+}, { message: 'No trabajamos en más horarios de los establecidos', path: ['endTime'] })
 .refine(d => {
   const [sh, sm] = d.startTime.split(':').map(Number)
   const [eh, em] = d.endTime.split(':').map(Number)
@@ -357,9 +372,15 @@ export const ReservaCreateSchema = z.object({
   selectedServices: z.array(servicioSeleccionado).max(10).optional(),
   repertoireIds:   z.array(repertorioId).max(20).optional(),
 })
-.refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-  message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
-})
+.refine(d => {
+  const [sh] = d.startTime.split(':').map(Number);
+  const [eh] = d.endTime.split(':').map(Number);
+  if (d.startTime < d.endTime) {
+    if (eh >= 1 && eh < 8) return false;
+    return true;
+  }
+  return d.endTime === '00:00';
+}, { message: 'No trabajamos en más horarios de los establecidos', path: ['endTime'] })
 .refine(d => {
   const [sh, sm] = d.startTime.split(':').map(Number)
   const [eh, em] = d.endTime.split(':').map(Number)

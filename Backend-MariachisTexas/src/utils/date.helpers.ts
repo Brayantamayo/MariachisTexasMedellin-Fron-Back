@@ -19,8 +19,9 @@ export const dayRange = (dateStr: string) => ({
 
 // ─── VALIDACIÓN 6 HORAS MISMO DÍA ────────────────────────────────────────────
 export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
-  const hoy = new Date().toISOString().split('T')[0]
-  if (dateStr !== hoy) return
+  const now = new Date();
+  const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (dateStr !== hoy) return;
 
   const ahora      = new Date()
   const horaEvento = new Date(`${dateStr}T${time}:00`)
@@ -56,7 +57,15 @@ export const bloquearRango = (
   // Horas del evento
   allHours.forEach(h => {
     const [hh] = h.split(':').map(Number)
-    if (hh >= sh && hh < eh) blocked.add(h)
+    if (sh < eh) {
+      if (hh >= sh && hh < eh) blocked.add(h)
+    } else if (sh > eh) {
+      // Envoltura de medianoche: bloquea desde el inicio hasta el fin del día y desde medianoche hasta el fin del evento
+      if (hh >= sh || hh < eh) blocked.add(h)
+    } else {
+      // Si inicio y fin coinciden (raro), bloqueamos al menos esa hora
+      if (hh === sh) blocked.add(h)
+    }
   })
 
   // Buffer POST: hora siguiente al fin (cierre/transporte) ← FIX
