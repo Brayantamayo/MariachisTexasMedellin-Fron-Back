@@ -64,11 +64,11 @@ export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView,
               </thead>
               <tbody className="divide-y divide-slate-50">
                   {currentSales.map(sale => (
-                      <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors group">
-                                                    {/* ID */}
-                          <td className="py-5 px-8">
+                          <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                        {/* ID */}
+                              <td className="py-5 px-8">
                               <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">#{sale.id}</span>
-                          </td>
+                              </td>
 
                           {/* Cliente / Concepto */}
                           <td className="py-5 px-6">

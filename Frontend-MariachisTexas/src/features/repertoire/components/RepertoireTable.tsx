@@ -125,7 +125,7 @@ export const RepertoireTable: React.FC<Props> = ({
 
                 {/* Estado de la cancion */}
                 <td className="py-5 px-6">
-                  <div className="flex items-center justify-center gap-3 ">
+                  <div className="flex items-center justify-center">
                     {canManage ? (
                       <button 
                         onClick={() => onToggleStatus(song)}
@@ -138,8 +138,6 @@ export const RepertoireTable: React.FC<Props> = ({
                     ) : (
                       <div className={`w-2.5 h-2.5 rounded-full ${song.isActive ? 'bg-emerald-500 shadow-sm' : 'bg-slate-300'}`}></div>
                     )}
-                    <span className={`text-[10px] font-bold uppercase tracking-wider w-12 ${song.isActive ? 'text-emerald-500' : 'text-slate-300'}`}>
-                    </span>
                   </div>
                 </td>
                 <td className="py-5 px-8">

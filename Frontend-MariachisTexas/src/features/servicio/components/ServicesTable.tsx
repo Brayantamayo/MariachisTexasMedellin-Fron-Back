@@ -91,7 +91,7 @@ export const ServicesTable: React.FC<Props> = ({
 
                 {/* Cambio de estado  */}
                 <td className="py-4 px-4">
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center">
                     {canManage ? (
                       <button
                         onClick={() => onToggleStatus(service)}
@@ -102,9 +102,6 @@ export const ServicesTable: React.FC<Props> = ({
                     ) : (
                       <div className={`w-2 h-2 rounded-full ${service.estado ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     )}
-                    <span className={`text-[10px] font-bold uppercase tracking-wider w-10 ${service.estado ? 'text-emerald-500' : 'text-slate-300'}`}>
-                      {service.estado ? 'Activo' : 'Inactivo'}
-                    </span>
                   </div>
                 </td>
 

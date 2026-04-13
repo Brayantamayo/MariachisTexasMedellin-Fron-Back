@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User as UserIcon, Mail, Lock, Phone, MapPin, Calendar, Hash, Music, Briefcase, AlertCircle } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Phone, MapPin, Calendar, Hash, Music, Briefcase, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { UserRole } from '@/types';
 
 interface UserFormErrors {
@@ -164,6 +164,9 @@ const BirthDateInput: React.FC<{
 }
 
 export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as UserFormErrors }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <form id="user-form" onSubmit={onSubmit} className="space-y-8">
         
@@ -211,18 +214,26 @@ export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPa
                      <>
                         <div>
                             <label className="label-form">Contraseña <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.password ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
-                                <input 
-                                    type="password" 
-                                    name="password"
-                                    required
-                                    value={formData.password}
-                                    onChange={onChange}
-                                    className={`input-form input-icon-padding transition-all ${errors.password ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
-                                    placeholder="••••••••"
-                                />
-                            </div>
+                             <div className="relative">
+                                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.password ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                                 <input 
+                                     type={showPassword ? "text" : "password"}
+                                     name="password"
+                                     required
+                                     value={formData.password}
+                                     onChange={onChange}
+                                     className={`input-form input-icon-padding transition-all ${errors.password ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+                                     placeholder="••••••••"
+                                 />
+                                 <button
+                                     type="button"
+                                     onClick={() => setShowPassword(!showPassword)}
+                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                                     tabIndex={-1}
+                                 >
+                                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                 </button>
+                             </div>
                             {errors.password && (
                               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                                 <AlertCircle size={12} /> {errors.password}
@@ -231,18 +242,26 @@ export const UserForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPa
                         </div>
                         <div>
                             <label className="label-form">Confirmar Contraseña <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.confirmPassword ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
-                                <input 
-                                    type="password" 
-                                    name="confirmPassword"
-                                    required
-                                    value={formData.confirmPassword}
-                                    onChange={onChange}
-                                    className={`input-form input-icon-padding transition-all ${errors.confirmPassword ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
-                                    placeholder="••••••••"
-                                />
-                            </div>
+                             <div className="relative">
+                                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.confirmPassword ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                                 <input 
+                                     type={showConfirmPassword ? "text" : "password"}
+                                     name="confirmPassword"
+                                     required
+                                     value={formData.confirmPassword}
+                                     onChange={onChange}
+                                     className={`input-form input-icon-padding transition-all ${errors.confirmPassword ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+                                     placeholder="••••••••"
+                                 />
+                                 <button
+                                     type="button"
+                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                                     tabIndex={-1}
+                                 >
+                                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                 </button>
+                             </div>
                             {errors.confirmPassword && (
                               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                                 <AlertCircle size={12} /> {errors.confirmPassword}

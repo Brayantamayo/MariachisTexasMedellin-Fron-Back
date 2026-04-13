@@ -77,7 +77,7 @@ export const CotizacionesTable: React.FC<Props> = ({
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200 text-left">
-                <th className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">ID</th>
+                <th className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">#</th>
                 <th className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                 <th className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Evento</th>
                 <th className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Valor</th>
@@ -86,16 +86,17 @@ export const CotizacionesTable: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {currentItems.map(quote => {
+              {currentItems.map((quote, index) => {
                 const isActive  = quote.status === 'EN_ESPERA';
                 const isAnulada = quote.status === 'ANULADA';
                 const isAdmin   = userRole === UserRole.ADMIN;
+                const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
                 return (
                   <tr key={quote.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-4 px-4 text-center">
                       <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
-                        #{quote.id}
+                        {itemNumber}
                       </span>
                     </td>
 

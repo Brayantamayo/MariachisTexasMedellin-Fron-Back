@@ -98,40 +98,49 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+      <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[95vh]">
 
         {/* Header */}
-        <div className="bg-emerald-600 px-5 py-4 flex items-center justify-between text-white">
-          <div className="flex items-center gap-2">
-            <CheckSquare size={18} />
-            <h3 className="text-xs font-bold tracking-widest uppercase">Registrar Saldo Final</h3>
+        <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-5 flex items-center justify-between text-white shadow-lg shadow-red-900/20 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-md">
+              <CheckSquare size={16} strokeWidth={2.5} />
+            </div>
+            <h3 className="text-sm font-serif font-bold tracking-wide uppercase">Registrar Saldo Final</h3>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white bg-white/10 p-1 rounded-full">
+          <button onClick={onClose} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {error && (
-            <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-xs">
-              <AlertCircle size={14} /> {error}
+            <div className="mb-5 flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3.5 text-red-600 text-xs shadow-sm shadow-red-100/50">
+              <AlertCircle size={16} className="shrink-0" /> 
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           {/* Info box */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5">
-            <p className="text-xs text-emerald-700 font-bold uppercase tracking-widest mb-1">Saldo a pagar</p>
-            <p className="text-3xl font-serif font-black text-emerald-800">${saldo.toLocaleString('es-CO')}</p>
-            <p className="text-[10px] text-emerald-600 mt-1">{sale.concept} — Total: ${(sale.totalAmount ?? 0).toLocaleString('es-CO')}</p>
+          <div className="bg-red-50/50 border border-red-100 rounded-[1.5rem] p-5 mb-6 relative overflow-hidden group">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-100/30 rounded-full blur-2xl group-hover:bg-red-200/40 transition-colors" />
+            <p className="text-[10px] text-red-400 font-bold uppercase tracking-[0.2em] mb-1.5 relative z-10">Saldo a pagar</p>
+            <p className="text-4xl font-serif font-black text-red-600 tracking-tight relative z-10">
+              <span className="text-xl mr-0.5">$</span>{saldo.toLocaleString('es-CO')}
+            </p>
+            <div className="mt-2.5 pt-2.5 border-t border-red-100/60 flex items-center justify-between relative z-10">
+               <p className="text-[10px] text-red-500 font-medium">{sale.concept}</p>
+               <p className="text-[10px] text-slate-400">Total: <span className="font-bold">${(sale.totalAmount ?? 0).toLocaleString('es-CO')}</span></p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Método de Pago</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Método de Pago</label>
               <select
                 value={method}
                 onChange={e => setMethod(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all bg-slate-50 shadow-inner"
               >
                 {Object.entries(metodoPagoLabel).map(([val, label]) => (
                   <option key={val} value={val}>{label}</option>
@@ -139,35 +148,44 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fecha de Pago</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Fecha de Pago</label>
               <input
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all bg-slate-50 shadow-inner"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notas (opcional)</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Notas (opcional)</label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 outline-none focus:border-emerald-400 resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-50 transition-all bg-slate-50 shadow-inner resize-none"
                 placeholder="Referencia de pago..."
               />
             </div>
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="flex-1 py-3.5 border border-slate-200 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-600 transition-all active:scale-95"
+              >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-md transition-all disabled:opacity-60"
+                className="flex-[2] py-3.5 bg-gradient-to-br from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-2xl text-xs font-bold uppercase tracking-[0.15em] shadow-lg shadow-red-900/20 hover:shadow-red-900/40 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {saving ? 'Guardando...' : `Pagar $${saldo.toLocaleString('es-CO')}`}
+                {saving ? 'Procesando...' : (
+                  <>
+                    <CreditCard size={14} />
+                    <span>Pagar ${saldo.toLocaleString('es-CO')}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -408,34 +426,24 @@ export const VentasPage: React.FC = () => {
   };
 
 const handleCreateSale = async (data: any) => {
-  try {
-    const esReserva = data.type !== 'Directa'
+  const esReserva = data.type !== 'Directa'
  
-    await api.post('/ventas', {
-      reservaId:   esReserva && data.reservationId ? Number(data.reservationId) : null,
-      clienteId:   Number(data.clienteId),
-      tipo:        esReserva ? 'RESERVA' : 'DIRECTA',
-      estado:      'CONFIRMADO',
-      // Para RESERVA:  montoTotal  = total real de la reserva (totalValor en BD)
-      // Para DIRECTA:  montoTotal  = lo que el admin ingresó en el campo amount
-      montoTotal:  esReserva ? Number(data.totalAmount) : Number(data.amount),
-      // Para RESERVA:  montoPagado = suma real de abonos ya registrados (paidAmount)
-      // Para DIRECTA:  montoPagado = mismo que montoTotal (pago inmediato)
-      montoPagado: esReserva ? Number(data.paidAmount)  : Number(data.amount),
-      fechaVenta:  data.date,
-      metodoPago:  String(data.method).toUpperCase(),
-    })
+  await api.post('/ventas', {
+    reservaId:   esReserva && data.reservationId ? Number(data.reservationId) : null,
+    clienteId:   Number(data.clienteId),
+    tipo:        esReserva ? 'RESERVA' : 'DIRECTA',
+    estado:      'CONFIRMADO',
+    montoTotal:  esReserva ? Number(data.totalAmount) : Number(data.amount),
+    montoPagado: esReserva ? Number(data.paidAmount)  : Number(data.amount),
+    fechaVenta:  data.date,
+    metodoPago:  String(data.method).toUpperCase(),
+  })
  
-    showNotification('Venta registrada correctamente')
-    setIsNewSaleOpen(false)       
-    await fetchSales()  
-  } catch (error: any) {
-  console.log('ERROR COMPLETO:', error?.response?.data) // ← agrega esta línea
-  showNotification(
-    error?.response?.data?.message || 'Error al registrar la venta',
-    'error'
-  )
-}
+  // Solo llega aquí si el POST fue exitoso (2xx)
+  showNotification('Venta registrada correctamente')
+  setIsNewSaleOpen(false)
+  await fetchSales()
+
 }
 
   const handleDownloadPdf = async (reservationId: string) => {
@@ -468,6 +476,7 @@ const handleCreateSale = async (data: any) => {
   const totalPages   = Math.ceil(filtered.length / itemsPerPage);
   const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  ///pendiente de revision
   const getStatusBadge = (sale: SaleRecord) => {
     const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
     if (isFinalizado) return { label: 'Finalizado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };

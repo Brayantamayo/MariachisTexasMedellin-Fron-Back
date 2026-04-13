@@ -170,7 +170,7 @@ export const convertAbonosToVenta = async (reservaId: number): Promise<any> => {
     montoTotal:  totalValor,
     montoPagado,
     fechaVenta:  new Date().toISOString().split('T')[0],
-    metodoPago
+    metodoPago: metodoPago
   })
 
   return venta

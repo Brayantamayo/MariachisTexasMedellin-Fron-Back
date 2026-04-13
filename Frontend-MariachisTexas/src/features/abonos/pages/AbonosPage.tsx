@@ -120,9 +120,14 @@ const AbonoDetailModal: React.FC<{
 
 
 // ─── Modal Registrar Abono ────────────────────────────────────────────────────
-
-
-const RegisterAbonoModal: React.FC<{
+ interface RegisterAbonoFormErrors {
+  reservationId?: string;
+  date?:          string;
+  method?:        string;
+}
+const REGISTER_EMPTY_ERRORS: RegisterAbonoFormErrors = {};
+ 
+export const RegisterAbonoModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -135,17 +140,28 @@ const RegisterAbonoModal: React.FC<{
     method: 'EFECTIVO',
     notes: '',
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [loadingRes, setLoadingRes] = useState(false);
+  const [errors,      setErrors]      = useState<RegisterAbonoFormErrors>(REGISTER_EMPTY_ERRORS);
+  const [error,       setError]       = useState<string | null>(null);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [loadingRes,  setLoadingRes]  = useState(false);
  
   useEffect(() => {
     if (!isOpen) return;
+    setErrors(REGISTER_EMPTY_ERRORS);
+    setError(null);
     setLoadingRes(true);
     api.get('/abonos/payable-reservations')
       .then(({ data }) => setReservations(data))
-      .catch(() => showNotification('Error cargando reservas', 'error'))
+      .catch(() => setError('Error cargando reservas. Por favor recarga la página.'))
       .finally(() => setLoadingRes(false));
   }, [isOpen]);
+ 
+  const handleFormChange = (field: string, value: string) => {
+    setForm(f => ({ ...f, [field]: value }));
+    if (errors[field as keyof RegisterAbonoFormErrors])
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    if (error) setError(null);
+  };
  
   const selectedRes    = reservations.find(r => r.id === form.reservationId);
   const montoRequerido = selectedRes
@@ -157,8 +173,24 @@ const RegisterAbonoModal: React.FC<{
   const abonoLabel    = isSecondAbono ? '2do Abono — Pago Final' : '1er Abono — Anticipo 50%';
  
   const handleSubmit = async () => {
-    if (!form.reservationId || !selectedRes) return;
+    // Validación por campo
+    const newErrors: RegisterAbonoFormErrors = {};
+    if (!form.reservationId || !selectedRes)
+      newErrors.reservationId = 'Selecciona una reserva.';
+    if (!form.date)
+      newErrors.date = 'La fecha es requerida.';
+    if (!form.method)
+      newErrors.method = 'El método de pago es requerido.';
+ 
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return; // NO cierra el modal
+    }
+ 
+    setErrors(REGISTER_EMPTY_ERRORS);
+    setError(null);
     setSubmitting(true);
+ 
     try {
       await api.post('/abonos', {
         reservaId: form.reservationId,
@@ -176,8 +208,12 @@ const RegisterAbonoModal: React.FC<{
         notes: '',
       });
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Error al registrar abono';
-      showNotification(msg, 'error');
+      // Error del backend — NO cerramos el modal
+      const backendMessage =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Error al registrar abono.';
+      setError(backendMessage);
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +227,7 @@ const RegisterAbonoModal: React.FC<{
  
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up">
  
-        {/* Header rojo */}
+        {/* Header */}
         <div className="bg-red-600 px-6 py-5 flex items-center justify-between rounded-t-2xl flex-shrink-0">
           <div>
             <h3 className="text-white font-serif font-bold text-lg tracking-wide">Registrar Abono</h3>
@@ -202,15 +238,29 @@ const RegisterAbonoModal: React.FC<{
           </button>
         </div>
  
-        {/* Body scrolleable internamente */}
+        {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4">
  
+          {/* ✅ Error global del backend */}
+          {error && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
+              <AlertCircle size={18} className="flex-shrink-0 mt-0.5" /> {error}
+            </div>
+          )}
+ 
+          {/* Reserva */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Reserva</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+              Reserva <span className="text-red-500">*</span>
+            </label>
             <select
               value={form.reservationId}
-              onChange={e => setForm(f => ({ ...f, reservationId: e.target.value }))}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 focus:border-red-400 outline-none bg-white"
+              onChange={e => handleFormChange('reservationId', e.target.value)}
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 outline-none bg-white transition-all ${
+                errors.reservationId
+                  ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                  : 'border-slate-200 focus:border-red-400'
+              }`}
             >
               <option value="">{loadingRes ? 'Cargando...' : '-- Selecciona una reserva --'}</option>
               {reservations.map(r => (
@@ -219,8 +269,14 @@ const RegisterAbonoModal: React.FC<{
                 </option>
               ))}
             </select>
+            {errors.reservationId && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <AlertCircle size={12} /> {errors.reservationId}
+              </p>
+            )}
           </div>
  
+          {/* Info reserva seleccionada */}
           {selectedRes && (
             <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-100">
               <div className="flex items-center justify-between">
@@ -229,7 +285,6 @@ const RegisterAbonoModal: React.FC<{
                   {abonoLabel}
                 </span>
               </div>
- 
               <div className="grid grid-cols-3 gap-2 pt-1">
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
@@ -244,7 +299,6 @@ const RegisterAbonoModal: React.FC<{
                   <p className="text-sm font-bold text-red-500">${selectedRes.pending.toLocaleString('es-CO')}</p>
                 </div>
               </div>
- 
               <div className="pt-2 border-t border-slate-200">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monto a registrar</p>
                 <div className="flex items-center gap-2 bg-white border-2 border-red-400 rounded-xl px-4 py-2.5">
@@ -252,39 +306,64 @@ const RegisterAbonoModal: React.FC<{
                   <span className="text-lg font-bold text-red-600">{montoRequerido.toLocaleString('es-CO')}</span>
                   <span className="ml-auto text-[9px] text-slate-400 font-bold uppercase">Fijo</span>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {isSecondAbono
-                    ? 'El pago final debe cubrir el saldo completo.'
-                    : 'El primer abono debe ser exactamente el 50% del total.'}
-                </p>
               </div>
             </div>
           )}
  
+          {/* Fecha y Método */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Fecha</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                Fecha <span className="text-red-500">*</span>
+              </label>
               <input
                 type="date"
                 value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 focus:border-red-400 outline-none"
+                onChange={e => handleFormChange('date', e.target.value)}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none transition-all ${
+                  errors.date
+                    ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                    : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
+                }`}
               />
+              {errors.date && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.date}
+                </p>
+              )}
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Método de Pago</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                Método de Pago <span className="text-red-500">*</span>
+              </label>
               <select
                 value={form.method}
-                onChange={e => setForm(f => ({ ...f, method: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 focus:border-red-400 outline-none bg-white"
+                onChange={e => handleFormChange('method', e.target.value)}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none bg-white transition-all ${
+                  errors.method
+                    ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                    : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
+                }`}
               >
-                {Object.entries(metodoPagoLabel).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {[
+                  { value: 'EFECTIVO', label: 'Efectivo' },
+                  { value: 'TRANSFERENCIA', label: 'Transferencia' },
+                  { value: 'NEQUI', label: 'Nequi' },
+                  { value: 'DAVIPLATA', label: 'Daviplata' },
+                  { value: 'OTRO', label: 'Otro' },
+                ].map(({ value: val, label }) => (
+                  <option key={val} value={val}>{label}</option>
                 ))}
               </select>
+              {errors.method && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.method}
+                </p>
+              )}
             </div>
           </div>
  
+          {/* Notas */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notas (opcional)</label>
             <textarea
@@ -297,19 +376,16 @@ const RegisterAbonoModal: React.FC<{
           </div>
         </div>
  
-        {/* Footer fijo */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 flex gap-3 flex-shrink-0 rounded-b-2xl bg-white">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-all"
-          >
+          <button onClick={onClose} disabled={submitting}
+            className="flex-1 py-3 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-all disabled:opacity-50">
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || !form.reservationId}
-            className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
-          >
+            className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
             {submitting ? 'Guardando...' : <><Plus size={14} /> Registrar Abono</>}
           </button>
         </div>
@@ -318,10 +394,6 @@ const RegisterAbonoModal: React.FC<{
     document.body
   );
 };
-
-
-
-
 
 
 // ─── Pagina ────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import { uploadImage } from '@/shared/services/uploadService';
 
 interface UsePhotoUploadOptions {
   /** Carpeta de Cloudinary. Default: 'usuarios/fotos' */
-  folder?: 'usuarios/fotos' | 'repertorio/portadas';
+  folder?: 'usuarios/fotos' | 'repertorio/portadas' | 'empleados/fotos' | 'clientes/fotos';
   /** Callback cuando la URL ya está lista en Cloudinary */
   onSuccess?: (url: string) => void;
 }

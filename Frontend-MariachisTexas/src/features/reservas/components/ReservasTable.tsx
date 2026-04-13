@@ -94,7 +94,7 @@ export const ReservasTable: React.FC<Props> = ({
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="py-5 px-8 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
+                <th className="py-5 px-8 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">#</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Evento</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fecha / Hora</th>
@@ -106,18 +106,19 @@ export const ReservasTable: React.FC<Props> = ({
             <tbody className="divide-y divide-slate-50">
 
               {/* Reservas que se muestran en la tabla */}
-              {currentItems.map(res => {
+              {currentItems.map((res, index) => {
                 const total    = Number(res.totalAmount) || 0;
                 const paid     = Number(res.paidAmount)  || 0;
                 const saldo    = total - paid;
                 const isActive  = !['ANULADA', 'Anulado', 'Finalizado'].includes(res.status);
                 const isAnulada = res.status === 'ANULADA';
+                const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
                 {/* contenido de la fila de la tabla */}
                 return (
                   <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-5 px-8">
-                      <span className="font-bold text-primary-600 text-sm">#{res.id}</span>
+                      <span className="font-bold text-primary-600 text-sm">{itemNumber}</span>
                     </td>
                     <td className="py-5 px-6">
                       <span className="font-bold text-slate-800 text-sm">{res.clientName || '—'}</span>
