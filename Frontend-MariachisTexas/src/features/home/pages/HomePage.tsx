@@ -39,7 +39,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             .sort((a, b) => new Date(`${a.eventDate}T${a.eventTime}`).getTime() - new Date(`${b.eventDate}T${b.eventTime}`).getTime());
           setNextGig(upcomingGigs[0] ?? null);
           const upcomingRehearsals = allRehearsals
-            .filter(r => r.status === 'Programado' && new Date(`${r.date}T${r.time}`) >= now)
+            .filter(r => r.status === 'PENDIENTE' && new Date(`${r.date}T${r.time}`) >= now)
             .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
           setNextRehearsal(upcomingRehearsals[0] ?? null);
           setStats({ gigsCount: upcomingGigs.length, rehearsalCount: upcomingRehearsals.length });

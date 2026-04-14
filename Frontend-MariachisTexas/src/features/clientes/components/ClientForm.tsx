@@ -25,6 +25,10 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onSubmit, erro
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() - 18);
+  const maxDateString = maxDate.toISOString().split('T')[0];
+
   return (
     <form id="client-form" onSubmit={onSubmit} className="space-y-8">
         
@@ -167,6 +171,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onSubmit, erro
                                 required 
                                 value={formData.birthDate} 
                                 onChange={onChange} 
+                                max={maxDateString}
                                 disabled={isViewOnly}
                                 className="input-form pl-10" 
                             />

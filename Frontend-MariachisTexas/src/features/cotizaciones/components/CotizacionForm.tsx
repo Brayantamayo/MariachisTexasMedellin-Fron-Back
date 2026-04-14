@@ -1,17 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { toast } from 'react-hot-toast';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 
 export interface CotizacionFormErrors {
-  clientName?:  string
+  clientName?: string
   clientPhone?: string
   clientEmail?: string
-  eventDate?:   string
-  startTime?:   string
+  eventDate?: string
+  startTime?: string
   baseService?: string
-  location?:    string
+  location?: string
 }
 
 interface Props {
@@ -26,7 +25,7 @@ interface Props {
   availableHours?: string[];
   fieldErrors?: CotizacionFormErrors;
   registerFieldRef?: (name: string, el: HTMLElement | null) => void;
-  isSaving?:    boolean;
+  isSaving?: boolean;
   blockStatus?: {
     isBlocked: boolean;
     reason?: string;
@@ -51,11 +50,11 @@ export const CotizacionForm: React.FC<Props> = ({
   fieldErrors = {} as CotizacionFormErrors, registerFieldRef, isSaving = false,
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel
 }) => {
-  const [searchTerm,      setSearchTerm]      = useState('');
-  const [showClientStep,  setShowClientStep]  = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showClientStep, setShowClientStep] = useState(false);
   const clientSectionRef = useRef<HTMLDivElement>(null);
 
-  const baseServices       = services.filter(s => s.nombre.toLowerCase().includes('serenata'))
+  const baseServices = services.filter(s => s.nombre.toLowerCase().includes('serenata'))
   const additionalServices = services.filter(s => !s.nombre.toLowerCase().includes('serenata'))
 
   const extraHoursService = services.find(s => s.nombre.toLowerCase().includes('hora extra'))
@@ -86,54 +85,36 @@ export const CotizacionForm: React.FC<Props> = ({
 
   const calculateEndTime = (start: string, extra: number) => {
     if (!start) return ''
-    const [h, m]       = start.split(':').map(Number)
+    const [h, m] = start.split(':').map(Number)
     const totalMinutes = h * 60 + m + (1 + extra) * 60
-    const newH         = Math.floor(totalMinutes / 60) % 24
-    const newM         = totalMinutes % 60
-    return `${newH.toString().padStart(2,'0')}:${newM.toString().padStart(2,'0')}`
+    const newH = Math.floor(totalMinutes / 60) % 24
+    const newM = totalMinutes % 60
+    return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`
   }
 
   React.useEffect(() => {
     if (formData.startTime) {
       const newEndTime = calculateEndTime(formData.startTime, extraHoursQuantity)
-      
-      // ✅ Restricción horaria: El evento no puede terminar después de la medianoche
-      const [h] = newEndTime.split(':').map(Number)
-      if (h >= 1 && h < 8) {
-        toast.error("No trabajamos en más horarios de los establecidos", {
-          id: 'working-hours-limit',
-          duration: 3000
-        })
-        // Si hay una hora extra sumada, la reducimos para volver al límite permitido
-        if (extraHoursQuantity > 0 && extraHoursService) {
-          onServiceChange(String(extraHoursService.id), extraHoursQuantity - 1)
-        } else {
-          // Si es el servicio base el que se pasa (ej. empieza a medianoche y dura 1h), reset de inicio
-          onChange({ target: { name: 'startTime', value: '' } } as any)
-        }
-        return
-      }
-
       if (formData.endTime !== newEndTime) {
         onChange({ target: { name: 'endTime', value: newEndTime } } as any)
       }
     }
   }, [formData.startTime, extraHoursQuantity])
 
-  const maxSongs         = 7 + extraSongsQuantity
+  const maxSongs = 7 + extraSongsQuantity
   const currentSongCount = formData.repertoireIds?.length || 0
-  const today            = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
 
-  const filteredSongs    = searchTerm.trim() === ''
+  const filteredSongs = searchTerm.trim() === ''
     ? []
     : songs.filter(s =>
-        s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.artist.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.artist.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   const selectedSongsList = songs.filter(s => formData.repertoireIds?.includes(s.id))
 
   const handleToggleSong = (id: string) => {
-    const isSelected        = formData.repertoireIds?.includes(id)
+    const isSelected = formData.repertoireIds?.includes(id)
     const currentExtraSongs = extraSongsService
       ? (formData.selectedServices?.find((s: any) => s.serviceId === String(extraSongsService.id))?.quantity || 0)
       : 0
@@ -154,8 +135,8 @@ export const CotizacionForm: React.FC<Props> = ({
   const headerClass = isPublic
     ? "text-xl font-serif font-bold text-slate-800 mb-8 flex items-center gap-3 border-b border-orange-100/50 pb-4"
     : "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"
-  const labelClass      = "label-form"
-  const inputClass      = "input-form"
+  const labelClass = "label-form"
+  const inputClass = "input-form"
   const lockedInputClass = `${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`
 
   const calcServicesTotal = () =>
@@ -166,8 +147,8 @@ export const CotizacionForm: React.FC<Props> = ({
 
 
 
-    const [clientSearch, setClientSearch] = useState('');
-    const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   return (
     <form id="cotizacion-form" onSubmit={onSubmit} noValidate className="flex flex-col lg:flex-row h-full">
 
@@ -202,73 +183,73 @@ export const CotizacionForm: React.FC<Props> = ({
             </h4>
 
             {isAdmin && !isEditing && (
-  <div className="mb-4">
-    <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-      <input
-        type="text"
-        placeholder="Escribe nombre, teléfono o correo..."
-        value={clientSearch}
-        onChange={(e) => {
-          setClientSearch(e.target.value);
-          setShowClientDropdown(true);
-        }}
-        onFocus={() => setShowClientDropdown(true)}
-        onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-        className="w-full pl-9 pr-8 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 text-slate-700 font-medium"
-      />
-      {clientSearch && (
-        <button
-          type="button"
-          onClick={() => {
-            setClientSearch('');
-            setShowClientDropdown(false);
-            onClientSelect({ target: { name: 'clientId', value: '' } } as any);
-          }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-        >
-          <X size={14} />
-        </button>
-      )}
+              <div className="mb-4">
+                <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Escribe nombre, teléfono o correo..."
+                    value={clientSearch}
+                    onChange={(e) => {
+                      setClientSearch(e.target.value);
+                      setShowClientDropdown(true);
+                    }}
+                    onFocus={() => setShowClientDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                    className="w-full pl-9 pr-8 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 text-slate-700 font-medium"
+                  />
+                  {clientSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClientSearch('');
+                        setShowClientDropdown(false);
+                        onClientSelect({ target: { name: 'clientId', value: '' } } as any);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
 
-      {showClientDropdown && clientSearch.trim() !== '' && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-orange-200 rounded-lg shadow-xl max-h-[220px] overflow-y-auto">
-          {(clients ?? [])
-            .filter(c =>
-              `${c.name ?? ''} ${c.lastName ?? ''} ${c.phone ?? ''} ${c.email ?? ''}`
-                .toLowerCase()
-                .includes(clientSearch.toLowerCase())
-            )
-            .slice(0, 8)
-            .map(c => (
-              <div
-                key={c.id}
-                onMouseDown={() => {
-                  setClientSearch(`${c.name ?? ''} ${c.lastName ?? ''}`.trim());
-                  setShowClientDropdown(false);
-                  onClientSelect({ target: { name: 'clientId', value: String(c.id) } } as any);
-                }}
-                className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-slate-50 last:border-0"
-              >
-                <p className="text-sm font-bold text-slate-700">
-                  {`${c.name ?? ''} ${c.lastName ?? ''}`.trim() || c.email}
-                </p>
-                <p className="text-xs text-slate-400">{c.phone ?? c.email}</p>
+                  {showClientDropdown && clientSearch.trim() !== '' && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-orange-200 rounded-lg shadow-xl max-h-[220px] overflow-y-auto">
+                      {(clients ?? [])
+                        .filter(c =>
+                          `${c.name ?? ''} ${c.lastName ?? ''} ${c.phone ?? ''} ${c.email ?? ''}`
+                            .toLowerCase()
+                            .includes(clientSearch.toLowerCase())
+                        )
+                        .slice(0, 8)
+                        .map(c => (
+                          <div
+                            key={c.id}
+                            onMouseDown={() => {
+                              setClientSearch(`${c.name ?? ''} ${c.lastName ?? ''}`.trim());
+                              setShowClientDropdown(false);
+                              onClientSelect({ target: { name: 'clientId', value: String(c.id) } } as any);
+                            }}
+                            className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-slate-50 last:border-0"
+                          >
+                            <p className="text-sm font-bold text-slate-700">
+                              {`${c.name ?? ''} ${c.lastName ?? ''}`.trim() || c.email}
+                            </p>
+                            <p className="text-xs text-slate-400">{c.phone ?? c.email}</p>
+                          </div>
+                        ))}
+                      {(clients ?? []).filter(c =>
+                        `${c.name ?? ''} ${c.lastName ?? ''} ${c.phone ?? ''} ${c.email ?? ''}`
+                          .toLowerCase()
+                          .includes(clientSearch.toLowerCase())
+                      ).length === 0 && (
+                          <p className="text-xs text-slate-400 text-center py-4">No se encontraron clientes.</p>
+                        )}
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
-          {(clients ?? []).filter(c =>
-            `${c.name ?? ''} ${c.lastName ?? ''} ${c.phone ?? ''} ${c.email ?? ''}`
-              .toLowerCase()
-              .includes(clientSearch.toLowerCase())
-          ).length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-4">No se encontraron clientes.</p>
-          )}
-        </div>
-      )}
-    </div>
-  </div>
-)}
+            )}
 
             {isEditing && (
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
@@ -284,13 +265,12 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="text"
                   name="clientName"
-                  
+
                   value={formData.clientName || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={`${isEditing ? lockedInputClass : inputClass} ${
-                    fieldErrors.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                  }`}
+                  className={`${isEditing ? lockedInputClass : inputClass} ${fieldErrors.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                    }`}
                   ref={el => registerFieldRef?.('clientName', el)}
                   placeholder="Tu nombre completo"
                 />
@@ -307,13 +287,12 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="tel"
                   name="clientPhone"
-                  
+
                   value={formData.clientPhone || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={`${isEditing ? lockedInputClass : inputClass} ${
-                    fieldErrors.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                  }`}
+                  className={`${isEditing ? lockedInputClass : inputClass} ${fieldErrors.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                    }`}
                   ref={el => registerFieldRef?.('clientPhone', el)}
                   placeholder="Ej: 300 123 4567"
                 />
@@ -342,13 +321,12 @@ export const CotizacionForm: React.FC<Props> = ({
                 <input
                   type="email"
                   name="clientEmail"
-                  
+
                   value={formData.clientEmail || ''}
                   onChange={onChange}
                   disabled={isEditing}
-                  className={`${isEditing ? lockedInputClass : inputClass} ${
-                    fieldErrors.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                  }`}
+                  className={`${isEditing ? lockedInputClass : inputClass} ${fieldErrors.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                    }`}
                   ref={el => registerFieldRef?.('clientEmail', el)}
                   placeholder="tucorreo@ejemplo.com"
                 />
@@ -404,11 +382,10 @@ export const CotizacionForm: React.FC<Props> = ({
                 label={isPublic ? undefined : "FECHA EVENTO"}
                 value={formData.eventDate}
                 onChange={onDateChange}
-                
+
                 minDate={today}
-                className={`${isPublic ? `${inputClass} !pl-12` : ''} ${
-                  fieldErrors.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                }`}
+                className={`${isPublic ? `${inputClass} !pl-12` : ''} ${fieldErrors.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                  }`}
                 ref={el => registerFieldRef?.('eventDate', el)}
               />
               {fieldErrors.eventDate && (
@@ -438,14 +415,13 @@ export const CotizacionForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
-                    <select name="startTime"  value={formData.startTime} onChange={onChange}
-                      className={`w-full bg-white border text-sm rounded-lg p-2.5 outline-none cursor-pointer text-slate-700 appearance-none font-medium ${
-                        fieldErrors.startTime
+                    <select name="startTime" value={formData.startTime} onChange={onChange}
+                      className={`w-full bg-white border text-sm rounded-lg p-2.5 outline-none cursor-pointer text-slate-700 appearance-none font-medium ${fieldErrors.startTime
                           ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
                           : 'border-orange-200 focus:border-orange-400'
-                      }`}
+                        }`}
                       ref={el => registerFieldRef?.('startTime', el)}>
-                      <option value="">{availableHours.length === 0 ? "Ya no hay más horas disponibles" : "Seleccionar"}</option>
+                      <option value="">Seleccionar</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
                       ))}
@@ -484,22 +460,21 @@ export const CotizacionForm: React.FC<Props> = ({
           {/* Tipo de Serenata */}
           <div className="mb-6">
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
-            <div 
+            <div
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
               ref={el => registerFieldRef?.('baseService', el)}
             >
               {baseServices.map(service => {
-                const id         = String(service.id)
+                const id = String(service.id)
                 const isSelected = formData.selectedServices?.find((s: any) => s.serviceId === id)?.quantity > 0
                 return (
                   <div key={id} onClick={() => handleBaseServiceSelect(id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
-                      isSelected 
-                        ? 'border-orange-500 bg-orange-50 shadow-md' 
-                        : fieldErrors.baseService 
-                          ? 'border-red-200 bg-red-50/30 hover:border-red-300' 
+                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected
+                        ? 'border-orange-500 bg-orange-50 shadow-md'
+                        : fieldErrors.baseService
+                          ? 'border-red-200 bg-red-50/30 hover:border-red-300'
                           : 'border-slate-200 bg-white hover:border-orange-300'
-                    }`}>
+                      }`}>
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
                         <Check size={12} strokeWidth={3} />
@@ -529,12 +504,11 @@ export const CotizacionForm: React.FC<Props> = ({
               <input
                 type="text"
                 name="location"
-                
+
                 value={formData.location}
                 onChange={onChange}
-                className={`${inputClass} !pl-12 ${
-                  fieldErrors.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                }`}
+                className={`${inputClass} !pl-12 ${fieldErrors.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
+                  }`}
                 ref={el => registerFieldRef?.('location', el)}
                 placeholder="Dirección completa (Calle, Barrio, Ciudad)"
               />
@@ -557,45 +531,45 @@ export const CotizacionForm: React.FC<Props> = ({
 
       {/* ── COLUMNA DERECHA ───────────────────────────────────────────────── */}
       <div className={`w-full lg:w-5/12 flex flex-col ${isPublic ? 'bg-slate-50 border-l border-slate-100' : 'bg-slate-50'}`}>
-          {/* Servicios Adicionales */}
-          <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-            <h4 className={headerClass}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
-                <Package size={isPublic ? 18 : 12} />
-              </div>
-              Servicios Adicionales
-            </h4>
-            <div className="space-y-4">
-              {additionalServices.map(service => {
-                const id       = String(service.id)
-                const selected = formData.selectedServices?.find((s: any) => s.serviceId === id)
-                const quantity = selected?.quantity || 0
-                return (
-                  <div key={id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
-                    <div>
-                      <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
-                      <p className="text-xs text-slate-400 mt-1 font-medium">${Number(service.precio).toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
-                      <button type="button" onClick={() => onServiceChange(id, Math.max(0, quantity - 1))}
-                        disabled={quantity === 0}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}>
-                        <Minus size={16} />
-                      </button>
-                      <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
-                      <button type="button" onClick={() => onServiceChange(id, quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm">
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-              {additionalServices.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
-              )}
+        {/* Servicios Adicionales */}
+        <div className="p-8 border-b border-slate-100 bg-slate-50/30">
+          <h4 className={headerClass}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPublic ? 'bg-orange-100 text-orange-600' : 'text-primary-600'}`}>
+              <Package size={isPublic ? 18 : 12} />
             </div>
+            Servicios Adicionales
+          </h4>
+          <div className="space-y-4">
+            {additionalServices.map(service => {
+              const id = String(service.id)
+              const selected = formData.selectedServices?.find((s: any) => s.serviceId === id)
+              const quantity = selected?.quantity || 0
+              return (
+                <div key={id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                  <div>
+                    <p className={`text-sm font-bold ${quantity > 0 ? 'text-slate-800' : 'text-slate-600'}`}>{service.nombre}</p>
+                    <p className="text-xs text-slate-400 mt-1 font-medium">${Number(service.precio).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
+                    <button type="button" onClick={() => onServiceChange(id, Math.max(0, quantity - 1))}
+                      disabled={quantity === 0}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}>
+                      <Minus size={16} />
+                    </button>
+                    <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>
+                    <button type="button" onClick={() => onServiceChange(id, quantity + 1)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-orange-600 transition-colors shadow-sm">
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+            {additionalServices.length === 0 && (
+              <p className="text-[10px] text-slate-400 italic text-center py-2">No hay servicios extra disponibles.</p>
+            )}
           </div>
+        </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
 
           {/* Repertorio */}
@@ -692,7 +666,7 @@ export const CotizacionForm: React.FC<Props> = ({
                   value={(formData.totalAmount || 0).toLocaleString()}
                   onChange={(e) => {
                     if (!isAdmin) return
-                    const rawValue     = e.target.value.replace(/\D/g, '')
+                    const rawValue = e.target.value.replace(/\D/g, '')
                     const numericValue = rawValue ? parseInt(rawValue) : 0
                     onChange({ target: { name: 'totalAmount', value: numericValue } } as any)
                   }}

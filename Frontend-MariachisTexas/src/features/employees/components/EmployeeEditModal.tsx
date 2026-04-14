@@ -16,6 +16,42 @@ interface Props {
 type EmployeeFormErrors = Partial<Record<string, string>>;
 const EMPTY_ERRORS: EmployeeFormErrors = {};
 
+const validate = (data: any): EmployeeFormErrors => {
+  const errors: EmployeeFormErrors = {};
+
+  if (!data.email?.trim()) errors.email = 'El correo es requerido';
+  if (!data.name?.trim()) errors.name = 'El nombre es requerido';
+  if (!data.lastName?.trim()) errors.lastName = 'El apellido es requerido';
+  if (!data.documentNumber?.trim()) errors.documentNumber = 'El número de documento es requerido';
+  if (!data.phone?.trim()) errors.phone = 'El teléfono es requerido';
+
+  if (!data.birthDate) {
+    errors.birthDate = 'La fecha de nacimiento es requerida';
+  } else {
+    const splitDate = data.birthDate.split('-');
+    const birth = new Date(parseInt(splitDate[0]), parseInt(splitDate[1]) - 1, parseInt(splitDate[2]));
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      errors.birthDate = 'El empleado debe ser mayor de 18 años';
+    }
+  }
+
+  if (data.experienceYears !== undefined && data.experienceYears !== '' && data.experienceYears !== null) {
+    const exp = Number(data.experienceYears);
+    if (exp < 0) {
+      errors.experienceYears = 'La experiencia no puede ser negativa';
+    }
+  }
+
+  return errors;
+};
+
+
 export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, employee }) => {
   const [formData, setFormData] = useState<any>(null);
   const [error,    setError]    = useState<string | null>(null);
@@ -60,6 +96,12 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const validationErrors = validate(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
     if (photo.uploading) return;
 

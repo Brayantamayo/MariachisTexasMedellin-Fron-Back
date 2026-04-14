@@ -70,7 +70,7 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
   const otrosInstrumentos = Array.isArray(user.otherInstruments)
     ? user.otherInstruments.join(', ')
     : typeof user.otherInstruments === 'string'
-      ? user.otherInstruments.trim() || null
+      ? (user.otherInstruments as any).trim() || null
       : null;
 
   return {
@@ -90,7 +90,7 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
     zonaServicio: user.serviceZone || 'URBANA',
     instrumentoPrincipal: user.mainInstrument,
     otrosInstrumentos,
-    anosExperiencia: user.experienceYears || 0,
+    anosExperiencia: Number(user.experienceYears) || 0,
     foto: user.avatar || null
   };
 };
@@ -110,10 +110,29 @@ export const employeeService = {
   updateEmployee: async (id: string, updates: Partial<User>): Promise<User> => {
     const nombre = updates.name ? `${updates.name} ${updates.lastName || ''}`.trim() : undefined;
     
+    const otrosInstrumentos = Array.isArray(updates.otherInstruments)
+      ? updates.otherInstruments.join(', ')
+      : typeof updates.otherInstruments === 'string'
+        ? (updates.otherInstruments as any).trim() || undefined
+        : undefined;
+
     const data = {
       ...(nombre && { nombre }),
       ...(updates.email && { email: updates.email }),
       ...(updates.isActive !== undefined && { estado: updates.isActive }),
+      ...(updates.documentType && { tipoDocumento: updates.documentType }),
+      ...(updates.documentNumber && { numeroDocumento: updates.documentNumber }),
+      ...(updates.birthDate && { fechaNacimiento: updates.birthDate }),
+      ...(updates.phone && { telefonoPrincipal: updates.phone }),
+      ...(updates.secondaryPhone !== undefined && { telefonoAlternativo: updates.secondaryPhone }),
+      ...(updates.city && { ciudad: updates.city }),
+      ...(updates.neighborhood && { barrio: updates.neighborhood }),
+      ...(updates.address && { direccion: updates.address }),
+      ...(updates.serviceZone && { zonaServicio: updates.serviceZone }),
+      ...(updates.mainInstrument && { instrumentoPrincipal: updates.mainInstrument }),
+      ...(otrosInstrumentos !== undefined && { otrosInstrumentos }),
+      ...(updates.experienceYears !== undefined && { anosExperiencia: Number(updates.experienceYears) }),
+      ...(updates.avatar !== undefined && { foto: updates.avatar }),
     };
     
     const response = await api.put(`/empleados/${id}`, data);

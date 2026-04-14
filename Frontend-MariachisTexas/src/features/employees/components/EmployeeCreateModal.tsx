@@ -22,6 +22,8 @@ export interface EmployeeFormErrors {
   password?: string;
   confirmPassword?: string;
   phone?: string;
+  birthDate?: string;
+  experienceYears?: string;
 }
  
 const EMPTY_ERRORS: EmployeeFormErrors = {};
@@ -65,6 +67,29 @@ const validate = (data: any): EmployeeFormErrors => {
     errors.phone = 'El teléfono es requerido';
   else if (!/^3\d{9}$/.test(data.phone.trim()))
     errors.phone = 'El teléfono debe ser válido (10 dígitos, empieza en 3)';
+ 
+  if (!data.birthDate) {
+    errors.birthDate = 'La fecha de nacimiento es requerida';
+  } else {
+    const splitDate = data.birthDate.split('-');
+    const birth = new Date(parseInt(splitDate[0]), parseInt(splitDate[1]) - 1, parseInt(splitDate[2]));
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      errors.birthDate = 'El empleado debe ser mayor de 18 años';
+    }
+  }
+ 
+  if (data.experienceYears !== undefined && data.experienceYears !== '') {
+    const exp = Number(data.experienceYears);
+    if (exp < 0) {
+      errors.experienceYears = 'La experiencia no puede ser negativa';
+    }
+  }
  
   return errors;
 };
@@ -146,7 +171,7 @@ export const EmployeeCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, on
         otherInstruments: typeof formData.otherInstruments === 'string'
           ? formData.otherInstruments.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0)
           : formData.otherInstruments,
-        experienceYears:  formData.experienceYears || 0,
+        experienceYears:  Number(formData.experienceYears) || 0,
         avatar:           formData.avatar,
         role:             formData.role,
       };

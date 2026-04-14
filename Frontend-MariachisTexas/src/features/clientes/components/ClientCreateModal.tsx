@@ -22,6 +22,7 @@ export interface ClientFormErrors {
   phone?: string;
   password?: string;
   confirmPassword?: string;
+  birthDate?: string;
 }
  
 const EMPTY_ERRORS: ClientFormErrors = {};
@@ -62,6 +63,22 @@ const validate = (data: any): ClientFormErrors => {
   if (data.confirmPassword !== data.password)
     errors.confirmPassword = 'Las contraseñas no coinciden';
  
+  if (!data.birthDate) {
+    errors.birthDate = 'La fecha de nacimiento es requerida';
+  } else {
+    const splitDate = data.birthDate.split('-');
+    const birth = new Date(parseInt(splitDate[0]), parseInt(splitDate[1]) - 1, parseInt(splitDate[2]));
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      errors.birthDate = 'El cliente debe ser mayor de 18 años';
+    }
+  }
+
   return errors;
 };
  

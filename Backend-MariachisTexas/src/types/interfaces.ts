@@ -138,7 +138,7 @@ export interface RehearsalResponse {
   time:          string
   notes:         string
   repertoireIds: string[]
-  status:        'Pendiente' | 'Completado' | 'Programado'
+  status:        'PENDIENTE' | 'LISTO'
   createdAt?:    string
   updatedAt?:    string
 }

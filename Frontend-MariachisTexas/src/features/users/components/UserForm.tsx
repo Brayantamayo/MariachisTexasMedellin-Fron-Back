@@ -69,6 +69,10 @@ const BirthDateInput: React.FC<{
   const [dateError, setDateError] = useState<string | undefined>()
   const hiddenRef = React.useRef<HTMLInputElement>(null)
 
+  const maxDateObj = new Date();
+  maxDateObj.setFullYear(maxDateObj.getFullYear() - 18);
+  const maxDateString = maxDateObj.toISOString().split('T')[0];
+
   // Sincronizar si el valor externo cambia (ej: reset del form)
   React.useEffect(() => {
     setDisplayValue(toDisplay(value))
@@ -150,7 +154,7 @@ const BirthDateInput: React.FC<{
           onChange={handlePickerChange}
           className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
           tabIndex={-1}
-          max={new Date().toISOString().split('T')[0]}
+          max={maxDateString}
           min="1900-01-01"
         />
       </div>

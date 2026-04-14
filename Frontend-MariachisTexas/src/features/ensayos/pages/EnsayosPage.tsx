@@ -98,7 +98,7 @@ export const EnsayosPage: React.FC = () => {
   };
 
   const handleToggleStatus = async (rehearsal: Rehearsal) => {
-    if (rehearsal.status !== 'Completado') { setConfirmModal(rehearsal); return; }
+    if (rehearsal.status !== 'LISTO') { setConfirmModal(rehearsal); return; }
     await doToggle(rehearsal);
   };
 
@@ -136,7 +136,7 @@ export const EnsayosPage: React.FC = () => {
       const isPast  = dateStr < todayStr;
       const isToday = dateStr === todayStr;
 
-      const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'Completado');
+      const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'LISTO');
       const dayEvents     = calendarReservations.filter(r => r.eventDate === dateStr && r.status !== 'ANULADA');
       const dayBlocks     = blocks.filter(b => b.startDate <= dateStr && b.endDate >= dateStr && b.isActive);
       const dayQuotes     = quotations.filter(q => q.eventDate === dateStr && q.status === 'EN_ESPERA');
