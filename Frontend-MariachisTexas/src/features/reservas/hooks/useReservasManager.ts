@@ -293,7 +293,7 @@ export const useReservasManager = () => {
   };
 
   const handleToggleStatus = (rehearsal: Rehearsal) => {
-    const isCompleted = rehearsal.status === 'Completado';
+    const isCompleted = rehearsal.status === 'LISTO';
     if (isCompleted) {
       processToggleStatus(rehearsal);
       return;
@@ -306,7 +306,7 @@ export const useReservasManager = () => {
       const updated = await rehearsalService.toggleStatus(rehearsal.id);
       setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r));
       showNotification(
-        updated.status === 'Completado'
+        updated.status === 'LISTO'
           ? `Ensayo "${updated.title}" marcado como Listo.`
           : `Ensayo "${updated.title}" marcado como Pendiente.`
       );

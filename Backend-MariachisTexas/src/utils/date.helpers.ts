@@ -14,18 +14,17 @@ export const buildDateTime = (date: string, time: string): Date =>
 
 export const dayRange = (dateStr: string) => ({
   dayStart: new Date(`${dateStr}T00:00:00`),
-  dayEnd:   new Date(`${dateStr}T23:59:59`),
+  dayEnd: new Date(`${dateStr}T23:59:59`),
 })
 
 // ─── VALIDACIÓN 6 HORAS MISMO DÍA ────────────────────────────────────────────
 export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
-  const now = new Date();
-  const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  if (dateStr !== hoy) return;
+  const hoy = new Date().toISOString().split('T')[0]
+  if (dateStr !== hoy) return
 
-  const ahora      = new Date()
+  const ahora = new Date()
   const horaEvento = new Date(`${dateStr}T${time}:00`)
-  const diffHoras  = (horaEvento.getTime() - ahora.getTime()) / (1000 * 60 * 60)
+  const diffHoras = (horaEvento.getTime() - ahora.getTime()) / (1000 * 60 * 60)
 
   if (diffHoras < 6) {
     const horaMinima = new Date(ahora.getTime() + 6 * 60 * 60 * 1000)
@@ -44,9 +43,9 @@ export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
 //   - 1h DESPUÉS del fin    (cierre/transporte)  ← FIX
 export const bloquearRango = (
   allHours: string[],
-  blocked:  Set<string>,
+  blocked: Set<string>,
   startTime: string,
-  endTime:   string
+  endTime: string
 ) => {
   const [sh] = startTime.split(':').map(Number)
   const [eh] = endTime.split(':').map(Number)
@@ -57,15 +56,7 @@ export const bloquearRango = (
   // Horas del evento
   allHours.forEach(h => {
     const [hh] = h.split(':').map(Number)
-    if (sh < eh) {
-      if (hh >= sh && hh < eh) blocked.add(h)
-    } else if (sh > eh) {
-      // Envoltura de medianoche: bloquea desde el inicio hasta el fin del día y desde medianoche hasta el fin del evento
-      if (hh >= sh || hh < eh) blocked.add(h)
-    } else {
-      // Si inicio y fin coinciden (raro), bloqueamos al menos esa hora
-      if (hh === sh) blocked.add(h)
-    }
+    if (hh >= sh && hh < eh) blocked.add(h)
   })
 
   // Buffer POST: hora siguiente al fin (cierre/transporte) ← FIX
@@ -78,17 +69,18 @@ export const bloquearRango = (
 // Esta función extrae solo el primer nombre quitando el apellido del final.
 export const buildClientName = (
   usuarioNombre: string | null | undefined,
-  apellido:      string | null | undefined
+  apellido: string | null | undefined
 ): string => {
-  const nombre   = (usuarioNombre ?? '').trim()
-  const apell    = (apellido      ?? '').trim()
+  const nombre = (usuarioNombre ?? '').trim()
+  const apell = (apellido ?? '').trim()
   if (!nombre) return apell
-  if (!apell)  return nombre
-  const suffix   = ' ' + apell
-  const lower    = nombre.toLowerCase()
+  if (!apell) return nombre
+  const suffix = ' ' + apell
+  const lower = nombre.toLowerCase()
   if (lower.endsWith(suffix.toLowerCase()))
     return nombre.slice(0, nombre.length - suffix.length).trim() + ' ' + apell
-  
+
   // Si no termina con el apellido, concatenarlos
   return (nombre + ' ' + apell).trim()
 }
+

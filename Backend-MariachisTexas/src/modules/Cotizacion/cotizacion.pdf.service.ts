@@ -76,8 +76,8 @@ const repertorioSection = cot.repertorios?.length
             <div class="song-item">
               <span class="song-num">${String(i + 1).padStart(2, '0')}</span>
               <div class="song-info">
-                <div class="song-title">${r.repertorio?.title ?? 'Sin título'}</div>
-                <div class="song-artist">${r.repertorio?.artist ?? 'Artista desconocido'}</div>
+                <div class="song-title">${r.repertorio?.titulo ?? 'Sin título'}</div>
+                <div class="song-artist">${r.repertorio?.artista ?? 'Artista desconocido'}</div>
               </div>
             </div>`).join('')}
       </div>

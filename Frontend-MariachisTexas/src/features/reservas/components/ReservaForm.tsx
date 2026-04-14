@@ -69,6 +69,7 @@ export const ReservaForm: React.FC<Props> = ({
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel,
+  fieldErrors, isSaving = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -275,21 +276,23 @@ export const ReservaForm: React.FC<Props> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
-              <input type="text" name="clientName" required
+              <input type="text" name="clientName" 
                 value={formData.clientName || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="Tu nombre completo" />
+              {fieldErrors?.clientName && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientName}</p>}
             </div>
             <div>
               <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
-              <input type="tel" name="clientPhone" required
+              <input type="tel" name="clientPhone" 
                 value={formData.clientPhone || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="Ej: 300 123 4567" />
+              {fieldErrors?.clientPhone && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientPhone}</p>}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -304,12 +307,13 @@ export const ReservaForm: React.FC<Props> = ({
             </div>
             <div>
               <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
-              <input type="email" name="clientEmail" required
+              <input type="email" name="clientEmail" 
                 value={formData.clientEmail || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="tucorreo@ejemplo.com" />
+              {fieldErrors?.clientEmail && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientEmail}</p>}
             </div>
           </div>
         </div>
@@ -358,22 +362,23 @@ export const ReservaForm: React.FC<Props> = ({
                   label={isPublic ? undefined : "FECHA EVENTO"}
                   value={formData.eventDate || ''}
                   onChange={onDateChange}
-                  required
                   minDate={today}
-                  className={isPublic ? `${inputClass} !pl-12` : undefined}
+                  className={isPublic ? `${inputClass} !pl-12 ${fieldErrors?.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}` : (fieldErrors?.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : '')}
                 />
+                {fieldErrors?.eventDate && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.eventDate}</p>}
               </div>
             </div>
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
                 <select name="eventType" value={formData.eventType || ''} onChange={onChange}
-                  className={`${inputClass} appearance-none cursor-pointer`}>
+                  className={`${inputClass} appearance-none cursor-pointer ${fieldErrors?.eventType ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}>
                   {TIPOS_EVENTO.map(tipo => (
                     <option key={tipo} value={tipo}>{tipo}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                {fieldErrors?.eventType && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.eventType}</p>}
               </div>
             </div>
           </div>
@@ -385,13 +390,13 @@ export const ReservaForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
-                    <select name="startTime" required
+                    <select name="startTime" 
                       value={formData.startTime || formData.eventTime || ''}
                       onChange={(e) => {
                         onChange(e);
                         onChange({ target: { name: 'eventTime', value: e.target.value } } as any);
                       }}
-                      className={`${isPublic ? inputClass : 'w-full bg-white border border-orange-200 text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium'}`}>
+                      className={`${isPublic ? `${inputClass} ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}` : `w-full bg-white border ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100' : 'border-orange-200'} text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium`}`}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
@@ -401,6 +406,7 @@ export const ReservaForm: React.FC<Props> = ({
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
+                    {fieldErrors?.startTime && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.startTime}</p>}
                   </div>
                 </div>
                 <div className="flex-1">
@@ -435,7 +441,7 @@ export const ReservaForm: React.FC<Props> = ({
                 )?.quantity ?? 0) > 0;
                 return (
                   <div key={service.id} onClick={() => handleBaseServiceSelect(service.id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : fieldErrors?.serviceId ? 'border-red-400 bg-red-50 shadow-sm' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
                         <Check size={12} strokeWidth={3} />
@@ -447,6 +453,7 @@ export const ReservaForm: React.FC<Props> = ({
                   </div>
                 );
               })}
+              {fieldErrors?.serviceId && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium w-full">{fieldErrors.serviceId}</p>}
             </div>
           </div>
 
@@ -455,8 +462,9 @@ export const ReservaForm: React.FC<Props> = ({
               <label className={labelClass}>Dirección del Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" name="location" required value={formData.location || ''} onChange={onChange}
-                  className={`${inputClass} !pl-12`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+                <input type="text" name="location" value={formData.location || ''} onChange={onChange}
+                  className={`${inputClass} !pl-12 ${fieldErrors?.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+                {fieldErrors?.location && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.location}</p>}
               </div>
             </div>
           </div>

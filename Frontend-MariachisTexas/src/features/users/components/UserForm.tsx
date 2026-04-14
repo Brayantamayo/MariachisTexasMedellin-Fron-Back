@@ -56,7 +56,14 @@ const BirthDateInput: React.FC<{
   const [displayValue, setDisplayValue] = useState(() => toDisplay(value))
   const hiddenRef = React.useRef<HTMLInputElement>(null)
 
-  React.useEffect(() => { setDisplayValue(toDisplay(value)) }, [value])
+  const maxDateObj = new Date();
+  maxDateObj.setFullYear(maxDateObj.getFullYear() - 18);
+  const maxDateString = maxDateObj.toISOString().split('T')[0];
+
+  // Sincronizar si el valor externo cambia (ej: reset del form)
+  React.useEffect(() => {
+    setDisplayValue(toDisplay(value))
+  }, [value])
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyMask(e.target.value)
@@ -88,9 +95,16 @@ const BirthDateInput: React.FC<{
         <button type="button" onClick={openPicker} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors" tabIndex={-1}>
           <Calendar size={16} />
         </button>
-        <input ref={hiddenRef} type="date" value={value || ''} onChange={handlePickerChange}
-          className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0" tabIndex={-1}
-          max={new Date().toISOString().split('T')[0]} min="1900-01-01"
+        {/* Input date oculto — solo para el picker */}
+        <input
+          ref={hiddenRef}
+          type="date"
+          value={value || ''}
+          onChange={handlePickerChange}
+          className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+          tabIndex={-1}
+          max={maxDateString}
+          min="1900-01-01"
         />
       </div>
       {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} /> {error}</p>}

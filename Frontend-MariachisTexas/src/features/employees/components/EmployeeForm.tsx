@@ -9,6 +9,12 @@ export interface EmployeeFormErrors {
   password?: string;
   confirmPassword?: string;
   phone?: string;
+  birthDate?: string;
+  mainInstrument?: string;
+  experienceYears?: string;
+  city?: string;
+  neighborhood?: string;
+  address?: string;
 }
 
 interface Props {
@@ -22,6 +28,10 @@ interface Props {
 export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, showPasswordFields = false, errors = {} as EmployeeFormErrors }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() - 18);
+  const maxDateString = maxDate.toISOString().split('T')[0];
 
   return (
     <form id="employee-form" onSubmit={onSubmit} className="space-y-8">
@@ -38,18 +48,13 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                         <input 
                             type="email" 
                             name="email"
-                            required
                             value={formData.email}
                             onChange={onChange}
                             className={`input-form input-icon-padding transition-all ${errors.email ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                             placeholder="usuario@texas.com"
                         />
                     </div>
-                    {errors.email && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle size={12} /> {errors.email}
-                      </p>
-                    )}
+                    {errors.email && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.email}</p>}
                  </div>
 
                  {showPasswordFields && (
@@ -61,7 +66,6 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                                  <input 
                                      type={showPassword ? "text" : "password"}
                                      name="password"
-                                     required
                                      value={formData.password}
                                      onChange={onChange}
                                      className={`input-form input-icon-padding transition-all ${errors.password ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
@@ -76,11 +80,7 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                  </button>
                              </div>
-                            {errors.password && (
-                              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                                <AlertCircle size={12} /> {errors.password}
-                              </p>
-                            )}
+                            {errors.password && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.password}</p>}
                         </div>
                         <div>
                             <label className="label-form">Confirmar Contraseña <span className="text-red-500">*</span></label>
@@ -89,7 +89,6 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                                  <input 
                                      type={showConfirmPassword ? "text" : "password"}
                                      name="confirmPassword"
-                                     required
                                      value={formData.confirmPassword}
                                      onChange={onChange}
                                      className={`input-form input-icon-padding transition-all ${errors.confirmPassword ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
@@ -104,11 +103,7 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                  </button>
                              </div>
-                            {errors.confirmPassword && (
-                              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                                <AlertCircle size={12} /> {errors.confirmPassword}
-                              </p>
-                            )}
+                            {errors.confirmPassword && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.confirmPassword}</p>}
                         </div>
                      </>
                  )}
@@ -125,21 +120,13 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                     <label className="label-form">Nombres <span className="text-red-500">*</span></label>
-                    <input type="text" name="name" required value={formData.name} onChange={onChange} className={`input-form transition-all ${errors.name ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
-                    {errors.name && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle size={12} /> {errors.name}
-                      </p>
-                    )}
+                    <input type="text" name="name" value={formData.name} onChange={onChange} className={`input-form transition-all ${errors.name ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                    {errors.name && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.name}</p>}
                 </div>
                 <div>
                     <label className="label-form">Apellidos <span className="text-red-500">*</span></label>
-                    <input type="text" name="lastName" required value={formData.lastName} onChange={onChange} className={`input-form transition-all ${errors.lastName ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
-                    {errors.lastName && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle size={12} /> {errors.lastName}
-                      </p>
-                    )}
+                    <input type="text" name="lastName" value={formData.lastName} onChange={onChange} className={`input-form transition-all ${errors.lastName ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                    {errors.lastName && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.lastName}</p>}
                 </div>
                 <div>
                     <label className="label-form">Género</label>
@@ -153,8 +140,9 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                      <label className="label-form">Fecha Nacimiento <span className="text-red-500">*</span></label>
                      <div className="relative">
                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                         <input type="date" name="birthDate" required value={formData.birthDate} onChange={onChange} className="input-form input-icon-padding" />
+                         <input type="date" name="birthDate" value={formData.birthDate} onChange={onChange} max={maxDateString} className="input-form input-icon-padding" />
                      </div>
+                     {errors.birthDate && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.birthDate}</p>}
                 </div>
                 <div>
                     <label className="label-form">Tipo Documento <span className="text-red-500">*</span></label>
@@ -169,13 +157,9 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                     <label className="label-form">No. Documento <span className="text-red-500">*</span></label>
                     <div className="relative">
                         <Hash className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.documentNumber ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
-                        <input type="text" name="documentNumber" required value={formData.documentNumber} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.documentNumber ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                        <input type="text" name="documentNumber" value={formData.documentNumber} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.documentNumber ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
                     </div>
-                    {errors.documentNumber && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle size={12} /> {errors.documentNumber}
-                      </p>
-                    )}
+                    {errors.documentNumber && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.documentNumber}</p>}
                 </div>
             </div>
         </div>
@@ -188,7 +172,8 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                     <label className="label-form text-primary-900/70">Instrumento Principal <span className="text-red-500">*</span></label>
-                    <input type="text" name="mainInstrument" required value={formData.mainInstrument} onChange={onChange} className="input-form border-primary-200 focus:ring-primary-200" placeholder="Ej: Vihuela" />
+                    <input type="text" name="mainInstrument" value={formData.mainInstrument} onChange={onChange} className="input-form border-primary-200 focus:ring-primary-200" placeholder="Ej: Vihuela" />
+                    {errors.mainInstrument && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.mainInstrument}</p>}
                 </div>
                 <div className="md:col-span-2">
                     <label className="label-form text-primary-900/70">Otros Instrumentos</label>
@@ -196,7 +181,8 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                 </div>
                 <div>
                     <label className="label-form text-primary-900/70">Años Experiencia <span className="text-red-500">*</span></label>
-                    <input type="number" name="experienceYears" required value={formData.experienceYears} onChange={onChange} className="input-form border-primary-200 focus:ring-primary-200" />
+                    <input type="number" name="experienceYears" value={formData.experienceYears} onChange={onChange} className="input-form border-primary-200 focus:ring-primary-200" />
+                    {errors.experienceYears && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.experienceYears}</p>}
                 </div>
             </div>
         </div>
@@ -211,13 +197,9 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                     <label className="label-form">Teléfono Principal <span className="text-red-500">*</span></label>
                     <div className="relative">
                         <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
-                        <input type="tel" name="phone" required value={formData.phone} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.phone ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
+                        <input type="tel" name="phone" value={formData.phone} onChange={onChange} className={`input-form input-icon-padding transition-all ${errors.phone ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`} />
                     </div>
-                    {errors.phone && (
-                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                        <AlertCircle size={12} /> {errors.phone}
-                      </p>
-                    )}
+                    {errors.phone && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.phone}</p>}
                 </div>
                 <div>
                     <label className="label-form">Teléfono Secundario</label>
@@ -228,15 +210,18 @@ export const EmployeeForm: React.FC<Props> = ({ formData, onChange, onSubmit, sh
                 </div>
                 <div>
                     <label className="label-form">Ciudad <span className="text-red-500">*</span></label>
-                    <input type="text" name="city" required value={formData.city} onChange={onChange} className="input-form" />
+                    <input type="text" name="city" value={formData.city} onChange={onChange} className="input-form" />
+                    {errors.city && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.city}</p>}
                 </div>
                 <div>
                     <label className="label-form">Barrio <span className="text-red-500">*</span></label>
-                    <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={onChange} className="input-form" />
+                    <input type="text" name="neighborhood" value={formData.neighborhood} onChange={onChange} className="input-form" />
+                    {errors.neighborhood && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.neighborhood}</p>}
                 </div>
                 <div className="md:col-span-2">
                     <label className="label-form">Dirección Residencial <span className="text-red-500">*</span></label>
-                    <input type="text" name="address" required value={formData.address} onChange={onChange} className="input-form" placeholder="Ej: Calle 10 # 40-20" />
+                    <input type="text" name="address" value={formData.address} onChange={onChange} className="input-form" placeholder="Ej: Calle 10 # 40-20" />
+                    {errors.address && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.address}</p>}
                 </div>
             </div>
         </div>

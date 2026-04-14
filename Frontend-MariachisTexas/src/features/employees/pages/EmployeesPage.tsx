@@ -63,6 +63,7 @@ export const EmployeesPage: React.FC = () => {
         setIsCreateOpen(false);
     } catch (error: any) {
       console.error('Error al crear empleado:', error);
+      throw error; // Re-throw to allow modal to catch it
     }
   };
 
@@ -75,6 +76,7 @@ export const EmployeesPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error: any) {
         console.error('Error al actualizar empleado:', error);
+        throw error; // Re-throw to allow modal to catch it
     }
   };
 
