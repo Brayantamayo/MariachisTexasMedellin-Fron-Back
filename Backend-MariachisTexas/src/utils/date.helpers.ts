@@ -18,8 +18,12 @@ export const dayRange = (dateStr: string) => ({
 })
 
 // ─── VALIDACIÓN 6 HORAS MISMO DÍA ────────────────────────────────────────────
-export const validarAnticipacionMismoDia = (dateStr: string, time: string) => {
-  const hoy = new Date().toISOString().split('T')[0]
+// skipForAdmin: si es true (admin/empleado), omite la validación de anticipación
+export const validarAnticipacionMismoDia = (dateStr: string, time: string, skipForAdmin = false) => {
+  if (skipForAdmin) return
+
+  // Usar fecha local para evitar problemas de zona horaria UTC
+  const hoy = toLocalDate(new Date())
   if (dateStr !== hoy) return
 
   const ahora = new Date()

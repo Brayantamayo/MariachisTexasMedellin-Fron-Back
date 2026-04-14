@@ -25,12 +25,12 @@ const reservaInclude = {
 }
 
 // ─── OBTENER ──────────────────────────────────────────────────────────────────
-// Para admin/empleado: solo muestra PENDIENTE (las CONFIRMADAS van a Ventas)
+// Para admin/empleado: muestra PENDIENTE, CONFIRMADA y ANULADA
 // Para clientes: muestra solo sus reservas
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
   const where = usuarioId
     ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
-    : { estado: 'PENDIENTE' as EstadoReserva }
+    : { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA'] as EstadoReserva[] } }
 
   const reservas = await prisma.reserva.findMany({
     where,
@@ -237,13 +237,13 @@ export const getReservaById = async (id: number): Promise<ReservationResponse> =
 }
 
 // ─── CREAR ────────────────────────────────────────────────────────────────────
-export const createReserva = async (data: ReservaCreateInput): Promise<ReservationResponse> => {
+export const createReserva = async (data: ReservaCreateInput, isAdmin = false): Promise<ReservationResponse> => {
   const parsed = ReservaCreateSchema.safeParse({ ...data, totalAmount: Number(data.totalAmount) })
   if (!parsed.success) throw new AppError(zodError(parsed.error), 400)
 
   const d = parsed.data
 
-  validarAnticipacionMismoDia(d.eventDate, d.startTime)
+  validarAnticipacionMismoDia(d.eventDate, d.startTime, isAdmin)
 
   // 1. Validar que haya al menos un servicio
   if (!d.selectedServices?.length)
@@ -271,10 +271,20 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
   // 4. Buscar cliente → usuario
   const clienteNumerico = Number(d.clienteId)
 
-  const cliente = await prisma.cliente.findUnique({
+  let cliente = await prisma.cliente.findUnique({
     where: { id: clienteNumerico },
     include: { usuario: true },
   })
+
+  // Si no se encontró por cliente.id, intentar por usuarioId
+  // (el frontend puede enviar el ID del usuario en lugar del ID del cliente)
+  if (!cliente) {
+    cliente = await prisma.cliente.findUnique({
+      where: { usuarioId: clienteNumerico },
+      include: { usuario: true },
+    })
+  }
+
   if (!cliente) throw new AppError('Cliente no encontrado', 404)
   if (!cliente.usuario) throw new AppError('Usuario no encontrado para este cliente', 404)
 
@@ -367,7 +377,7 @@ export const createReserva = async (data: ReservaCreateInput): Promise<Reservati
 }
 
 // ─── EDITAR ───────────────────────────────────────────────────────────────────
-export const updateReserva = async (id: number, data: ReservaUpdateInput): Promise<ReservationResponse> => {
+export const updateReserva = async (id: number, data: ReservaUpdateInput, isAdmin = false): Promise<ReservationResponse> => {
 
   const r = await prisma.reserva.findUnique({
     where: { id },
@@ -423,7 +433,7 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput): Promi
 
   // ── Validar disponibilidad si cambia fecha/hora ────────────────────────────
   if (d.startTime || d.endTime || d.eventDate) {
-    if (d.startTime) validarAnticipacionMismoDia(date, d.startTime)
+    if (d.startTime) validarAnticipacionMismoDia(date, d.startTime, isAdmin)
 
     // ✅ Clave: excluir tanto la reserva como su propia cotización para no bloquearse
     await verificarDisponibilidadReserva(
@@ -491,22 +501,55 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput): Promi
 
 // ─── ANULAR ───────────────────────────────────────────────────────────────────
 export const anularReserva = async (id: number, motivo?: string): Promise<ReservationResponse> => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: { cotizacion: true } })
+  const r = await prisma.reserva.findUnique({
+    where: { id },
+    include: {
+      cotizacion: { include: { cliente: true } },
+      abonos: true,
+      venta: true,
+    }
+  })
   if (!r) throw new AppError('Reserva no encontrada', 404)
   if (r.estado === 'ANULADA') throw new AppError('La reserva ya está anulada', 409)
 
-  await Promise.all([
-    prisma.reserva.update({ where: { id }, data: { estado: 'ANULADA' } }),
-    prisma.cotizacion.update({
+  const notasActualizadas = motivo
+    ? `${r.cotizacion.notasAdicionales ?? ''} [Anulada: ${motivo}]`.trim()
+    : r.cotizacion.notasAdicionales
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Marcar reserva y cotización como ANULADA
+    await tx.reserva.update({ where: { id }, data: { estado: 'ANULADA' } })
+    await tx.cotizacion.update({
       where: { id: r.cotizacionId },
-      data: {
-        estado: 'ANULADA',
-        notasAdicionales: motivo
-          ? `${r.cotizacion.notasAdicionales ?? ''} [Anulada: ${motivo}]`.trim()
-          : r.cotizacion.notasAdicionales,
-      },
-    }),
-  ])
+      data: { estado: 'ANULADA', notasAdicionales: notasActualizadas },
+    })
+
+    // 2. Si ya existe una Venta asociada, marcarla como CANCELADA
+    if (r.venta) {
+      await tx.venta.update({
+        where: { id: r.venta.id },
+        data: { estado: 'CANCELADA' },
+      })
+    }
+    // 3. Si no hay Venta pero sí hay abonos, crear una Venta CANCELADA para el registro
+    else if (r.abonos.length > 0) {
+      const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
+      const metodoPago  = r.abonos[r.abonos.length - 1].metodoPago ?? 'EFECTIVO'
+
+      await tx.venta.create({
+        data: {
+          reservaId:   id,
+          clienteId:   r.cotizacion.clienteId,
+          tipo:        'RESERVA',
+          estado:      'CANCELADA',
+          montoTotal:  Number(r.totalValor),
+          montoPagado: totalPagado,
+          fechaVenta:  new Date(),
+          metodoPago:  metodoPago as any,
+        },
+      })
+    }
+  })
 
   return getReservaById(id)
 }
@@ -566,6 +609,7 @@ export const getAbonos = async (usuarioId?: number) => {
       method: a.metodoPago || '',
       notes: a.notas ?? '',
       reservationId: String(a.reservaId || ''),
+      reservationStatus: a.reserva?.estado ?? null,
       clientId: String(a.clienteId || ''),
       clientEmail: a.cliente?.email ?? a.reserva?.cotizacion?.cliente?.email ?? '',
       clientName: buildClientName(a.cliente?.usuario?.nombre, a.cliente?.apellido),

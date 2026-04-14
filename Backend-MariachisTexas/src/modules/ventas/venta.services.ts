@@ -14,8 +14,9 @@ const mapToSale = (v: any) => {
     : ''
 
   const ventaFinalizada = v.estado === 'FINALIZADO'
+  const ventaCancelada  = v.estado === 'CANCELADA'
   const pendingAmount   = reserva
-    ? (ventaFinalizada ? 0 : Number(reserva.saldoPendiente))
+    ? (ventaFinalizada || ventaCancelada ? 0 : Number(reserva.saldoPendiente))
     : 0
   const isFullyPaid = ventaFinalizada || pendingAmount <= 0.01
 
@@ -33,12 +34,12 @@ const mapToSale = (v: any) => {
     pendingAmount,
     paidAmount:        Number(v.montoPagado),
     reservationId:     v.reservaId ? String(v.reservaId) : undefined,
-    reservationStatus: isFullyPaid ? 'FINALIZADO' : 'CONFIRMADO',
+    reservationStatus: ventaCancelada ? 'CANCELADA' : isFullyPaid ? 'FINALIZADO' : 'CONFIRMADO',
     eventDate:         cotizacion?.fechaEvento
       ? cotizacion.fechaEvento.toISOString().split('T')[0]
       : undefined,
     eventType:         cotizacion?.tipoEvento ?? '',
-    status:            isFullyPaid ? 'Finalizado' : 'Confirmado',
+    status:            ventaCancelada ? 'Cancelada' : isFullyPaid ? 'Finalizado' : 'Confirmado',
     abonos:            reserva?.abonos?.map((a: any) => ({
       id:     String(a.id),
       amount: Number(a.monto),

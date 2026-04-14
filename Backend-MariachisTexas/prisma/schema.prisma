@@ -43,6 +43,7 @@ enum EstadoVenta {
   CONFIRMADO
   FINALIZADO
   VENTA_DIRECTA
+  CANCELADA
 }
 
 enum MetodoPago {

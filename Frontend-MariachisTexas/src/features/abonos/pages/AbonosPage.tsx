@@ -9,28 +9,30 @@ import { TablePagination } from '@/shared/components/TablePagination';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Abono {
-  id:            string;
-  amount:        number;
-  date:          string;
-  method:        string;
-  notes:         string;
-  reservationId: string;
-  clientId:      string;
-  clientEmail:   string;
-  clientName:    string;
+  id:               string;
+  amount:           number;
+  date:             string;
+  method:           string;
+  notes:            string;
+  reservationId:    string;
+  reservationStatus?: string;
+  clientId:         string;
+  clientEmail:      string;
+  clientName:       string;
   reservationTotal: number;
-  newBalance:    number;
+  newBalance:       number;
 }
 
 interface ReservaGroup {
-  reservationId:   string;
-  clientName:      string;
-  clientEmail:     string;
+  reservationId:    string;
+  clientName:       string;
+  clientEmail:      string;
   reservationTotal: number;
-  paid:            number;
-  pending:         number;
-  eventType?:      string;
-  abonos:          Abono[];
+  paid:             number;
+  pending:          number;
+  eventType?:       string;
+  reservationStatus?: string;
+  abonos:           Abono[];
 }
 
 const metodoPagoLabel: Record<string, string> = {
@@ -433,6 +435,7 @@ export const AbonosPage: React.FC = () => {
             clientName:       a.clientName,
             clientEmail:      a.clientEmail,
             reservationTotal: a.reservationTotal,
+            reservationStatus: a.reservationStatus,
             paid:             0,
             pending:          0,
             abonos:           [],
@@ -441,6 +444,8 @@ export const AbonosPage: React.FC = () => {
         const g = grouped.get(a.reservationId)!;
         g.abonos.push(a);
         g.paid += a.amount;
+        // Actualizar estado si el abono más reciente lo tiene
+        if (a.reservationStatus) g.reservationStatus = a.reservationStatus;
       });
 
       // Calculate pending for each group
@@ -555,6 +560,7 @@ export const AbonosPage: React.FC = () => {
                   <tr className="border-b border-slate-100 text-left">
                     <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Reserva</th>
                     <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
                     <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
                     <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagado</th>
                     <th className="py-4 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pendiente</th>
@@ -584,6 +590,20 @@ export const AbonosPage: React.FC = () => {
                               <User size={12} className="text-slate-400" /> {group.clientName}
                             </p>
                           </td>
+                          {/* Estado de la reserva */}
+                          <td className="py-4 px-4">
+                            <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
+                              group.reservationStatus === 'ANULADA'
+                                ? 'bg-red-50 text-red-600 border-red-100'
+                                : group.reservationStatus === 'CONFIRMADA'
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                : 'bg-amber-50 text-amber-600 border-amber-100'
+                            }`}>
+                              {group.reservationStatus === 'ANULADA' ? 'Anulada'
+                               : group.reservationStatus === 'CONFIRMADA' ? 'Confirmada'
+                               : 'Pendiente'}
+                            </span>
+                          </td>
                           <td className="py-4 px-4">
                             <span className="text-sm font-bold text-slate-700">${group.reservationTotal.toLocaleString('es-CO')}</span>
                           </td>
@@ -610,7 +630,7 @@ export const AbonosPage: React.FC = () => {
                         {/* Expanded abonos */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="bg-slate-50/50 px-6 py-4">
+                            <td colSpan={8} className="bg-slate-50/50 px-6 py-4">
                               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="grid grid-cols-5 bg-slate-50 px-6 py-3 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                   <span>Tipo</span>

@@ -151,6 +151,18 @@ useEffect(() => {
         !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
       );
     }
+
+    // Si la fecha es hoy, filtrar horas que ya pasaron
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateToUse === todayStr) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      filtered = filtered.filter((hour: string) => {
+        const [h, m] = hour.split(':').map(Number);
+        return h * 60 + m > currentMinutes;
+      });
+    }
+
     setAvailableHours(filtered);
 
     if (isAdmin && clientsData) setClients(clientsData.clients);
@@ -225,6 +237,16 @@ const checkBlockAndHours = async (date: string) => {
     filtered = hours.filter((hour: string) =>
       !status.blockedRanges!.some((range: any) => hour >= range.start && hour < range.end)
     );
+  }
+  // Si la fecha es hoy, filtrar horas que ya pasaron
+  const todayStr = new Date().toISOString().split('T')[0];
+  if (date === todayStr) {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    filtered = filtered.filter((hour: string) => {
+      const [h, m] = hour.split(':').map(Number);
+      return h * 60 + m > currentMinutes;
+    });
   }
   setAvailableHours(filtered);
 };

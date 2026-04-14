@@ -35,12 +35,16 @@ export const crearCliente = async (data: unknown) => {
   const hashedPassword = await bcrypt.hash(password, 10)
 
   const cliente = await prisma.$transaction(async (tx) => {
+    // Buscar el ID del rol CLIENTE dinámicamente para no depender de IDs hardcodeados
+    const rolCliente = await tx.rol.findUnique({ where: { nombre: 'CLIENTE' } })
+    if (!rolCliente) throw new AppError('Rol CLIENTE no encontrado en la base de datos', 500)
+
     const usuario = await tx.usuario.create({
       data: {
         nombre,
         email,
         password: hashedPassword,
-        rolId: 3,
+        rolId: rolCliente.id,
       }
     })
 

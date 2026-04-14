@@ -88,9 +88,13 @@ export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView,
                           <td className="py-5 px-6 text-center">
                               {sale.reservationStatus ? (
                                   <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
-                                      sale.reservationStatus === 'Confirmado' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                                      sale.reservationStatus === 'CANCELADA'  ? 'bg-red-50 text-red-600 border-red-100'
+                                    : sale.reservationStatus === 'FINALIZADO' ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                   }`}>
-                                      {sale.reservationStatus}
+                                      {sale.reservationStatus === 'CANCELADA'  ? 'Cancelada'
+                                     : sale.reservationStatus === 'FINALIZADO' ? 'Finalizado'
+                                     : 'Confirmado'}
                                   </span>
                               ) : (
                                   <span className="inline-block px-3 py-1 rounded-lg border border-slate-100 bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">

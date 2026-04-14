@@ -76,8 +76,11 @@ export const getUsuarioById = async (id: number): Promise<UsuarioResponse> => {
 
 // ─── REGISTRAR USUARIO (PÚBLICO) ───────────────────────────────────────────
 export const registerUsuario = async (data: Omit<UsuarioCreateInput, 'rolId'> & { clienteData: any }): Promise<UsuarioResponse> => {
-  // Forzar rol de cliente
-  const dataWithRol = { ...data, rolId: 3 }
+  // Buscar el ID del rol CLIENTE dinámicamente
+  const rolCliente = await prisma.rol.findUnique({ where: { nombre: 'CLIENTE' } })
+  if (!rolCliente) throw new AppError('Rol CLIENTE no encontrado en la base de datos', 500)
+
+  const dataWithRol = { ...data, rolId: rolCliente.id }
 
   const parsed = UsuarioCreateSchema.safeParse(dataWithRol)
   if (!parsed.success) {

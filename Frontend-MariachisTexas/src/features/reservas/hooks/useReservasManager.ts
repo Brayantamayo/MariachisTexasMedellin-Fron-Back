@@ -209,6 +209,10 @@ export const useReservasManager = () => {
 
   const handleUpdate = async (data: any) => {
     if (!editingReserva) return;
+    // Validar que el ID sea numérico antes de enviar al backend
+    if (!editingReserva.id || isNaN(Number(editingReserva.id))) {
+      throw new Error('No se puede editar esta reserva: ID inválido. Por favor recarga la página e intenta de nuevo.');
+    }
     try {
       const updated = await reservaService.updateReservation(editingReserva.id, data);
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));

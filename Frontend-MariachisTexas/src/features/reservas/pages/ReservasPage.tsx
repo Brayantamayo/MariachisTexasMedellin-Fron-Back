@@ -419,7 +419,20 @@ export const ReservasPage: React.FC = () => {
 
       <ReservaCreateModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSave={handleCreate} selectedDate={selectedDateForForm} selectedTime={selectedTimeForForm} />
       <ReservaEditModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSave={handleUpdate} reservation={editingReserva} />
-      <ReservaDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} reservation={selectedReserva} onFinalize={processFinalization} />
+      <ReservaDetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        reservation={selectedReserva}
+        onFinalize={processFinalization}
+        onCancel={(id, motivo) => processCancel(id, motivo)}
+        onReschedule={(res) => {
+          // Buscar la reserva real con ID numérico en la lista de reservas
+          const realRes = reservations.find(r => r.id === res.id) ?? res;
+          setEditingReserva(realRes);
+          setIsDetailOpen(false);
+          setIsEditOpen(true);
+        }}
+      />
       <AbonoCreateModal isOpen={isAbonoModalOpen} onClose={() => setIsAbonoModalOpen(false)} onSave={handleSaveAbono} initialReservationId={abonoReservationId} />
 
       <DateDetailsModal

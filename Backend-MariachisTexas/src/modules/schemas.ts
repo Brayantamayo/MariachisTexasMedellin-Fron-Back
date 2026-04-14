@@ -1,6 +1,11 @@
 import { z, ZodError } from 'zod'
 
 
+// ─── HELPER: fecha local como YYYY-MM-DD (sin problemas de zona horaria UTC) ──
+const localDateStr = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+
 // ─── HELPER: DETECCIÓN DE TEXTO GIBBERISH ─────────────────────────────────────
 // Detecta texto como "wkssnjsnkks", "aaaaaabbb", "xzxzxzxzxz"
 
@@ -54,11 +59,11 @@ const fecha = z.string()
   }, 'La fecha no existe en el calendario (ej: 31 de febrero)')
 
 const fechaFutura = fecha
-  .refine(d => new Date(d) >= new Date(new Date().toDateString()), 'La fecha no puede ser en el pasado')
+  .refine(d => d >= localDateStr(), 'La fecha no puede ser en el pasado')
   .refine(d => {
     const limite = new Date()
     limite.setFullYear(limite.getFullYear() + 2)
-    return new Date(d) <= limite
+    return d <= localDateStr(limite)
   }, 'No se pueden agendar eventos con más de 2 años de anticipación')
 
 const duracion = z.string()
@@ -317,6 +322,13 @@ export const CotizacionCreateSchema = z.object({
     const ids = d.selectedServices.map(s => String(s.serviceId))
     return ids.length === new Set(ids).size
   }, { message: 'No puedes seleccionar el mismo servicio más de una vez', path: ['selectedServices'] })
+  .refine(d => {
+    if (d.eventDate !== localDateStr()) return true
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const [sh, sm] = d.startTime.split(':').map(Number)
+    return sh * 60 + sm > currentMinutes
+  }, { message: 'Si el evento es hoy, la hora de inicio debe ser posterior a la hora actual', path: ['startTime'] })
 
 export const CotizacionUpdateSchema = z.object({
   clientId: z.string().optional().nullable(),
@@ -370,6 +382,13 @@ export const ReservaCreateSchema = z.object({
     const diffMin = (eh * 60 + em) - (sh * 60 + sm)
     return diffMin >= 60 || diffMin < 0
   }, { message: 'La reserva debe durar al menos 1 hora', path: ['endTime'] })
+  .refine(d => {
+    if (d.eventDate !== localDateStr()) return true
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const [sh, sm] = d.startTime.split(':').map(Number)
+    return sh * 60 + sm > currentMinutes
+  }, { message: 'Si el evento es hoy, la hora de inicio debe ser posterior a la hora actual', path: ['startTime'] })
 
 export const ReservaUpdateSchema = z.object({
   eventDate: fechaFutura.optional(),

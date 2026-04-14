@@ -52,11 +52,14 @@ const mapFromBackend = (backend: any): User => {
 // ─── MAPEAR DE FRONTEND A BACKEND ────────────────────────────────────────────
 // user puede traer roleId (string numérico del select dinámico) o role (nombre del enum)
 const mapToBackend = (user: any) => {
+  // Priorizar siempre roleId del select dinámico; solo usar fallback si no hay roleId
   const rolId = user.roleId
     ? Number(user.roleId)
     : user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3;
 
-  const isEmpleado = user.role === UserRole.EMPLEADO;
+  // isEmpleado: usar el nombre del rol resuelto (puede venir como 'EMPLEADO' desde el modal)
+  const roleName = (user.role || '').toString().toUpperCase();
+  const isEmpleado = roleName === 'EMPLEADO' || roleName === UserRole.EMPLEADO;
 
   return {
     nombre: `${user.name?.trim() || ''} ${user.lastName?.trim() || ''}`.trim() || 'Usuario',
@@ -123,7 +126,8 @@ export const userService = {
         ? (updates.role === UserRole.ADMIN ? 1 : updates.role === UserRole.EMPLEADO ? 2 : 3)
         : undefined;
 
-    const isEmpleado = updates.role === UserRole.EMPLEADO;
+    const roleName = (updates.role || '').toString().toUpperCase();
+    const isEmpleado = roleName === 'EMPLEADO' || roleName === UserRole.EMPLEADO;
     // Hay datos de contacto si viene teléfono o documento
     const hasContactData = updates.phone || updates.documentNumber;
 

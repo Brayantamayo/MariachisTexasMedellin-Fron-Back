@@ -36,8 +36,8 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
       return <div className="text-center py-20 text-slate-400">Cargando datos...</div>;
   }
 
-  // Filtrar reservas que tengan al menos un abono y no estén anuladas
-  const relevantReservations = reservations.filter(r => r.status !== 'Anulado' && r.paidAmount > 0);
+  // Mostrar todas las reservas con abonos, incluyendo las anuladas
+  const relevantReservations = reservations.filter(r => r.paidAmount > 0);
 
   if (relevantReservations.length === 0) {
       return <div className="text-center py-20 text-slate-400">No se encontraron reservas con abonos.</div>;
@@ -62,6 +62,7 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                   <tr className="border-b border-slate-100 text-left">
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Reserva</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                      <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagado</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pendiente</th>
@@ -99,6 +100,21 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                                               {res.eventType}
                                           </span>
                                       </div>
+                                  </td>
+
+                                  {/* Estado */}
+                                  <td className="py-5 px-6">
+                                      <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
+                                          res.status === 'ANULADA' || res.status === 'Anulado'
+                                            ? 'bg-red-50 text-red-600 border-red-100'
+                                            : res.status === 'CONFIRMADA' || res.status === 'Confirmado'
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                            : 'bg-amber-50 text-amber-600 border-amber-100'
+                                      }`}>
+                                          {res.status === 'ANULADA' || res.status === 'Anulado' ? 'Anulada'
+                                           : res.status === 'CONFIRMADA' || res.status === 'Confirmado' ? 'Confirmada'
+                                           : 'Pendiente'}
+                                      </span>
                                   </td>
 
                                   {/* Total */}
