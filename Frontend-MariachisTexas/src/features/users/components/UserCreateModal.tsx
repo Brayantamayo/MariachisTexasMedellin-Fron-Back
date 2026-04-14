@@ -14,58 +14,10 @@ interface CreateProps {
 }
 
 export interface UserFormErrors {
-  email?: string;
-  name?: string;
-  lastName?: string;
-  documentNumber?: string;
-  password?: string;
-  confirmPassword?: string;
-  phone?: string;
-  birthDate?: string;
+  [key: string]: string | undefined;
 }
 
 const EMPTY_ERRORS: UserFormErrors = {};
-
-const validate = (data: any): UserFormErrors => {
-  const errors: UserFormErrors = {};
-
-  if (!data.email?.trim())
-    errors.email = 'El correo es requerido';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()))
-    errors.email = 'El correo no es válido';
-
-  if (!data.name?.trim())
-    errors.name = 'El nombre es requerido';
-  else if (data.name.trim().length < 2)
-    errors.name = 'El nombre debe tener al menos 2 caracteres';
-
-  if (!data.lastName?.trim())
-    errors.lastName = 'El apellido es requerido';
-  else if (data.lastName.trim().length < 2)
-    errors.lastName = 'El apellido debe tener al menos 2 caracteres';
-
-  if (!data.documentNumber?.trim())
-    errors.documentNumber = 'El número de documento es requerido';
-  else if (!/^\d{6,12}$/.test(data.documentNumber.trim()))
-    errors.documentNumber = 'El documento debe tener 6-12 dígitos';
-
-  if (!data.password)
-    errors.password = 'La contraseña es requerida';
-  else if (data.password.length < 6)
-    errors.password = 'La contraseña debe tener al menos 6 caracteres';
-
-  if (!data.confirmPassword)
-    errors.confirmPassword = 'Confirma la contraseña';
-  else if (data.password !== data.confirmPassword)
-    errors.confirmPassword = 'Las contraseñas no coinciden';
-
-  if (!data.phone?.trim())
-    errors.phone = 'El teléfono es requerido';
-  else if (!/^3\d{9}$/.test(data.phone.trim()))
-    errors.phone = 'El teléfono debe ser válido (10 dígitos, empieza en 3)';
-
-  return errors;
-};
 
 export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave }) => {
   const buildEmpty = (firstRoleId = '') => ({
@@ -133,13 +85,6 @@ export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const validationErrors = validate(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
     setErrors(EMPTY_ERRORS);
     setError(null);
     if (photo.uploading) return;
@@ -162,8 +107,20 @@ export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave
       setError(null);
       photo.reset();
     } catch (err: any) {
-      const backendMessage = err?.response?.data?.message || err?.message || 'Error al crear el usuario.';
-      setError(backendMessage);
+      const data = err?.response?.data;
+      const message = data?.message || err?.message || 'Error al crear el usuario.';
+      // Intentar mapear error de campo específico
+      const fieldMap: Record<string, string> = {
+        nombre: 'name', email: 'email', password: 'password',
+        numeroDocumento: 'documentNumber', telefonoPrincipal: 'phone',
+        fechaNacimiento: 'birthDate', apellido: 'lastName',
+      };
+      const fieldKey = data?.field ? fieldMap[data.field] ?? data.field : null;
+      if (fieldKey) {
+        setErrors({ [fieldKey]: message });
+      } else {
+        setError(message);
+      }
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);

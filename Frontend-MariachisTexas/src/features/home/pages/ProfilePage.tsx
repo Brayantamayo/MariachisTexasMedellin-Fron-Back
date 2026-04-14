@@ -22,7 +22,7 @@ name:     string;
 icon:     React.ReactNode;
 type?:    string;
 editing:  boolean;
-onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 readOnly?: boolean;
 hint?:    string;
 colSpan?: boolean;
@@ -222,6 +222,7 @@ const handleSave = async () => {
         neighborhood:   actualizado.barrio,
         address:        actualizado.direccion,
         birthDate:      actualizado.fechaNacimiento,
+        avatar:         actualizado.foto ?? undefined,
     });
 
     showNotification('Perfil actualizado correctamente', 'success');
@@ -302,20 +303,33 @@ return (
                {/* Large Avatar container */}
                <div className="relative group">
                  <div className="absolute -inset-1 bg-gradient-to-br from-amber-500 to-red-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
-                 <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-3xl bg-slate-900/80 border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105">
-                    {formData.foto ? (
-                      <img src={formData.foto} alt="Perfil" className="w-full h-full object-cover" />
+
+                 {/* Input oculto para subir foto */}
+                 <input
+                   ref={photo.inputRef}
+                   type="file"
+                   accept="image/jpeg,image/png,image/webp"
+                   className="hidden"
+                   onChange={photo.handleFileChange}
+                 />
+
+                 <div
+                   onClick={isEditing ? photo.triggerPick : undefined}
+                   className={`relative w-28 h-28 md:w-32 md:h-32 rounded-3xl bg-slate-900/80 border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 ${isEditing ? 'cursor-pointer' : ''}`}
+                 >
+                    {photo.uploading ? (
+                      <Loader2 size={32} className="animate-spin text-amber-400" />
+                    ) : (photo.preview || formData.foto) ? (
+                      <img src={photo.preview || formData.foto} alt="Perfil" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-4xl font-black text-amber-500 tracking-tighter">{initials}</span>
                     )}
+                    {isEditing && !photo.uploading && (
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Camera size={24} className="text-white" />
+                      </div>
+                    )}
                  </div>
-                 {isEditing && (
-                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                     <div className="bg-black/60 backdrop-blur-sm rounded-full p-2">
-                       <Camera size={24} className="text-white" />
-                     </div>
-                   </div>
-                 )}
                </div>
 
                <div>
