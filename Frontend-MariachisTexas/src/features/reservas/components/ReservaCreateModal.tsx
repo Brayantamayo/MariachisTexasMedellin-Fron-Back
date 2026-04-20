@@ -20,7 +20,7 @@ interface Props {
 }
 
 // ─── Tipos de error por campo ─────────────────────────────────────────────────
-export interface ReservaFormErrors {
+export interface ReservaFormErrors extends Record<string, string | undefined> {
   clientName?:  string;
   clientPhone?: string;
   clientEmail?: string;
