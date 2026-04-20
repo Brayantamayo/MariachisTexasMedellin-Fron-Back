@@ -25,8 +25,6 @@ const reservaInclude = {
 }
 
 // ─── OBTENER ──────────────────────────────────────────────────────────────────
-// Para admin/empleado: muestra PENDIENTE, CONFIRMADA y ANULADA
-// Para clientes: muestra solo sus reservas
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
   const where = usuarioId
     ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
@@ -40,6 +38,7 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   return reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones))
 }
 
+///Obtener reservas para el calendario
 export const getReservasCalendario = async () => {
   const reservaWhere = { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
 
