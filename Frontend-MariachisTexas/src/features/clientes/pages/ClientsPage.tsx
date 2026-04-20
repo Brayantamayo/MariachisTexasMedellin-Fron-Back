@@ -104,6 +104,7 @@ export const ClientsPage: React.FC = () => {
             onEdit={(client) => { setSelectedClient(client); setIsEditOpen(true); }}
             onDelete={(id) => setDeleteModal({ isOpen: true, clientId: id })}
             onToggleStatus={handleToggleStatus}
+            onPageChange={(page) => fetchClients(page, searchTerm)}
         />
       </div>
 

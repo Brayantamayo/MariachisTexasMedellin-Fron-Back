@@ -104,17 +104,24 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
 
                                   {/* Estado */}
                                   <td className="py-5 px-6">
-                                      <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
-                                          res.status === 'ANULADA' || res.status === 'Anulado'
-                                            ? 'bg-red-50 text-red-600 border-red-100'
-                                            : res.status === 'CONFIRMADA' || res.status === 'Confirmado'
-                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                            : 'bg-amber-50 text-amber-600 border-amber-100'
-                                      }`}>
-                                          {res.status === 'ANULADA' || res.status === 'Anulado' ? 'Anulada'
-                                           : res.status === 'CONFIRMADA' || res.status === 'Confirmado' ? 'Confirmada'
-                                           : 'Pendiente'}
-                                      </span>
+                                      {(() => {
+                                          const isAnulada = res.status === 'ANULADA' || res.status === 'Anulado';
+                                          const isConfirmed = res.status === 'CONFIRMADA' || res.status === 'Confirmado' || (pending <= 0 && !isAnulada);
+                                          
+                                          return (
+                                              <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
+                                                  isAnulada
+                                                    ? 'bg-red-50 text-red-600 border-red-100'
+                                                    : isConfirmed
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                    : 'bg-amber-50 text-amber-600 border-amber-100'
+                                              }`}>
+                                                  {isAnulada ? 'Anulada'
+                                                   : isConfirmed ? 'Confirmada'
+                                                   : 'Pendiente'}
+                                              </span>
+                                          );
+                                      })()}
                                   </td>
 
                                   {/* Total */}
