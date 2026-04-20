@@ -194,7 +194,7 @@ export const ReservasPage: React.FC = () => {
 
       const dayEvents = calendarReservations.filter(r => r.eventDate === dateStr && r.status !== 'ANULADA');
       const dayBlocks = blocks.filter(b => b.startDate <= dateStr && b.endDate >= dateStr && b.isActive);
-      const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'Completado');
+      const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'LISTO');
       const dayQuotes = quotations.filter(q => q.eventDate === dateStr && q.status === 'EN_ESPERA');
 
       const isFullDayBlock = dayBlocks.some(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE');
@@ -439,7 +439,7 @@ export const ReservasPage: React.FC = () => {
         isOpen={isDateDetailsOpen} onClose={() => setIsDateDetailsOpen(false)} date={selectedDateForDetails}
         reservations={calendarReservations.filter(r => r.eventDate === selectedDateForDetails && r.status !== 'ANULADA')}
         blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails || '') && b.endDate >= (selectedDateForDetails || '') && b.isActive)}
-        rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'Completado')}
+        rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
         quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
         onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time || null); setIsCreateOpen(true); }}

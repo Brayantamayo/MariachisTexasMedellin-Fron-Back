@@ -3,9 +3,10 @@ import api from '@/shared/api/api'
 export interface Sale {
     id: string;
     date: string;
-    type: 'Por Reserva' | 'Directa';
+    type: string;
     clientName: string;
     clientId?: string;
+    clientEmail?: string;
     concept: string;
     method: string;
     amount: number;
@@ -13,11 +14,18 @@ export interface Sale {
     pendingAmount?: number;
     paidAmount?: number;
     reservationId?: string;
-    reservationStatus?: 'Confirmado' | 'Finalizado';
+    reservationStatus?: string;
     eventDate?: string;
     eventType?: string;
     status: string;
     abonos?: { id: string; amount: number; date: string; method: string; notes: string }[];
+    eventTime?: string;
+    eventEndTime?: string;
+    eventLocation?: string;
+    homenajeado?: string;
+    notes?: string;
+    services?: { nombre: string; cantidad: number; precio: number }[];
+    repertoire?: { titulo: string; artista: string }[];
 }
 
 // ─── Helper: extrae el array sin importar si la respuesta es directa o envuelta ──

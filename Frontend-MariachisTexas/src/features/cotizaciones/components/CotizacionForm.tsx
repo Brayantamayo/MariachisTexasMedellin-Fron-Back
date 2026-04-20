@@ -385,7 +385,7 @@ export const CotizacionForm: React.FC<Props> = ({
 
                 minDate={today}
                 className={`${isPublic ? `${inputClass} !pl-12` : ''} ${fieldErrors.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
-                  }`}
+                }`}
                 ref={el => registerFieldRef?.('eventDate', el)}
               />
               {fieldErrors.eventDate && (

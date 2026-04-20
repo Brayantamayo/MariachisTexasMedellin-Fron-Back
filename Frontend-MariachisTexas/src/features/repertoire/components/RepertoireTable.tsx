@@ -173,7 +173,7 @@ export const RepertoireTable: React.FC<Props> = ({
                         )} */}
 
                          {/* Eliminar cancion */}
-                        <ActionButton icon={Trash2} onClick={() => onDelete(song.id)} tooltip="Eliminar" />
+                        <ActionButton icon={Trash2} onClick={() => onDelete(song.id, song.isActive)} tooltip="Eliminar" />
                       </>
                     )}
                   </div>
