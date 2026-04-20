@@ -536,6 +536,11 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
       const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
       const metodoPago  = r.abonos[r.abonos.length - 1].metodoPago ?? 'EFECTIVO'
 
+      
+      if (!r.cotizacion.clienteId) {
+      throw new Error('La cotización no tiene clienteId');
+      }
+      
       await tx.venta.create({
         data: {
           reservaId:   id,

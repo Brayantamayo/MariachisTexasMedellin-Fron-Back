@@ -117,7 +117,7 @@ export const useReservasManager = () => {
             time:          e.hora  ?? e.time  ?? '',
             notes:         '',
             repertoireIds: [],
-            status:        'Programado' as const,
+            status:        'PENDIENTE' as const,
             createdAt:     '',
             updatedAt:     '',
           }))
