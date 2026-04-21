@@ -26,15 +26,45 @@ const app = express()
 // ─── SEGURIDAD ────────────────────────────────────────────────────────────────
 // Helmet agrega headers HTTP de seguridad automáticamente
 
-app.use(helmet())
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'upgrade-insecure-requests': null,
+    }
+  }
+}))
 
 app.use(cors({
-  origin:         ['http://localhost:3001', 'http://localhost:3002'],
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:3001',
+      'http://localhost:3002',
+    ]
+
+    // Sin origin = app móvil nativa o Postman ✅
+    if (!origin) return callback(null, true)
+
+    // Cualquier puerto de localhost = Flutter web ✅
+    if (origin.startsWith('http://localhost:')) {
+      return callback(null, true)
+    }
+
+    if (allowed.includes(origin)) {
+      return callback(null, true)
+    }
+
+    callback(new Error('No permitido por CORS'))
+  },
   methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
 app.use(express.json())
+
+// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+app.get('/health', (_, res) => res.json({ ok: true }))
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
 // Límite estricto para endpoints sensibles — auth y formulario público
