@@ -65,9 +65,7 @@ export const EmployeeDetailModal: React.FC<Props> = ({ isOpen, onClose, employee
                     <span className="px-3 py-1 bg-primary-600 text-white rounded-full text-xs font-bold uppercase flex items-center gap-1">
                         <Music size={10} /> {employee.role}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${employee.isActive ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                        {employee.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
+
                 </div>
             </div>
 

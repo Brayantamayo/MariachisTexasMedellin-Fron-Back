@@ -3,6 +3,7 @@ import { Song, UserRole } from '@/types';
 import { Play, Pause, Eye, FileText, Edit2, Trash2, Music } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 
+{/*propiedades de */}
 interface Props {
   songs: Song[];
   loading: boolean;
@@ -17,6 +18,13 @@ interface Props {
   onToggleStatus: (song: Song) => void;
 }
 
+{/*componente de la tabla de canciones*/}
+{/*Recibe la lista de canciones (songs)
+Recibe funciones para acciones (reproducir, ver, editar, eliminar, etc.)
+Controla si está cargando (loading)
+Maneja cuál canción está sonando (playingId)
+Usa el rol del usuario (userRole) para permisos
+Maneja paginación (currentPage, 10 por página)*/}
 export const RepertoireTable: React.FC<Props> = ({ 
     songs, loading, playingId, userRole,
     onPlay, onView, onViewLyrics, onEdit, onDelete, onToggleStatus 
@@ -24,8 +32,10 @@ export const RepertoireTable: React.FC<Props> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  {/*si el usuario tiene permisos para administrar, se muestran los botones de acción*/}
   const canManage = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
 
+  
   {/* Boton de accion para cada una de las columnas de la tabla */}
   const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, active?: boolean }> = ({ icon: Icon, onClick, tooltip, active }) => (
     <button 
@@ -115,7 +125,7 @@ export const RepertoireTable: React.FC<Props> = ({
 
                 {/* Estado de la cancion */}
                 <td className="py-5 px-6">
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center">
                     {canManage ? (
                       <button 
                         onClick={() => onToggleStatus(song)}
@@ -128,9 +138,6 @@ export const RepertoireTable: React.FC<Props> = ({
                     ) : (
                       <div className={`w-2.5 h-2.5 rounded-full ${song.isActive ? 'bg-emerald-500 shadow-sm' : 'bg-slate-300'}`}></div>
                     )}
-                    <span className={`text-[10px] font-bold uppercase tracking-wider w-12 ${song.isActive ? 'text-emerald-500' : 'text-slate-300'}`}>
-                      {song.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
                   </div>
                 </td>
                 <td className="py-5 px-8">
@@ -160,16 +167,13 @@ export const RepertoireTable: React.FC<Props> = ({
                     {/*canmange es para manejar los permisos de usuario*/}
                     {canManage && (
                       <>
-                        {song.isActive && (
+                        {/* {song.isActive && (
                           <ActionButton icon={Edit2} onClick={() => onEdit(song)} tooltip="Editar" />
 
-                        )}
+                        )} */}
 
-                        {/* Eliminar cancion */}
-                        {song.isActive && (
-                          <ActionButton icon={Trash2} onClick={() => onDelete(song.id)} tooltip="Eliminar" />
-                        )}
-                        
+                         {/* Eliminar cancion */}
+                        <ActionButton icon={Trash2} onClick={() => onDelete(song.id, song.isActive)} tooltip="Eliminar" />
                       </>
                     )}
                   </div>

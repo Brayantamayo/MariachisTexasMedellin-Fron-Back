@@ -33,11 +33,11 @@ const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // ✅ Todos los hooks ANTES de cualquier return condicional
-  const [currentPath,      setCurrentPath]      = useState<string>('/');
+  const [currentPath, setCurrentPath] = useState<string>('/');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isPanelOpen,      setIsPanelOpen]      = useState(true);
-  const [resetEmail,       setResetEmail]       = useState('');
-  const [resetOtp,         setResetOtp]         = useState('');
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
 
   // Redirigir al dashboard o home tras login
   useEffect(() => {
@@ -119,20 +119,20 @@ const MainLayout: React.FC = () => {
     const module = currentPath.substring(1) as ModuleName;
     switch (module) {
       // ✅ HomePage recibe onNavigate para que los botones redirijan
-      case 'home':         return <HomePage onNavigate={setCurrentPath} />;
-      case 'dashboard':    return <DashboardPage />;
-      case 'clientes':     return <ClientsPage />;
-      case 'usuarios':     return <UsersPage />;
-      case 'roles':        return <RolesPage />;
-      case 'empleados':    return <EmployeesPage />;
-      case 'repertorio':   return <RepertoirePage />;
-      case 'servicios':    return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
-      case 'ensayos':      return <EnsayosPage />;
-      case 'reservas':     return <ReservasPage />;
-      case 'abonos':       return <AbonosPage />;
-      case 'ventas':       return <VentasPage />;
+      case 'home': return <HomePage onNavigate={setCurrentPath} />;
+      case 'dashboard': return <DashboardPage />;
+      case 'clientes': return <ClientsPage />;
+      case 'usuarios': return <UsersPage />;
+      case 'roles': return <RolesPage />;
+      case 'empleados': return <EmployeesPage />;
+      case 'repertorio': return <RepertoirePage />;
+      case 'servicios': return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
+      case 'ensayos': return <EnsayosPage />;
+      case 'reservas': return <ReservasPage />;
+      case 'abonos': return <AbonosPage />;
+      case 'ventas': return <VentasPage />;
       case 'cotizaciones': return <CotizacionesPage />;
-      case 'perfil':       return <ProfilePage />;
+      case 'perfil': return <ProfilePage />;
       default:
         return user?.role === UserRole.ADMIN
           ? <DashboardPage />
@@ -179,7 +179,9 @@ const MainLayout: React.FC = () => {
         />
       )}
 
-      <main className={`flex-1 p-4 pt-20 lg:p-8 lg:pt-8 transition-all duration-300 bg-slate-50 text-slate-800 w-full min-w-0 ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
+      <main className={`flex-1 transition-all duration-300 w-full min-w-0 
+        ${(currentPath === '/perfil' || currentPath === '/home') ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-20 lg:p-8 lg:pt-8 text-slate-800'} 
+        ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
         {renderAppContent()}
       </main>
     </div>

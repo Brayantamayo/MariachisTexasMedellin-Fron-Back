@@ -31,6 +31,7 @@ export const convertir = asyncHandler(async (req: Request, res: Response) => {re
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {res.json(await cotizacionService.deleteCotizacion(Number(req.params.id)))})
 
+
 export const downloadPdf = asyncHandler(async (req: Request, res: Response) => {const id        = Number(req.params.id)
 const pdfBuffer = await generateCotizacionPdf(id)
 res.setHeader('Content-Type', 'application/pdf')

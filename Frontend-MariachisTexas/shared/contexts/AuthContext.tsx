@@ -62,6 +62,7 @@ const perfilToUser = (perfil: PerfilData): User => ({
   city:           perfil.ciudad,
   neighborhood:   perfil.barrio,
   address:        perfil.direccion,
+  avatar:         perfil.foto ?? undefined,
 })
 
 // ─── PROVIDER ─────────────────────────────────────────────────────────────────

@@ -11,6 +11,17 @@ const mapToRole = (r: any) => ({
   createdAt: r.createdAt?.toISOString() ?? ''
 })
 
+// ─── OBTENER ID DE ROL POR NOMBRE ────────────────────────────────────────────
+export const getRolIdByName = async (nombre: string): Promise<number> => {
+  const rol = await prisma.rol.findUnique({
+    where: { nombre }
+  })
+
+  if (!rol) throw new Error(`Rol ${nombre} no encontrado`)
+
+  return rol.id
+}
+
 // ─── OBTENER ROLES ───────────────────────────────────────────────────────────
 export const getRoles = async (): Promise<any[]> => {
   const roles = await prisma.rol.findMany({

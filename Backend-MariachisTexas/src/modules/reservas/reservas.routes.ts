@@ -11,14 +11,19 @@ router.get('/available-hours/:date', reservaController.getAvailableHours)
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)
 
+
 // Lectura — Admin, Empleado y Cliente (cada uno filtra lo suyo en el controller)
 router.get('/calendario', reservaController.getCalendario)
+//Trae todos los abonos registrados
 router.get('/abonos',     reservaController.getAbonos)
+
+//Trae todas las reservas
 router.get('/',           reservaController.getAll)
+// Trae una reserva por ID
 router.get('/:id',        reservaController.getById)
 
 // Agregar abono — Admin, Empleado y Cliente
-router.post('/:id/abonos', requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']), reservaController.addAbono)
+router.post('/:id/abonos', requireRole(['ADMIN', 'EMPLEADO']), reservaController.addAbono)
 
 // Crear reserva — Admin y Cliente
 router.post('/', requireRole(['ADMIN', 'CLIENTE']), reservaController.create)
@@ -29,8 +34,6 @@ router.put('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.update)
 // Anular — Admin y Empleado
 router.patch('/:id/anular', requireRole(['ADMIN', 'EMPLEADO']), reservaController.anular)
 
-// Confirmar — Admin y Empleado
-router.patch('/:id/confirmar', requireRole(['ADMIN', 'EMPLEADO']), reservaController.confirmar)
 
 // Eliminar — Admin y Empleado
 router.delete('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.remove)

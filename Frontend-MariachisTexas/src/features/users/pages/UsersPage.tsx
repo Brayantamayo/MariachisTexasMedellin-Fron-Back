@@ -56,28 +56,19 @@ export const UsersPage: React.FC = () => {
 
   // CRUD Handlers
   const handleCreateUser = async (userData: any) => {
-    try {
-        const newUser = await userService.createUser(userData);
-        setUsers(prev => [newUser, ...prev]);
-        showNotification('Usuario creado exitosamente.');
-        setIsCreateOpen(false);
-    } catch (error) {
-      console.error(error);
-      showNotification("Error al crear el usuario.", "error");
-    }
+    await userService.createUser(userData);
+    // Recargar lista completa para obtener usuario con todas sus relaciones
+    await fetchUsers();
+    showNotification('Usuario creado exitosamente.');
+    setIsCreateOpen(false);
   };
 
   const handleUpdateUser = async (userData: any) => {
     if (!selectedUser) return;
-    try {
-        const updatedUser = await userService.updateUser(selectedUser.id, userData);
-        setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-        showNotification('Usuario actualizado correctamente.');
-        setIsEditOpen(false);
-    } catch (error) {
-      console.error(error);
-      showNotification("Error al actualizar el usuario.", "error");
-    }
+    await userService.updateUser(selectedUser.id, userData);
+    await fetchUsers();
+    showNotification('Usuario actualizado correctamente.');
+    setIsEditOpen(false);
   };
 
   const confirmDelete = async () => {
@@ -99,10 +90,11 @@ export const UsersPage: React.FC = () => {
         setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: newStatus } : u));
         await userService.updateUser(user.id, { isActive: newStatus });
         showNotification(`Usuario ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error cambiando estado", error);
-        fetchUsers(); 
-        showNotification("Error al cambiar el estado.", "error");
+        fetchUsers();
+        const msg = error?.response?.data?.message || error?.message || 'Error al cambiar el estado.';
+        showNotification(msg, "error");
     }
   };
 

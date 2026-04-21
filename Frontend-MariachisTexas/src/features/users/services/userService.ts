@@ -1,109 +1,181 @@
 
 import { User, UserRole } from '@/types';
+import api from '@/shared/api/api';
 
-let mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Juan',
-    lastName: 'Pérez Admin',
-    email: 'admin@texas.com',
-    role: UserRole.ADMIN,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '10203040',
-    gender: 'M',
-    birthDate: '1985-06-15',
-    phone: '3001234567',
-    city: 'Medellín',
-    neighborhood: 'Poblado',
-    address: 'Calle 10 # 5-50',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '2',
-    name: 'Carlos',
-    lastName: 'Guitarra',
-    email: 'empleado@texas.com',
-    role: UserRole.EMPLEADO,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '98765432',
-    gender: 'M',
-    birthDate: '1992-03-20',
-    phone: '3109876543',
-    city: 'Medellín',
-    neighborhood: 'Laureles',
-    address: 'Av Nutibara # 70-10',
-    mainInstrument: 'Guitarra',
-    otherInstruments: ['Voz', 'Vihuela'],
-    experienceYears: 5,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '3',
-    name: 'María',
-    lastName: 'Cliente VIP',
-    email: 'cliente@texas.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '43215678',
-    gender: 'F',
-    birthDate: '1990-11-05',
-    phone: '3205556677',
-    city: 'Envigado',
-    neighborhood: 'Jardines',
-    address: 'Cra 43A # 25S-10',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '4',
-    name: 'Brayan',
-    lastName: 'Castañeda',
-    email: 'brayan@texas.com',
-    role: UserRole.CLIENTE,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '1152433654',
-    gender: 'M',
-    birthDate: '1998-11-20',
-    phone: '3219876543',
-    city: 'Medellín',
-    neighborhood: 'Robledo',
-    address: 'Calle 65 # 80-20',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+// ─── MAPEAR DE BACKEND A FRONTEND ────────────────────────────────────────────
+const mapFromBackend = (backend: any): User => {
+  const nombreCompleto = (backend.nombre || '').trim()
+  const empleado = backend.empleado
+  const cliente  = backend.cliente
+
+  // apellido real guardado en la tabla cliente (empleados no tienen campo apellido)
+  const apellido = (cliente?.apellido || '').trim()
+
+  // Si hay apellido separado (cliente), quitarlo del final del nombre completo
+  let nombre = nombreCompleto
+  if (apellido) {
+    const suffix = ' ' + apellido
+    if (nombre.toLowerCase().endsWith(suffix.toLowerCase()))
+      nombre = nombre.slice(0, nombre.length - suffix.length).trim()
   }
-];
+
+  // Separar por primer espacio para obtener nombre y apellido
+  const spaceIdx  = nombre.indexOf(' ')
+  const firstName = spaceIdx >= 0 ? nombre.slice(0, spaceIdx) : nombre
+  const lastNameFb = apellido || (spaceIdx >= 0 ? nombre.slice(spaceIdx + 1) : '')
+
+  return {
+  id: String(backend.id),
+  name: firstName,
+  lastName: lastNameFb,
+  email: backend.email || '',
+  role: backend.rol?.nombre as UserRole,
+  isActive: backend.estado ?? false,
+  documentType: empleado?.tipoDocumento || cliente?.tipoDocumento || 'CC',
+  documentNumber: empleado?.numeroDocumento || cliente?.numeroDocumento || '',
+  gender: 'M',
+  birthDate: empleado?.fechaNacimiento || cliente?.fechaNacimiento ? new Date(empleado?.fechaNacimiento || cliente?.fechaNacimiento).toISOString().split('T')[0] : '',
+  phone: empleado?.telefonoPrincipal || cliente?.telefonoPrincipal || '',
+  secondaryPhone: empleado?.telefonoAlternativo || cliente?.telefonoAlternativo || '',
+  city: empleado?.ciudad || cliente?.ciudad || '',
+  neighborhood: empleado?.barrio || cliente?.barrio || '',
+  address: empleado?.direccion || cliente?.direccion || '',
+  serviceZone: empleado?.zonaServicio || cliente?.zonaServicio || 'URBANA',
+  mainInstrument: empleado?.instrumentoPrincipal || '',
+  otherInstruments: empleado?.otrosInstrumentos ? empleado.otrosInstrumentos.split(', ').filter((i: string) => i.trim()) : [],
+  experienceYears: empleado?.anosExperiencia || 0,
+  avatar: empleado?.foto || cliente?.foto || '',
+  hasActiveReservations: backend.hasActiveReservations ?? false,
+  };
+};
+
+// ─── MAPEAR DE FRONTEND A BACKEND ────────────────────────────────────────────
+// user puede traer roleId (string numérico del select dinámico) o role (nombre del enum)
+const mapToBackend = (user: any) => {
+  // Priorizar siempre roleId del select dinámico; solo usar fallback si no hay roleId
+  const rolId = user.roleId
+    ? Number(user.roleId)
+    : user.role === UserRole.ADMIN ? 1 : user.role === UserRole.EMPLEADO ? 2 : 3;
+
+  // isEmpleado: usar el nombre del rol resuelto (puede venir como 'EMPLEADO' desde el modal)
+  const roleName = (user.role || '').toString().toUpperCase();
+  const isEmpleado = roleName === 'EMPLEADO' || roleName === UserRole.EMPLEADO;
+
+  return {
+    nombre: `${user.name?.trim() || ''} ${user.lastName?.trim() || ''}`.trim() || 'Usuario',
+    email: user.email,
+    password: user.password || 'defaultpassword',
+    rolId,
+    ...(isEmpleado ? {
+      empleadoData: {
+        tipoDocumento: user.documentType || 'CC',
+        numeroDocumento: user.documentNumber,
+        fechaNacimiento: user.birthDate || null,
+        telefonoPrincipal: user.phone,
+        telefonoAlternativo: user.secondaryPhone || null,
+        ciudad: user.city || 'Medellín',
+        barrio: user.neighborhood,
+        direccion: user.address,
+        zonaServicio: user.serviceZone || 'URBANA',
+        instrumentoPrincipal: user.mainInstrument,
+        otrosInstrumentos: user.otherInstruments ? user.otherInstruments.join(', ') : null,
+        anosExperiencia: Number(user.experienceYears) || 0,
+        foto: user.avatar || null
+      }
+    } : {
+      // CLIENTE y cualquier rol personalizado guardan datos en clienteData
+      clienteData: {
+        apellido: user.lastName?.trim() || '',
+        foto: user.avatar || null,
+        tipoDocumento: user.documentType || 'CC',
+        numeroDocumento: user.documentNumber,
+        fechaNacimiento: user.birthDate || null,
+        telefonoPrincipal: user.phone,
+        telefonoAlternativo: user.secondaryPhone || null,
+        ciudad: user.city || 'Medellín',
+        barrio: user.neighborhood,
+        direccion: user.address,
+        zonaServicio: user.serviceZone || 'URBANA',
+        activo: user.isActive ?? true
+      }
+    })
+  };
+};
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
-    return new Promise((resolve) => setTimeout(() => resolve([...mockUsers]), 600));
+    const response = await api.get('/usuarios');
+    return response.data.map(mapFromBackend);
   },
 
-  createUser: async (user: Omit<User, 'id'>): Promise<User> => {
-    return new Promise((resolve) => {
-      const newUser = { ...user, id: Math.random().toString(36).substr(2, 9), isActive: true };
-      mockUsers = [newUser, ...mockUsers];
-      setTimeout(() => resolve(newUser), 600);
-    });
+  createUser: async (user: any): Promise<User> => {
+    const data = mapToBackend(user);
+    console.log('📤 createUser payload:', JSON.stringify({ rolId: data.rolId, role: user.role, roleId: user.roleId }));
+    const response = await api.post('/usuarios', data);
+    return mapFromBackend(response.data);
   },
 
-  updateUser: async (id: string, updates: Partial<User>): Promise<User> => {
-    return new Promise((resolve, reject) => {
-      const index = mockUsers.findIndex(u => u.id === id);
-      if (index === -1) {
-        reject(new Error('Usuario no encontrado'));
-        return;
-      }
-      mockUsers[index] = { ...mockUsers[index], ...updates };
-      setTimeout(() => resolve(mockUsers[index]), 600);
-    });
+  updateUser: async (id: string, updates: any): Promise<User> => {
+    const nombre = updates.name
+      ? `${updates.name} ${updates.lastName || ''}`.replace(/\s+/g, ' ').trim()
+      : undefined;
+
+    const rolId = updates.roleId
+      ? Number(updates.roleId)
+      : updates.role
+        ? (updates.role === UserRole.ADMIN ? 1 : updates.role === UserRole.EMPLEADO ? 2 : 3)
+        : undefined;
+
+    const roleName = (updates.role || '').toString().toUpperCase();
+    const isEmpleado = roleName === 'EMPLEADO' || roleName === UserRole.EMPLEADO;
+    // Hay datos de contacto si viene teléfono o documento
+    const hasContactData = updates.phone || updates.documentNumber;
+
+    const data = {
+      ...(nombre                          && { nombre }),
+      ...(updates.email                   && { email: updates.email }),
+      ...(updates.isActive !== undefined  && { estado: updates.isActive }),
+      ...(rolId !== undefined             && { rolId }),
+      ...(isEmpleado && hasContactData ? {
+        empleadoData: {
+          tipoDocumento: updates.documentType,
+          numeroDocumento: updates.documentNumber,
+          fechaNacimiento: updates.birthDate ? new Date(updates.birthDate) : undefined,
+          telefonoPrincipal: updates.phone,
+          telefonoAlternativo: updates.secondaryPhone,
+          ciudad: updates.city,
+          barrio: updates.neighborhood,
+          direccion: updates.address,
+          zonaServicio: updates.serviceZone,
+          instrumentoPrincipal: updates.mainInstrument,
+          otrosInstrumentos: updates.otherInstruments ? updates.otherInstruments.join(', ') : undefined,
+          anosExperiencia: updates.experienceYears !== undefined ? Number(updates.experienceYears) : undefined,
+          foto: updates.avatar
+        }
+      } : !isEmpleado && hasContactData ? {
+        // Para CLIENTE y roles personalizados, siempre enviar clienteData si hay datos
+        clienteData: {
+          apellido: updates.lastName,
+          foto: updates.avatar,
+          tipoDocumento: updates.documentType,
+          numeroDocumento: updates.documentNumber,
+          fechaNacimiento: updates.birthDate ? new Date(updates.birthDate) : undefined,
+          telefonoPrincipal: updates.phone,
+          telefonoAlternativo: updates.secondaryPhone,
+          ciudad: updates.city,
+          barrio: updates.neighborhood,
+          direccion: updates.address,
+          zonaServicio: updates.serviceZone,
+          activo: updates.isActive
+        }
+      } : {})
+    };
+    const response = await api.put(`/usuarios/${id}`, data);
+    return mapFromBackend(response.data);
   },
 
   deleteUser: async (id: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      mockUsers = mockUsers.filter(u => u.id !== id);
-      setTimeout(() => resolve(true), 600);
-    });
+    await api.delete(`/usuarios/${id}`);
+    return true;
   }
 };

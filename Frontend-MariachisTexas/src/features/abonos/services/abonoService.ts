@@ -8,6 +8,7 @@ import { ventaService } from '../../ventas/services/ventaService';
 export interface EnrichedPayment extends Payment {
     reservationId: string;
     clientId?: string;
+    clientEmail?: string;
     clientName: string;
     reservationTotal: number;
 }
@@ -35,6 +36,7 @@ export const abonoService = {
               ...p,
               reservationId: res.id,
               clientId: res.clientId,
+              clientEmail: res.clientEmail,
               clientName: res.clientName,
               reservationTotal: res.totalAmount
             });
@@ -58,7 +60,6 @@ export const abonoService = {
       const methodMap: Record<string, string> = {
         transferencia: 'TRANSFERENCIA',
         efectivo: 'EFECTIVO',
-        tarjeta: 'TARJETA',
         nequi: 'NEQUI',
         daviplata: 'DAVIPLATA',
         otro: 'OTRO'
@@ -82,6 +83,7 @@ export const abonoService = {
           ...lastPayment,
           reservationId: updatedReserva.id,
           clientId: updatedReserva.clientId,
+          clientEmail: updatedReserva.clientEmail,
           clientName: updatedReserva.clientName,
           reservationTotal: updatedReserva.totalAmount
       };
@@ -89,26 +91,19 @@ export const abonoService = {
       return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },
 
-  // Simular descarga de PDF
-  downloadComprobante: async (paymentId: string): Promise<boolean> => {
-      return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
-  },
-
-  // Convertir abonos a venta cuando reserva está completamente pagada
-  convertAbonosToVenta: async (reservationId: string): Promise<any> => {
-      try {
-          const numId = Number(reservationId);
-          if (!numId || isNaN(numId)) {
-              throw new Error('ID de reserva inválido');
-          }
-          
-          const { data } = await api.post('/abonos/convert-to-venta', {
-              reservaId: numId
-          });
-          return data;
-      } catch (err: any) {
-          const message = err.response?.data?.message || err.message || 'Error al convertir abonos a venta';
-          throw new Error(message);
-      }
+  // Descargar comprobante de abono
+  downloadComprobante: async (paymentId: string): Promise<void> => {
+    const response = await api.get(`/abonos/${paymentId}/download/pdf`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `abono-${paymentId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   }
 };

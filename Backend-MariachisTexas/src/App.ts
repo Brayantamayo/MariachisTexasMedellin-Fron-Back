@@ -17,6 +17,8 @@ import bloqueoRoutes    from './modules/Bloqueos/bloqueos.routes'
 import ensayoRoutes     from './modules/Ensayo/ensayo.routes'
 import ventasRoutes     from './modules/ventas/ventas.routes'
 import rolesRoutes      from './modules/roles/roles.routes'
+import usuarioRoutes    from './modules/usuarios/usuario.routes'
+import empleadoRoutes   from './modules/empleados/empleado.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -24,15 +26,45 @@ const app = express()
 // ─── SEGURIDAD ────────────────────────────────────────────────────────────────
 // Helmet agrega headers HTTP de seguridad automáticamente
 
-app.use(helmet())
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'upgrade-insecure-requests': null,
+    }
+  }
+}))
 
 app.use(cors({
-  origin:         'http://localhost:3001',
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:3001',
+      'http://localhost:3002',
+    ]
+
+    // Sin origin = app móvil nativa o Postman ✅
+    if (!origin) return callback(null, true)
+
+    // Cualquier puerto de localhost = Flutter web ✅
+    if (origin.startsWith('http://localhost:')) {
+      return callback(null, true)
+    }
+
+    if (allowed.includes(origin)) {
+      return callback(null, true)
+    }
+
+    callback(new Error('No permitido por CORS'))
+  },
   methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
 app.use(express.json())
+
+// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+app.get('/health', (_, res) => res.json({ ok: true }))
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
 // Límite estricto para endpoints sensibles — auth y formulario público
@@ -51,6 +83,7 @@ const publicLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
 })
+
 
 
 app.use('/api/auth/login',     authLimiter)
@@ -75,6 +108,8 @@ app.use('/api/ensayos',      ensayoRoutes)
 app.use('/api/bloqueos',     bloqueoRoutes)
 app.use('/api/ventas',       ventasRoutes)
 app.use('/api/roles',        rolesRoutes)
+app.use('/api/usuarios',     usuarioRoutes)
+app.use('/api/empleados',    empleadoRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)   // atrapa rutas inexistentes

@@ -7,11 +7,20 @@ const router = Router()
 
 router.use(verifyToken)
 
-// ⚠️ IMPORTANTE: Rutas más específicas ANTES de rutas genéricas
-router.post('/convert-to-venta', requireRole(['ADMIN', 'EMPLEADO']), abonoController.convertToVenta)
+// Rutas estáticas PRIMERO (antes de /:id)
+/// Todos los abonos
+router.get('/',                      abonoController.getAll)
+/// Reservas pagables
+router.get('/payable-reservations',  requireRole(['ADMIN', 'EMPLEADO']), abonoController.getPayableReservations)
+/// Descargar PDF de todos los abonos (Admin, Empleado y Cliente)
+router.get('/download/pdf',          abonoController.downloadPdf)
 
-// Rutas genéricas
-router.get('/', abonoController.getAll)
-router.post('/', requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']), abonoController.create)
+// Rutas con parámetro DESPUÉS
+router.get('/:id/download/pdf',      abonoController.downloadAbonoPdf)
+
+// Mutaciones
+router.post('/',                     requireRole(['ADMIN', 'EMPLEADO']), abonoController.create)
+/// Convertir a Venta — Admin y Empleado
+router.post('/convert-to-venta',     requireRole(['ADMIN', 'EMPLEADO']), abonoController.convertToVenta)
 
 export default router

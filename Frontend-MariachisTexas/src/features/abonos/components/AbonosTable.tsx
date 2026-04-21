@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { EnrichedPayment } from '../services/abonoService';
-import { Eye, Download, FileText, Calendar, CreditCard, User, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Eye, Download, FileText, Calendar, CreditCard, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { Reservation } from '@/types';
 
@@ -11,10 +11,9 @@ interface Props {
   loading: boolean;
   onView: (abono: EnrichedPayment) => void;
   onDownload: (id: string) => void;
-  onConvertToVenta?: (reservationId: string) => void;
 }
 
-export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, onView, onDownload, onConvertToVenta }) => {
+export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, onView, onDownload }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedResId, setExpandedResId] = useState<string | null>(null);
   const itemsPerPage = 10;
@@ -37,8 +36,8 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
       return <div className="text-center py-20 text-slate-400">Cargando datos...</div>;
   }
 
-  // Filtrar reservas que tengan al menos un abono y no estén anuladas
-  const relevantReservations = reservations.filter(r => r.status !== 'Anulado' && r.paidAmount > 0);
+  // Mostrar todas las reservas con abonos, incluyendo las anuladas
+  const relevantReservations = reservations.filter(r => r.paidAmount > 0);
 
   if (relevantReservations.length === 0) {
       return <div className="text-center py-20 text-slate-400">No se encontraron reservas con abonos.</div>;
@@ -63,6 +62,7 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                   <tr className="border-b border-slate-100 text-left">
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Reserva</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                      <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagado</th>
                       <th className="py-5 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pendiente</th>
@@ -102,6 +102,28 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                                       </div>
                                   </td>
 
+                                  {/* Estado */}
+                                  <td className="py-5 px-6">
+                                      {(() => {
+                                          const isAnulada = res.status === 'ANULADA' || res.status === 'Anulado';
+                                          const isConfirmed = res.status === 'CONFIRMADA' || res.status === 'Confirmado' || (pending <= 0 && !isAnulada);
+                                          
+                                          return (
+                                              <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
+                                                  isAnulada
+                                                    ? 'bg-red-50 text-red-600 border-red-100'
+                                                    : isConfirmed
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                    : 'bg-amber-50 text-amber-600 border-amber-100'
+                                              }`}>
+                                                  {isAnulada ? 'Anulada'
+                                                   : isConfirmed ? 'Confirmada'
+                                                   : 'Pendiente'}
+                                              </span>
+                                          );
+                                      })()}
+                                  </td>
+
                                   {/* Total */}
                                   <td className="py-5 px-6">
                                       <span className="text-sm font-bold text-slate-700">
@@ -133,22 +155,12 @@ export const AbonosTable: React.FC<Props> = ({ abonos, reservations, loading, on
                                   {/* Acciones */}
                                   <td className="py-5 px-8">
                                       <div className="flex items-center justify-center gap-2">
-                                          {pending === 0 && onConvertToVenta ? (
-                                              <button 
-                                                onClick={(e) => { e.stopPropagation(); onConvertToVenta(res.id); }}
-                                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-sm"
-                                                title="Convertir abonos a venta final"
-                                              >
-                                                  <ArrowRight size={12} /> A Venta
-                                              </button>
-                                          ) : (
-                                              <button 
-                                                onClick={(e) => { e.stopPropagation(); toggleExpand(res.id); }}
-                                                className="text-xs font-bold text-primary-600 hover:text-primary-700 underline underline-offset-4"
-                                              >
-                                                  {isExpanded ? 'Ocultar' : 'Ver Abonos'}
-                                              </button>
-                                          )}
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); toggleExpand(res.id); }}
+                                            className="text-xs font-bold text-primary-600 hover:text-primary-700 underline underline-offset-4"
+                                          >
+                                              {isExpanded ? 'Ocultar' : 'Ver Abonos'}
+                                          </button>
                                       </div>
                                   </td>
                               </tr>

@@ -3,6 +3,23 @@ import * as roleService from './role.services'
 import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 
+// ─── GET EMPLEADO ROLE ID (PÚBLICO) ───────────────────────────────────────────
+export const getEmpleadoRolId = asyncHandler(async (_req: Request, res: Response) => {
+  const rolId = await roleService.getRolIdByName('EMPLEADO')
+  res.json({ rolId })
+})
+
+// ─── GET PUBLIC LIST (PÚBLICO) — id + nombre de roles activos ─────────────────
+export const getPublicList = asyncHandler(async (_req: Request, res: Response) => {
+  const roles = await roleService.getRoles()
+  res.json(roles.map((r: any) => ({
+    id:          r.id,
+    name:        r.name,
+    description: r.description,
+    isActive:    r.isActive,
+  })))
+})
+                
 // ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAll = asyncHandler(async (_req: Request, res: Response) => {
   res.json(await roleService.getRoles())

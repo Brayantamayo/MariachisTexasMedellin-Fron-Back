@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Song } from '@/types';
 
+{/*propiedades de la vista de letra*/}
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+{/*convierte el tiempo en formato HH:MM*/}
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
@@ -22,16 +24,25 @@ const formatTime = (s: number) => {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const LyricsModal: React.FC<Props> = ({ isOpen, onClose, song }) => {
+  // Tamaño de la fuente de la letra
   const [fontSize,      setFontSize]      = useState(20);
+  // Línea activa de la letra
   const [activeLine,    setActiveLine]    = useState(0);
+  // Indica si la letra está siendo reproducida
   const [isPlaying,     setIsPlaying]     = useState(false);
+  // Indica si el audio está en silencio
   const [isMuted,       setIsMuted]       = useState(false);
+  // Controla el volumen del audio (0 a 1)
   const [volume,        setVolume]        = useState(1);
+  // Tiempo actual de reproducción del audio
   const [currentTime,   setCurrentTime]   = useState(0);
+  // Duración total del audio
   const [duration,      setDuration]      = useState(0);
-
+  // Referencia al elemento de audio (para play, pause, etc.)
   const audioRef    = useRef<HTMLAudioElement>(null);
+  // Referencias a cada línea de la letra (para hacer scroll o resaltar)
   const lineRefs    = useRef<(HTMLDivElement | null)[]>([]);
+  // Referencia al contenedor de las letras (para controlar scroll)
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Partir letra en líneas (ignorar líneas vacías dobles)
@@ -81,15 +92,19 @@ export const LyricsModal: React.FC<Props> = ({ isOpen, onClose, song }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, lines.length]);
 
-  // Audio: eventos
+
+  // Toma el tiempo actual del audio
   const onTimeUpdate = () => {
     if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
   };
+
+//Guarda la duración total del audio cuando ya cargó.
   const onLoadedMetadata = () => {
     if (audioRef.current) setDuration(audioRef.current.duration);
   };
   const onEnded = () => setIsPlaying(false);
 
+// Activa o desactiva la reproducción del audio
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
     if (isPlaying) {
@@ -100,24 +115,28 @@ export const LyricsModal: React.FC<Props> = ({ isOpen, onClose, song }) => {
     setIsPlaying(prev => !prev);
   }, [isPlaying]);
 
+//Activa o desactiva el silencio
   const toggleMute = () => {
     if (!audioRef.current) return;
     audioRef.current.muted = !isMuted;
     setIsMuted(prev => !prev);
   };
 
+  //Permite adelantar o retroceder el audio (como una barra de progreso).
   const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const t = Number(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
   };
 
+//Permite cambiar el volumen del audio (como una barra de progreso).
   const onVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value);
     if (audioRef.current) audioRef.current.volume = v;
     setVolume(v);
   };
 
+//Reinicia la letra al inicio
   const resetKaraoke = () => setActiveLine(0);
 
   if (!isOpen || !song) return null;
@@ -133,12 +152,12 @@ export const LyricsModal: React.FC<Props> = ({ isOpen, onClose, song }) => {
         onClick={onClose}
       />
 
-      {/* Contenedor principal */}
+      {/* Contenedor principal de la letra */}
       <div className="relative w-full max-w-2xl flex flex-col rounded-2xl overflow-hidden shadow-2xl"
         style={{ height: '90vh', background: '#0f0f14', border: '1px solid rgba(255,255,255,0.07)' }}
       >
 
-        {/* ── Header ── */}
+        {/* ── Parte superior de la letra ── */}
         <div className="flex items-center justify-between px-5 py-4 flex-shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
         >
@@ -363,7 +382,7 @@ export const LyricsModal: React.FC<Props> = ({ isOpen, onClose, song }) => {
                   }
                 </button>
 
-                {/* Espacio balanceado */}
+                
                 <div className="w-28" />
               </div>
             </div>

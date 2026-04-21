@@ -39,7 +39,7 @@ export const useClientsManager = () => {
         setClients(data);
         setPagination({ page: 1, limit: data.length, total: data.length, pages: 1 });
       } else {
-        const data = await clientService.getClients(page, pagination.limit);
+        const data = await clientService.getClients();
         setClients(data.clients);
         setPagination(data.pagination);
       }
@@ -57,47 +57,40 @@ export const useClientsManager = () => {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchTerm.trim()) {
+      // Solo buscar si query tiene 2+ caracteres, sino mostrar todos
+      if (searchTerm.trim().length >= 2) {
         fetchClients(1, searchTerm);
-      } else {
+      } else if (searchTerm.trim().length === 0) {
         fetchClients(1);
       }
+      // Si tiene 1 carácter, no hacer nada (esperar a que escriban más)
     }, 500);
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
   // Handlers
   const handleCreateClient = async (clientData: any) => {
-    try {
-        const newClient = await clientService.createClient(clientData);
-        setClients(prev => [newClient, ...prev]);
-        showNotification('Nuevo cliente registrado exitosamente.');
-        setIsCreateOpen(false);
-    } catch (error) {
-        console.error(error);
-        showNotification("Error al crear el cliente.", "error");
-    }
+    const newClient = await clientService.createClient(clientData);
+    setClients(prev => [newClient, ...prev]);
+    showNotification('Nuevo cliente registrado exitosamente.');
+    setIsCreateOpen(false);
   };
 
   const handleUpdateClient = async (clientData: any) => {
     if (!selectedClient) return;
-    try {
-        const updated = await clientService.updateClient(selectedClient.id, clientData);
-        setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-        showNotification('Cliente actualizado exitosamente.');
-        setIsEditOpen(false);
-    } catch (error) {
-        console.error(error);
-        showNotification("Error al actualizar el cliente.", "error");
-    }
+    await clientService.updateClient(selectedClient.id, clientData);
+    showNotification('Cliente actualizado exitosamente.');
+    setIsEditOpen(false);
+    await fetchClients(pagination.page, searchTerm); // refresca respetando página y búsqueda activa
   };
 
   const confirmDelete = async () => {
     if (!deleteModal.clientId) return;
     try {
         await clientService.deleteClient(deleteModal.clientId);
-        setClients(prev => prev.filter(c => c.id !== deleteModal.clientId));
+        setDeleteModal({ isOpen: false, clientId: null });
         showNotification('Cliente eliminado del sistema.');
+        await fetchClients(pagination.page, searchTerm);
     } catch (error) {
         console.error(error);
         showNotification("No se pudo eliminar el cliente.", "error");
@@ -110,10 +103,11 @@ export const useClientsManager = () => {
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, isActive: newStatus } : c));
         await clientService.toggleClientStatus(client.id, newStatus);
         showNotification(`Cliente ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        fetchClients(); 
-        showNotification("Error al cambiar el estado.", "error");
+        fetchClients();
+        const msg = error?.response?.data?.message || error?.message || 'Error al cambiar el estado.';
+        showNotification(msg, "error");
     }
   };
 

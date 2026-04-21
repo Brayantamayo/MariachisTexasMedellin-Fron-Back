@@ -17,6 +17,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
+{/* Esta función devuelve el estilo de la etiqueta de estado de la reserva. */}
 const getStatusBadgeStyles = (status: string) => {
   switch (status) {
     case 'PENDIENTE':  return 'bg-amber-50 text-amber-600 border-amber-200';
@@ -26,6 +27,7 @@ const getStatusBadgeStyles = (status: string) => {
   }
 };
 
+{/* Esta función convierte el estado interno de la reserva a una etiqueta legible para el usuario. */}
 const getStatusLabel = (status: string) => {
   switch (status) {
     case 'PENDIENTE':  return 'Pendiente';
@@ -73,6 +75,8 @@ export const ReservasTable: React.FC<Props> = ({
     open: false, id: '',
   });
 
+
+  ///esto se muestra cuando se carga la página
   if (loading) return <div className="py-20 text-center text-slate-400">Cargando reservas...</div>;
   if (!reservations.length) return <div className="py-20 text-center text-slate-400">No se encontraron reservas.</div>;
 
@@ -82,6 +86,7 @@ export const ReservasTable: React.FC<Props> = ({
   const isClient = userRole === UserRole.CLIENTE;
   const isAdmin  = userRole === UserRole.ADMIN;
 
+  {/* Tabla de reservas*/}
   return (
     <>
       <div className="flex flex-col">
@@ -89,7 +94,7 @@ export const ReservasTable: React.FC<Props> = ({
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="py-5 px-8 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
+                <th className="py-5 px-8 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">#</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Evento</th>
                 <th className="py-5 px-6 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fecha / Hora</th>
@@ -99,17 +104,21 @@ export const ReservasTable: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {currentItems.map(res => {
+
+              {/* Reservas que se muestran en la tabla */}
+              {currentItems.map((res, index) => {
                 const total    = Number(res.totalAmount) || 0;
                 const paid     = Number(res.paidAmount)  || 0;
                 const saldo    = total - paid;
                 const isActive  = !['ANULADA', 'Anulado', 'Finalizado'].includes(res.status);
                 const isAnulada = res.status === 'ANULADA';
+                const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
+                {/* contenido de la fila de la tabla */}
                 return (
                   <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-5 px-8">
-                      <span className="font-bold text-primary-600 text-sm">#{res.id}</span>
+                      <span className="font-bold text-primary-600 text-sm">{itemNumber}</span>
                     </td>
                     <td className="py-5 px-6">
                       <span className="font-bold text-slate-800 text-sm">{res.clientName || '—'}</span>
@@ -139,17 +148,18 @@ export const ReservasTable: React.FC<Props> = ({
                         {getStatusLabel(res.status)}
                       </span>
                     </td>
+
+                  {/* Botones de las acciones disponibles */}
                     <td className="py-5 px-8">
                       <div className="flex items-center justify-center gap-2">
                         <ActionButton icon={Eye} onClick={() => onView(res)} tooltip="Ver Detalle" />
                         {isActive && !isClient && (
                           <>
-                            <ActionButton icon={DollarSign} onClick={() => onAddPayment(res.id)} tooltip="Registrar Abono" variant="success" />
-                            <ActionButton icon={Edit2}      onClick={() => onEdit(res)}           tooltip="Editar Reserva"  variant="indigo" />
+                            <ActionButton icon={DollarSign} onClick={() => onAddPayment(res.id)} tooltip="Registrar Abono"  />
+                            <ActionButton icon={Edit2}      onClick={() => onEdit(res)}           tooltip="Editar Reserva"  />
                             <ActionButton
                               icon={Ban}
                               tooltip="Anular Reserva"
-                              variant="danger"
                               onClick={() => setAnularModal({ open: true, reservation: res })}
                             />
                           </>
@@ -179,17 +189,20 @@ export const ReservasTable: React.FC<Props> = ({
         />
       </div>
 
-      {/* El modal vive aquí — cierra y llama onCancel en un solo lugar */}
+
+      {/* El modal de anulación de reserva */}
       <AnularReservaModal
         isOpen={anularModal.open}
         reservation={anularModal.reservation}
         onClose={() => setAnularModal({ open: false, reservation: null })}
         onConfirm={(id, motivo) => {
-          setAnularModal({ open: false, reservation: null }); // ← cierra primero
-          onCancel(id, motivo);                               // ← luego ejecuta
+          setAnularModal({ open: false, reservation: null }); 
+          onCancel(id, motivo);                               
         }}
       />
 
+
+      {/* El modal de confirmación de eliminación */} 
       <ConfirmationModal
         isOpen={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, id: '' })}
@@ -197,6 +210,7 @@ export const ReservasTable: React.FC<Props> = ({
           setDeleteModal({ open: false, id: '' });
           onDelete(deleteModal.id);
         }}
+
         title="¿Eliminar Reserva?"
         message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado."
         confirmText="Sí, eliminar"

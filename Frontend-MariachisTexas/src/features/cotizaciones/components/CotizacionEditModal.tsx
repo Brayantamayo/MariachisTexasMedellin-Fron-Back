@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, FileText } from 'lucide-react';
+import { X, FileText, AlertCircle } from 'lucide-react';
 import { Quotation, UserRole, User as UserType, Song, Service } from '@/types';
 import { clientService } from '../../clientes/services/clientService';
 import { repertoireService } from '../../repertoire/services/repertoireService';
@@ -9,11 +9,44 @@ import { reservaService } from '../../reservas/services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
 import { useAuth } from '@/shared/contexts/AuthContext.tsx';
 import { CotizacionForm } from './CotizacionForm';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
+import { CotizacionFormErrors } from './CotizacionCreateModal';
+
+// ─── Validación (idéntica a Create) ──────────────────────────────────────────
+const validate = (data: any, services: any[]): CotizacionFormErrors => {
+  const errors: CotizacionFormErrors = {};
+
+  if (!data.clientName?.trim())
+    errors.clientName = 'El nombre del cliente es requerido';
+
+  if (!data.clientPhone?.trim())
+    errors.clientPhone = 'El teléfono principal es requerido';
+
+  if (!data.clientEmail?.trim())
+    errors.clientEmail = 'El correo electrónico es requerido';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.clientEmail.trim()))
+    errors.clientEmail = 'El correo no tiene un formato válido';
+
+  if (!data.startTime)
+    errors.startTime = 'Debes seleccionar la hora de inicio';
+
+  const hasBaseService = data.selectedServices?.some((s: any) => {
+    const service = services.find((srv: any) => String(srv.id) === s.serviceId);
+    return service && service.nombre.toLowerCase().includes('serenata');
+  });
+  if (!hasBaseService)
+    errors.baseService = 'Debes seleccionar un Tipo de Serenata';
+
+  if (!data.location?.trim())
+    errors.location = 'La dirección del evento es requerida';
+
+  return errors;
+};
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void>;
   quotation: Quotation | null;
 }
 
@@ -31,13 +64,19 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
   const [availableHours,       setAvailableHours]       = useState<string[]>([]);
   const [blockStatus,          setBlockStatus]          = useState<any>({ isBlocked: false });
   const [isManuallyOverridden, setIsManuallyOverridden] = useState(false);
+  const [saving,               setSaving]               = useState(false);
+  const [globalError,          setGlobalError]          = useState<string | null>(null);
+  const [errors,               setErrors]               = useState<CotizacionFormErrors>({});
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && quotation) {
       repertoireService.getSongs().then(setSongs);
       servicesService.getServices().then(setServices);
-      // ✅ No cargar clientes en edición — no se puede cambiar el cliente
       setFormData(quotation);
+      setErrors({});
+      setGlobalError(null);
       setIsManuallyOverridden(false);
       checkBlockAndHours(quotation.eventDate);
     }
@@ -79,6 +118,9 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
     if (name === 'totalAmount') setIsManuallyOverridden(true);
     else if (['startTime', 'endTime'].includes(name)) setIsManuallyOverridden(false);
     setFormData((prev: any) => ({ ...prev, [name]: value }));
+    if (errors[name as keyof CotizacionFormErrors]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleDateChange = (name: string, value: string) => {
@@ -114,32 +156,55 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
       }
       return { ...prev, selectedServices: updated };
     });
+    if (errors.baseService) setErrors(prev => ({ ...prev, baseService: undefined }));
     setIsManuallyOverridden(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (blockStatus.isBlocked) { alert(`Fecha bloqueada: ${blockStatus.reason}`); return; }
-    if (!formData.startTime || !formData.endTime) { alert('Selecciona hora de inicio y fin.'); return; }
+    setGlobalError(null);
 
-    const hasBaseService = formData.selectedServices?.some((s: any) => {
-      const service = services.find(srv => String(srv.id) === s.serviceId);
-      return service && service.nombre.toLowerCase().includes('serenata');
-    });
-    if (!hasBaseService) { alert('Por favor selecciona un Tipo de Serenata.'); return; }
-
-    if (formData.endTime <= formData.startTime && !['00:00', '00:30'].includes(formData.endTime)) {
-      if (!confirm('La hora de fin es menor que la de inicio. ¿Termina al día siguiente?')) return;
+    if (blockStatus.isBlocked) {
+      setGlobalError(`La fecha está bloqueada: ${blockStatus.reason}`);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-    onSave(formData);
+
+    const validationErrors = validate(formData, services);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      const firstMessage = Object.values(validationErrors)[0];
+      setGlobalError(firstMessage ?? null);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave(formData);
+      setErrors({});
+    } catch (err) {
+      setGlobalError(getErrorMessage(err, 'Error al actualizar la cotización.'));
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    setErrors({});
+    setGlobalError(null);
+    onClose();
   };
 
   if (!isOpen || !formData) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+
+        {/* Cabecera */}
         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shadow-sm">
@@ -150,28 +215,38 @@ export const CotizacionEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, 
               <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5">Modificar propuesta #{quotation?.id}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
+        {/* Error global */}
+        {globalError && (
+          <div className="mx-6 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
+            <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
+          </div>
+        )}
+
+        {/* Formulario */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
           <CotizacionForm
             formData={formData}
             isAdmin={isAdmin}
-            isEditing={true}          // ✅ oculta buscador y bloquea campos cliente
+            isEditing={true}
             clients={clients}
             songs={songs}
             services={services}
             availableHours={availableHours}
             blockStatus={blockStatus}
+            fieldErrors={errors}
             onChange={handleChange}
             onDateChange={handleDateChange}
-            onClientSelect={() => {}} // no se usa en edición
+            onClientSelect={() => {}}
             onToggleSong={toggleSong}
             onServiceChange={handleServiceChange}
             onSubmit={handleSubmit}
-            onCancel={onClose}
+            onCancel={handleClose}
+            isSaving={saving}
           />
         </div>
       </div>

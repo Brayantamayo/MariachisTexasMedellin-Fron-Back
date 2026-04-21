@@ -4,12 +4,14 @@ import { X, Save, Music, AlertCircle } from 'lucide-react';
 import { SongForm, SongFormErrors } from './SongForm';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
+{/* Propiedades de la modal de creación de canción */}
 interface Props {
   isOpen:  boolean;
   onClose: () => void;
   onSave:  (data: any) => Promise<void>;
 }
 
+{/* Formulario de creación de canción */}
 const INITIAL_FORM = {
   title:      '',
   artist:     '',
@@ -23,6 +25,7 @@ const INITIAL_FORM = {
   isActive:   true,
 };
 
+{/* Validar los datos del formulario */}
 const validate = (data: any): SongFormErrors => {
   const errors: SongFormErrors = {};
 
@@ -49,26 +52,32 @@ const validate = (data: any): SongFormErrors => {
 
   return errors;
 };
-
+{/* ordena los campos de los errores del formulario */}
 const FIELD_ORDER: (keyof SongFormErrors)[] = ['title', 'artist', 'genre', 'category', 'duration'];
 
 export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
+  {/* Crea un estado llamado formData para guardar los datos del formulario, inicializándolo con valores por defecto*/}
   const [formData,    setFormData]    = useState<any>({ ...INITIAL_FORM });
+  {/* Crea un estado llamado errors de errores por campos */}
   const [errors,      setErrors]      = useState<SongFormErrors>({});
+  {/* Crea un estado llamado saving para manejar el estado de guardado del formulario */}
   const [saving,      setSaving]      = useState(false);
+  {/* Crea un estado llamado globalError para mostrar un mensaje de error general */}
   const [globalError, setGlobalError] = useState<string | null>(null);
 
+  {/*Hacer scroll automático dentro del modal para mostrar un error */}
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  {/*Guarda referencias a cada input del formulario. */}
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
-
+  {/*Esta función guarda cada input cuando se renderiza. */}
   const registerFieldRef = (field: string, el: HTMLElement | null) => {
     fieldRefs.current[field] = el;
   };
 
+  {/* esto funciona para hacer scroll cuando hay un error en el formulario */}
   const scrollToFirstError = (validationErrors: SongFormErrors) => {
     const firstErrorField = FIELD_ORDER.find(field => validationErrors[field]);
     if (!firstErrorField) return;
-
     const el = fieldRefs.current[firstErrorField];
     if (el && scrollContainerRef.current) {
       const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
@@ -79,6 +88,7 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
     }
   };
 
+{/* Sirve para manejar los cambios en los inputs del formulario.*/}
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
@@ -87,10 +97,12 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
     }
   };
 
+  {/*Recibe el nombre del campo (field) y su valor (value)*/}
   const handleFieldChange = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  {/*Valida, guarda la canción y maneja errores al enviar el formulario.*/}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError(null);
@@ -105,17 +117,18 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
     setSaving(true);
     try {
       await onSave(formData);
-      // ✅ Reset al cerrar exitosamente
+      // Reset al cerrar exitosamente
       setFormData({ ...INITIAL_FORM });
       setErrors({});
     } catch (err) {
-      // ✅ getErrorMessage muestra el mensaje real del backend
+      // getErrorMessage muestra el mensaje real del backend
       setGlobalError(getErrorMessage(err, 'Error al guardar la canción.'));
     } finally {
       setSaving(false);
     }
   };
 
+  {/*Cierra el modal y limpia los datos del formulario.*/}
   const handleClose = () => {
     setFormData({ ...INITIAL_FORM });
     setErrors({});
@@ -125,12 +138,13 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
 
   if (!isOpen) return null;
 
+  {/*Crea el portal para mostrar el modal de creación de canción*/}
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
 
-        {/* Header */}
+        {/* parte superior */}
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-red-50 border border-red-100 shadow-lg">
@@ -146,14 +160,14 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
           </button>
         </div>
 
-        {/* ✅ Error global — muestra el mensaje real del backend */}
+        {/*  Error global — muestra el mensaje real del backend */}
         {globalError && (
           <div className="mx-8 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
           </div>
         )}
 
-        {/* Form */}
+        {/* Formulario */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <SongForm
             formData={formData}
@@ -165,7 +179,7 @@ export const SongCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave }) =>
           />
         </div>
 
-        {/* Footer */}
+        {/* Pie de página */}
         <div className="px-8 py-5 border-t border-slate-100 flex justify-end gap-4">
           <button onClick={handleClose} disabled={saving}
             className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest px-4 py-2 disabled:opacity-50">

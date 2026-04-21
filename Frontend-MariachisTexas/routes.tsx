@@ -83,7 +83,7 @@ export const APP_ROUTES: AppRoute[] = [
     path: '/ventas',
     label: 'Ventas',
     module: 'ventas',
-    roles: [UserRole.ADMIN, UserRole.CLIENTE], // Cliente ve "Mis Compras"
+    roles: [UserRole.ADMIN, UserRole.EMPLEADO, UserRole.CLIENTE], // Admin, empleado y cliente pueden ver ventas
     icon: 'DollarSign'
   },
   {

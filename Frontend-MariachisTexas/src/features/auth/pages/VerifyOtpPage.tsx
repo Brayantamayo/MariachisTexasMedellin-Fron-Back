@@ -94,7 +94,7 @@ export const VerifyOtpPage: React.FC<Props> = ({ email, onVerified, onNavigate }
               {otp.map((digit, i) => (
                 <input
                   key={i}
-                  ref={el => inputs.current[i] = el}
+                  ref={el => { inputs.current[i] = el; }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}

@@ -120,8 +120,14 @@ export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, on
                           <td className="py-5 px-8">
                               <div className="flex items-center justify-center gap-2">
                                   <ActionButton icon={Eye} onClick={() => onView(client)} tooltip="Ver detalle" />
-                                  <ActionButton icon={Edit2} onClick={() => onEdit(client)} tooltip="Editar cliente" />
-                                  <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                  {client.isActive && (
+                                    <>
+                                      <ActionButton icon={Edit2} onClick={() => onEdit(client)} tooltip="Editar cliente" />
+                                      {!client.hasActiveReservations && (
+                                        <ActionButton icon={Trash2} onClick={() => onDelete(client.id)} tooltip="Eliminar cliente" variant="danger" />
+                                      )}
+                                    </>
+                                  )}
                               </div>
                           </td>
                       </tr>
