@@ -91,16 +91,17 @@ export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, on
                                   className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${role.isActive ? 'translate-x-6' : 'translate-x-0'}`} 
                               />
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider w-14 ${role.isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
-                              {role.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
                       </div>
 
                       {/* Actions */}
                       <div className="col-span-2 flex justify-center gap-3">
                           <ActionButton icon={Eye} onClick={() => onView(role)} tooltip="Ver detalle" />
-                          <ActionButton icon={Edit2} onClick={() => onEdit(role)} tooltip="Editar rol" />
-                          <ActionButton icon={Trash2} onClick={() => onDelete(role.id)} tooltip="Eliminar rol" />
+                          {role.isActive && (
+                            <>
+                              <ActionButton icon={Edit2} onClick={() => onEdit(role)} tooltip="Editar rol" />
+                              <ActionButton icon={Trash2} onClick={() => onDelete(role.id)} tooltip="Eliminar rol" />
+                            </>
+                          )}
                       </div>
                   </div>
               ))}

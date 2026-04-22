@@ -11,7 +11,8 @@ import {
   UserCircle,
   Briefcase,
   Shield,
-  ShieldCheck
+  ShieldCheck,
+  Wrench
 } from 'lucide-react';
 
 // Configuración centralizada de rutas y permisos
@@ -62,6 +63,13 @@ export const APP_ROUTES: AppRoute[] = [
     roles: [UserRole.ADMIN, UserRole.EMPLEADO],
     icon: 'Calendar'
   },
+  {
+    path: '/servicios',
+    label: 'Servicios',
+    module: 'servicios',
+    roles: [UserRole.ADMIN],
+    icon: 'Wrench'
+  },
   
   // Módulos Comerciales
   {
@@ -75,7 +83,7 @@ export const APP_ROUTES: AppRoute[] = [
     path: '/ventas',
     label: 'Ventas',
     module: 'ventas',
-    roles: [UserRole.ADMIN, UserRole.CLIENTE], // Cliente ve "Mis Compras"
+    roles: [UserRole.ADMIN, UserRole.EMPLEADO, UserRole.CLIENTE], // Admin, empleado y cliente pueden ver ventas
     icon: 'DollarSign'
   },
   {

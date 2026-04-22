@@ -1,83 +1,146 @@
 import { User, UserRole } from '@/types';
+import api from '@/shared/api/api';
 
-// Datos simulados iniciales para Empleados
-let mockEmployees: User[] = [
-  {
-    id: '2',
-    name: 'Carlos',
-    lastName: 'Guitarra',
-    email: 'carlos@texas.com',
-    role: UserRole.EMPLEADO,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '98765432',
-    gender: 'M',
-    birthDate: '1992-03-20',
-    phone: '3109876543',
-    city: 'Medellín',
-    neighborhood: 'Laureles',
-    address: 'Av Nutibara # 70-10',
-    mainInstrument: 'Guitarra',
-    otherInstruments: ['Voz', 'Vihuela'],
-    experienceYears: 5,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-  },
-  {
-    id: '4',
-    name: 'Pedro',
-    lastName: 'Trompeta',
-    email: 'pedro@texas.com',
-    role: UserRole.EMPLEADO,
-    isActive: true,
-    documentType: 'CC',
-    documentNumber: '71231231',
-    gender: 'M',
-    birthDate: '1988-07-12',
-    phone: '3001112233',
-    city: 'Medellín',
-    neighborhood: 'Belen',
-    address: 'Cra 76 # 30-20',
-    mainInstrument: 'Trompeta',
-    otherInstruments: ['Coros'],
-    experienceYears: 8,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+// Cache para el rol EMPLEADO
+let empleadoRolId: number | null = null;
+
+// ─── OBTENER ROL EMPLEADO ───────────────────────────────────────────────────
+const getEmpleadoRolId = async (): Promise<number> => {
+  if (empleadoRolId) return empleadoRolId;
+  
+  try {
+    // Intentar obtener del endpoint público
+    const response = await api.get('/roles/public/empleado-rol-id');
+    empleadoRolId = response.data.rolId;
+    return empleadoRolId;
+  } catch (err) {
+    console.warn('No se pudo obtener rol EMPLEADO del servidor, usando fallback');
+    // Fallback: asumir rolId 2
+    empleadoRolId = 2;
+    return empleadoRolId;
   }
-];
+};
+
+// ─── MAPEAR DE BACKEND A FRONTEND ────────────────────────────────────────────
+const mapFromBackend = (backend: any): User => {
+  const nombreCompleto = (backend.nombre || '').trim()
+
+  // Para empleados no hay campo apellido separado.
+  // Separamos por el primer espacio: todo lo demás es apellido.
+  const spaceIdx  = nombreCompleto.indexOf(' ')
+  const firstName = spaceIdx >= 0 ? nombreCompleto.slice(0, spaceIdx) : nombreCompleto
+  const lastName  = spaceIdx >= 0 ? nombreCompleto.slice(spaceIdx + 1) : ''
+
+  return {
+  id: String(backend.id),
+  name: firstName,
+  lastName: lastName,
+  email: backend.email || '',
+  role: backend.rol?.nombre as UserRole,
+  isActive: backend.estado ?? false,
+  documentType: backend.empleado?.tipoDocumento || 'CC',
+  documentNumber: backend.empleado?.numeroDocumento || '',
+  gender: 'M', // Default - no almacenado en backend
+  birthDate: backend.empleado?.fechaNacimiento ? new Date(backend.empleado.fechaNacimiento).toISOString().split('T')[0] : '',
+  phone: backend.empleado?.telefonoPrincipal || '',
+  secondaryPhone: backend.empleado?.telefonoAlternativo || '',
+  city: backend.empleado?.ciudad || '',
+  neighborhood: backend.empleado?.barrio || '',
+  address: backend.empleado?.direccion || '',
+  serviceZone: backend.empleado?.zonaServicio || 'URBANA',
+  // Campos adicionales para empleados
+  mainInstrument: backend.empleado?.instrumentoPrincipal || '',
+  otherInstruments: backend.empleado?.otrosInstrumentos ? backend.empleado.otrosInstrumentos.split(', ').filter((i: string) => i.trim()) : [],
+  experienceYears: backend.empleado?.anosExperiencia || 0,
+  avatar: backend.empleado?.foto || '',
+  password: undefined // No devolver password
+  };
+};
+
+// ─── MAPEAR DE FRONTEND A BACKEND ────────────────────────────────────────────
+const mapToBackend = async (user: Omit<User, 'id'>) => {
+  // Combinar nombre y lastName en un solo campo "nombre"
+  const nombre = `${user.name} ${user.lastName}`.trim();
+  const rolId = await getEmpleadoRolId();
+
+  if (!user.password) {
+    throw new Error('Contraseña es requerida');
+  }
+
+  const otrosInstrumentos = Array.isArray(user.otherInstruments)
+    ? user.otherInstruments.join(', ')
+    : typeof user.otherInstruments === 'string'
+      ? (user.otherInstruments as any).trim() || null
+      : null;
+
+  return {
+    nombre,
+    email: user.email,
+    password: user.password,
+    rolId,
+    // Datos adicionales del empleado
+    tipoDocumento: user.documentType || 'CC',
+    numeroDocumento: user.documentNumber,
+    fechaNacimiento: user.birthDate,
+    telefonoPrincipal: user.phone,
+    telefonoAlternativo: user.secondaryPhone?.trim() || undefined,
+    ciudad: user.city || 'Medellín',
+    barrio: user.neighborhood,
+    direccion: user.address,
+    zonaServicio: user.serviceZone || 'URBANA',
+    instrumentoPrincipal: user.mainInstrument,
+    otrosInstrumentos,
+    anosExperiencia: Number(user.experienceYears) || 0,
+    foto: user.avatar || null
+  };
+};
 
 export const employeeService = {
   getEmployees: async (): Promise<User[]> => {
-    return new Promise((resolve) => setTimeout(() => resolve([...mockEmployees]), 600));
+    const response = await api.get('/empleados');
+    return response.data.map(mapFromBackend);
   },
 
   createEmployee: async (employee: Omit<User, 'id'>): Promise<User> => {
-    return new Promise((resolve) => {
-      const newEmployee = { 
-        ...employee, 
-        id: Math.random().toString(36).substr(2, 9),
-        role: UserRole.EMPLEADO, // Forzar rol
-        isActive: true 
-      };
-      mockEmployees = [newEmployee, ...mockEmployees];
-      setTimeout(() => resolve(newEmployee), 600);
-    });
+    const data = await mapToBackend(employee);
+    const response = await api.post('/empleados', data);
+    return mapFromBackend(response.data);
   },
 
   updateEmployee: async (id: string, updates: Partial<User>): Promise<User> => {
-    return new Promise((resolve, reject) => {
-      const index = mockEmployees.findIndex(u => u.id === id);
-      if (index === -1) {
-        reject(new Error('Empleado no encontrado'));
-        return;
-      }
-      mockEmployees[index] = { ...mockEmployees[index], ...updates };
-      setTimeout(() => resolve(mockEmployees[index]), 600);
-    });
+    const nombre = updates.name ? `${updates.name} ${updates.lastName || ''}`.trim() : undefined;
+    
+    const otrosInstrumentos = Array.isArray(updates.otherInstruments)
+      ? updates.otherInstruments.join(', ')
+      : typeof updates.otherInstruments === 'string'
+        ? (updates.otherInstruments as any).trim() || undefined
+        : undefined;
+
+    const data = {
+      ...(nombre && { nombre }),
+      ...(updates.email && { email: updates.email }),
+      ...(updates.isActive !== undefined && { estado: updates.isActive }),
+      ...(updates.documentType && { tipoDocumento: updates.documentType }),
+      ...(updates.documentNumber && { numeroDocumento: updates.documentNumber }),
+      ...(updates.birthDate && { fechaNacimiento: updates.birthDate }),
+      ...(updates.phone && { telefonoPrincipal: updates.phone }),
+      ...(updates.secondaryPhone !== undefined && { telefonoAlternativo: updates.secondaryPhone }),
+      ...(updates.city && { ciudad: updates.city }),
+      ...(updates.neighborhood && { barrio: updates.neighborhood }),
+      ...(updates.address && { direccion: updates.address }),
+      ...(updates.serviceZone && { zonaServicio: updates.serviceZone }),
+      ...(updates.mainInstrument && { instrumentoPrincipal: updates.mainInstrument }),
+      ...(otrosInstrumentos !== undefined && { otrosInstrumentos }),
+      ...(updates.experienceYears !== undefined && { anosExperiencia: Number(updates.experienceYears) }),
+      ...(updates.avatar !== undefined && { foto: updates.avatar }),
+    };
+    
+    const response = await api.put(`/empleados/${id}`, data);
+    return mapFromBackend(response.data);
   },
 
   deleteEmployee: async (id: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      mockEmployees = mockEmployees.filter(u => u.id !== id);
-      setTimeout(() => resolve(true), 600);
-    });
+    await api.delete(`/empleados/${id}`);
+    return true;
   }
 };

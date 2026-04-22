@@ -49,12 +49,13 @@ export const RehearsalDetailModal: React.FC<Props> = ({ isOpen, onClose, rehears
           </button>
         </div>
 
-        {/* Content */}
+        {/* Contenido */}
         <div className="flex-1 overflow-y-auto p-0 custom-scrollbar bg-white">
             <div className="flex flex-col md:flex-row h-full">
                 
-                {/* Left Info */}
+                {/* Informacion */}
                 <div className="w-full md:w-1/2 p-8 space-y-6 border-b md:border-b-0 md:border-r border-slate-100 bg-white">
+                    
                     <div>
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título</h4>
                         <p className="text-xl font-bold text-slate-800">{rehearsal.title}</p>
@@ -65,10 +66,12 @@ export const RehearsalDetailModal: React.FC<Props> = ({ isOpen, onClose, rehears
                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-2"><Calendar size={12}/> Fecha</p>
                             <p className="font-bold text-slate-700">{rehearsal.date}</p>
                         </div>
+
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-2"><Clock size={12}/> Hora</p>
                             <p className="font-bold text-slate-700">{rehearsal.time}</p>
                         </div>
+                        
                     </div>
 
                     <div>
@@ -82,7 +85,7 @@ export const RehearsalDetailModal: React.FC<Props> = ({ isOpen, onClose, rehears
                     </div>
                 </div>
 
-                {/* Right Songs List */}
+                {/* Lista de canciones */}  
                 <div className="w-full md:w-1/2 bg-slate-50 flex flex-col h-[400px] md:h-auto">
                     <div className="p-6 border-b border-slate-100 bg-white">
                         <h4 className="text-xs font-serif font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
@@ -111,7 +114,7 @@ export const RehearsalDetailModal: React.FC<Props> = ({ isOpen, onClose, rehears
             </div>
         </div>
 
-        {/* Footer */}
+        {/* Boton de cerrar */}
         <div className="px-8 py-6 border-t border-slate-100 bg-white flex justify-end gap-4 z-10">
              <button onClick={onClose} className="bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl text-xs font-bold tracking-widest uppercase shadow-lg transition-all">
                 Cerrar Detalle

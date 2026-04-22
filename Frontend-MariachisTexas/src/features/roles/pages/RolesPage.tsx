@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { roleService } from '../services/roleService';
 import { Role } from '@/types';
+import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 
 // Componentes Modulares
 import { RolesTable } from '../components/RolesTable';
@@ -21,6 +22,7 @@ export const RolesPage: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; roleId: string | null }>({ isOpen: false, roleId: null });
 
   // Notificaciones
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -75,16 +77,19 @@ export const RolesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este rol permanentemente?")) {
-        try {
-            await roleService.deleteRole(id);
-            setRoles(prev => prev.filter(r => r.id !== id));
-            showNotification('El rol ha sido eliminado del sistema.');
-        } catch (error) {
-            console.error("Error eliminando", error);
-            showNotification("No se pudo eliminar el rol.", "error");
-        }
+  const handleDelete = (id: string) => {
+    setDeleteModal({ isOpen: true, roleId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.roleId) return;
+    try {
+      await roleService.deleteRole(deleteModal.roleId);
+      setRoles(prev => prev.filter(r => r.id !== deleteModal.roleId));
+      showNotification('El rol ha sido eliminado del sistema.');
+    } catch (error) {
+      console.error("Error eliminando", error);
+      showNotification("No se pudo eliminar el rol.", "error");
     }
   };
 
@@ -204,6 +209,15 @@ export const RolesPage: React.FC = () => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         role={selectedRole}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={confirmDelete}
+        title="¿Eliminar Rol?"
+        message="Estás a punto de eliminar este rol permanentemente. Esta acción no se puede deshacer y los usuarios asignados perderán su acceso."
+        confirmText="Sí, Eliminar"
       />
     </div>
   );

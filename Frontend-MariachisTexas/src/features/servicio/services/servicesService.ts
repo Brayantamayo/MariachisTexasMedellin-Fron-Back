@@ -1,77 +1,29 @@
-import { Service } from '@/types';
-
-let mockServices: Service[] = [
-  {
-    id: 'urbana',
-    name: 'Serenata Urbana',
-    description: 'Serenata en zona urbana.',
-    price: 480000,
-    unit: 'Evento',
-    isActive: true
-  },
-  {
-    id: 'rural',
-    name: 'Serenata Rural',
-    description: 'Serenata en zona rural.',
-    price: 650000,
-    unit: 'Evento',
-    isActive: true
-  },
-  {
-    id: '1',
-    name: 'Hora Extra',
-    description: 'Hora adicional de presentación del mariachi.',
-    price: 350000,
-    unit: 'Hora',
-    isActive: true
-  },
-  {
-    id: '2',
-    name: 'Canción Extra',
-    description: 'Canción adicional fuera del repertorio contratado.',
-    price: 20000,
-    unit: 'Canción',
-    isActive: true
-  },
-  {
-    id: '3',
-    name: 'Show de Zapateo',
-    description: 'Show especial de baile y zapateo.',
-    price: 150000,
-    unit: 'Evento',
-    isActive: true
-  }
-];
+import api from '@/shared/api/api'
+import { Service } from '@/types'
 
 export const servicesService = {
-  getServices: async (): Promise<Service[]> => {
-    return new Promise((resolve) => setTimeout(() => resolve([...mockServices]), 500));
-  },
 
-  createService: async (service: Omit<Service, 'id' | 'isActive'>): Promise<Service> => {
-    return new Promise((resolve) => {
-      const newService = { ...service, id: Math.random().toString(36).substr(2, 9), isActive: true };
-      mockServices = [newService, ...mockServices];
-      setTimeout(() => resolve(newService as Service), 500);
-    });
-  },
+getServices: async (): Promise<Service[]> => {
+  const { data } = await api.get('/servicios')
+  return data
+},
 
-  updateService: async (id: string, updates: Partial<Service>): Promise<Service> => {
-    return new Promise((resolve, reject) => {
-      const index = mockServices.findIndex(s => s.id === id);
-      if (index === -1) {
-        reject(new Error('Servicio no encontrado'));
-        return;
-      }
-      mockServices[index] = { ...mockServices[index], ...updates };
-      setTimeout(() => resolve(mockServices[index]), 500);
-    });
-  },
+getServiceById: async (id: string): Promise<Service> => {
+  const { data } = await api.get(`/servicios/${id}`)
+  return data
+},
 
-  deleteService: async (id: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      mockServices = mockServices.filter(s => s.id !== id);
-      setTimeout(() => resolve(true), 500);
-    });
-  }
-};
+createService: async (service: Omit<Service, 'id' | 'estado'>): Promise<Service> => {const { data } = await api.post('/servicios', service)
+return data
+},
+
+updateService: async (id: string, updates: Partial<Service>): Promise<Service> => {const { data } = await api.put(`/servicios/${id}`, updates)
+return data
+},
+
+// Activa/desactiva
+toggleEstado: async (id: string): Promise<Service> => {const { data } = await api.patch(`/servicios/${id}/estado`)
+return data.servicio },
+
+// Elimina el servicio — el backend gestiona la desactivación internamente
+deleteService: async (id: string): Promise<void> => {await api.delete(`/servicios/${id}`)},}

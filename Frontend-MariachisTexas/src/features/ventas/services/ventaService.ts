@@ -1,116 +1,112 @@
-
-import { Payment, Reservation } from '@/types';
-import { reservaService } from '../../reservas/services/reservaService';
+import api from '@/shared/api/api'
 
 export interface Sale {
     id: string;
     date: string;
-    type: 'Por Reserva' | 'Directa';
+    type: string;
     clientName: string;
-    clientId?: string; // ID del cliente para filtrado
-    concept: string; // Descripción o ID Reserva
+    clientId?: string;
+    clientEmail?: string;
+    concept: string;
     method: string;
-    amount: number; // Monto del último pago o monto total si es directa
-    totalAmount?: number; // Monto total de la reserva
-    pendingAmount?: number; // Saldo pendiente
+    amount: number;
+    totalAmount?: number;
+    pendingAmount?: number;
+    paidAmount?: number;
     reservationId?: string;
-    reservationStatus?: 'Confirmado' | 'Finalizado';
-    status: 'Completado' | 'Anulado';
+    reservationStatus?: string;
+    eventDate?: string;
+    eventType?: string;
+    status: string;
+    abonos?: { id: string; amount: number; date: string; method: string; notes: string }[];
+    eventTime?: string;
+    eventEndTime?: string;
+    eventLocation?: string;
+    homenajeado?: string;
+    notes?: string;
+    services?: { nombre: string; cantidad: number; precio: number }[];
+    repertoire?: { titulo: string; artista: string }[];
 }
 
-// Mock Data
-let mockSales: Sale[] = [
-    {
-        id: 'V-001',
-        date: '2026-02-02',
-        type: 'Por Reserva',
-        clientName: 'Juan Pérez',
-        concept: 'Abono Reserva #1 - Boda',
-        method: 'Transferencia',
-        amount: 240000,
-        reservationId: '1',
-        status: 'Completado'
-    },
-    {
-        id: 'V-002',
-        date: '2026-02-05',
-        type: 'Directa',
-        clientName: 'Cliente Ocasional',
-        concept: 'Venta de Recordatorios',
-        method: 'Efectivo',
-        amount: 50000,
-        status: 'Completado'
-    }
-];
+// ─── Helper: extrae el array sin importar si la respuesta es directa o envuelta ──
+const unwrapList = (response: any): any[] => {
+    if (Array.isArray(response)) return response
+    if (response && Array.isArray(response.data)) return response.data
+    return []
+}
+
+const unwrapItem = (response: any): any => {
+    if (response && response.data !== undefined) return response.data
+    return response
+}
 
 export const ventaService = {
+
     getSales: async (): Promise<Sale[]> => {
-        return new Promise((resolve) => setTimeout(() => resolve([...mockSales]), 600));
-    },
-
-    // Obtener reservas pendientes de pago para el select
-    getPayableReservations: async (): Promise<Reservation[]> => {
-        const all = await reservaService.getReservations();
-        return all.filter(r => r.status !== 'Anulado' && r.paidAmount < r.totalAmount);
-    },
-
-    // Método principal para crear venta desde el módulo de Ventas
-    createSale: async (data: any): Promise<Sale> => {
-        // 1. Si es por reserva, actualizamos la reserva original
-        if (data.type === 'Por Reserva' && data.reservationId) {
-            await reservaService.addPayment(data.reservationId, {
-                amount: Number(data.amount),
-                method: data.method as any,
-                date: new Date().toISOString(),
-                type: 'Abono Parcial',
-                notes: 'Generado desde módulo Ventas'
-            });
+        try {
+            const { data } = await api.get('/ventas')
+            return unwrapList(data)
+        } catch (err) {
+            console.error('Error obteniendo ventas:', err)
+            return []
         }
+    },
 
-        // 2. Crear registro de venta
-        const newSale: Sale = {
-            id: `V-${Math.floor(Math.random() * 10000)}`,
-            date: data.date,
-            type: data.type,
-            clientName: data.clientName,
-            concept: data.concept,
-            method: data.method,
-            amount: Number(data.amount),
-            reservationId: data.reservationId,
-            status: 'Completado'
-        };
+    getPayableReservations: async (): Promise<any[]> => {
+        try {
+            const { data } = await api.get('/ventas/payable/reservations')
+            return unwrapList(data)
+        } catch (err) {
+            console.error('Error obteniendo reservas pagables:', err)
+            return []
+        }
+    },
 
-        mockSales = [newSale, ...mockSales];
-        return new Promise((resolve) => setTimeout(() => resolve(newSale), 600));
+    createSale: async (data: any): Promise<Sale> => {
+        const payload = {
+            reservaId:   data.reservationId ? Number(data.reservationId) : null,
+            clienteId:   Number(data.clienteId),
+            tipo:        data.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
+            estado:      'CONFIRMADO',
+            montoTotal:  Number(data.amount),
+            montoPagado: Number(data.amount),
+            fechaVenta:  data.date,
+            metodoPago:  String(data.method).toUpperCase(),
+        }
+        const { data: res } = await api.post('/ventas', payload)
+        return unwrapItem(res)
     },
 
     updateSale: async (id: string, updates: Partial<Sale>): Promise<Sale> => {
-        return new Promise((resolve, reject) => {
-            const index = mockSales.findIndex(s => s.id === id);
-            if (index === -1) {
-                reject(new Error('Venta no encontrada'));
-                return;
-            }
-            // Nota: En un sistema real, editar una venta vinculada a reserva requeriría
-            // lógica compleja de reversión de saldos. Aquí simulamos solo edición de datos básicos.
-            mockSales[index] = { ...mockSales[index], ...updates };
-            setTimeout(() => resolve(mockSales[index]), 500);
-        });
+        const { data } = await api.put(`/ventas/${id}`, updates)
+        return unwrapItem(data)
     },
 
-    // NUEVO MÉTODO: Registra una venta que viene de otro módulo (Abonos) sin llamar de nuevo a reservaService
-    // Esto evita bucles infinitos o pagos duplicados.
     registerExternalSale: async (saleData: Omit<Sale, 'id' | 'status'>): Promise<Sale> => {
-        const newSale: Sale = {
-            ...saleData,
-            id: `V-${Math.floor(Math.random() * 10000)}`,
-            status: 'Completado'
-        };
-        mockSales = [newSale, ...mockSales];
-        return new Promise((resolve) => resolve(newSale));
+        const payload = {
+            reservaId:   saleData.reservationId ? Number(saleData.reservationId) : null,
+            clienteId:   Number(saleData.clientId),
+            tipo:        saleData.type === 'Por Reserva' ? 'RESERVA' : 'DIRECTA',
+            estado:      'CONFIRMADO',
+            montoTotal:  saleData.amount,
+            montoPagado: saleData.amount,
+            fechaVenta:  saleData.date,
+            metodoPago:  String(saleData.method).toUpperCase(),
+        }
+        const { data } = await api.post('/ventas', payload)
+        return unwrapItem(data)
     },
 
-    downloadInvoice: async (saleId: string): Promise<boolean> => {
-        return new Promise((resolve) => setTimeout(() => resolve(true), 1500));
-    }
-};
+    downloadInvoice: async (saleId: string): Promise<void> => {
+        const response = await api.get(`/ventas/${saleId}/download/pdf`, { responseType: 'blob' })
+        const blob = new Blob([response.data], { type: 'application/pdf' })
+        const url  = window.URL.createObjectURL(blob)
+        const a    = document.createElement('a')
+        a.href     = url
+        a.download = `factura-${saleId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+    },
+}

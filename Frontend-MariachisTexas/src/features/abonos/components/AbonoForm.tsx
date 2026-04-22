@@ -138,11 +138,11 @@ export const AbonoForm: React.FC<Props> = ({
                         onChange={onChange}
                         className="input-form pl-9 appearance-none cursor-pointer text-xs text-slate-700"
                     >
-                        <option value="Transferencia">Transferencia</option>
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Tarjeta">Tarjeta</option>
-                        <option value="Nequi">Nequi</option>
-                        <option value="Daviplata">Daviplata</option>
+                        <option value="TRANSFERENCIA">Transferencia</option>
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="NEQUI">Nequi</option>
+                        <option value="DAVIPLATA">Daviplata</option>
+                        <option value="OTRO">Otro</option>
                     </select>
                 </div>
             </div>

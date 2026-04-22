@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle, FileText, User, Calendar, CreditCard, Download } from 'lucide-react';
+import { X, CheckCircle, FileText, User, Calendar, CreditCard, Download, Clock, DollarSign } from 'lucide-react';
 import { Sale } from '../services/ventaService';
 
 interface Props {
@@ -11,109 +11,130 @@ interface Props {
   onDownload: (id: string) => void;
 }
 
+const getStatusStyle = (status: string) => {
+  if (status === 'Finalizado') return 'bg-blue-50 text-blue-600 border-blue-100';
+  if (status === 'Confirmado') return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+  return 'bg-slate-50 text-slate-600 border-slate-100';
+};
+
 export const VentaDetailModal: React.FC<Props> = ({ isOpen, onClose, sale, onDownload }) => {
   if (!isOpen || !sale) return null;
 
+  const isFinalizado = sale.status === 'Finalizado';
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      
-      {/* Modal Card - Compact Receipt Style */}
-      <div className="relative w-full max-w-[320px] bg-white rounded-2xl shadow-2xl flex flex-col animate-fade-in-up overflow-hidden m-auto ring-1 ring-white/10">
-        
-        {/* Header - Venta Exitosa */}
-        <div className="bg-[#0f172a] pt-6 pb-5 px-5 text-center relative border-b border-slate-800">
-            <button onClick={onClose} className="absolute top-3 right-3 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-1 rounded-full transition-all">
-                <X size={14} />
-            </button>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                <CheckCircle className="text-emerald-400" size={24} strokeWidth={2} />
+      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-8 pb-4 bg-white border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-2xl font-serif font-bold text-slate-800 uppercase">Venta #{sale.id}</h3>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(sale.status)}`}>
+                {sale.status}
+              </span>
             </div>
-            
-            <h3 className="text-sm font-serif font-bold text-white tracking-widest uppercase mb-0.5">VENTA EXITOSA</h3>
-            <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">REF: {sale.id}</p>
+            <p className="text-xs text-slate-500 font-medium">
+              {sale.date}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Body Receipt */}
-        <div className="bg-white relative">
-            
-            {/* Amount Section */}
-            <div className="text-center pt-5 pb-4">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">TOTAL PAGADO</p>
-                <h2 className="text-3xl font-serif font-bold text-slate-800 tracking-tight">
-                    ${sale.amount.toLocaleString()}
-                </h2>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-white p-8">
+          <div className="space-y-8">
+
+            {/* Monto Total */}
+            <div className={`p-6 rounded-2xl border-2 ${isFinalizado ? 'border-blue-300 bg-blue-50' : 'border-emerald-300 bg-emerald-50'}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isFinalizado ? 'text-blue-600' : 'text-emerald-600'}`}>
+                Monto Total
+              </p>
+              <h2 className={`text-4xl font-serif font-bold tracking-tight ${isFinalizado ? 'text-blue-900' : 'text-emerald-900'}`}>
+                ${sale.amount.toLocaleString('es-CO')}
+              </h2>
             </div>
 
-            {/* Dotted Line with Cutouts */}
-            <div className="relative w-full h-4 my-1 flex items-center">
-                <div className="absolute left-0 w-full border-t-2 border-dashed border-slate-100"></div>
-                <div className="absolute left-[-8px] w-4 h-4 rounded-full bg-slate-900/80"></div>
-                <div className="absolute right-[-8px] w-4 h-4 rounded-full bg-slate-900/80"></div>
+            {/* Información Principal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Cliente */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <User size={14} className="text-slate-600" /> Cliente
+                </h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-800">{sale.clientName}</p>
+                  {sale.clientEmail && (
+                    <p className="text-xs text-slate-600 mt-1">{sale.clientEmail}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Concepto */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <FileText size={14} className="text-slate-600" /> Concepto
+                </h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-800">{sale.concept}</p>
+                </div>
+              </div>
+
+              {/* Fecha */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-600" /> Fecha
+                </h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-800">{sale.date}</p>
+                </div>
+              </div>
+
+              {/* Método de Pago */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <CreditCard size={14} className="text-slate-600" /> Método de Pago
+                </h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-sm font-bold text-slate-800">{sale.method}</p>
+                </div>
+              </div>
+
             </div>
 
-            {/* Information Grid */}
-            <div className="px-6 py-3 space-y-3">
-                
-                <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <Calendar size={12} />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Fecha</span>
-                    </div>
-                    <span className="font-bold text-slate-700">{sale.date}</span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <User size={12} />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Cliente</span>
-                    </div>
-                    <span className="font-bold text-slate-700 text-right truncate max-w-[140px]">{sale.clientName}</span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <FileText size={12} />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Concepto</span>
-                    </div>
-                    <span className="font-bold text-slate-700 text-right max-w-[140px] truncate" title={sale.concept}>
-                        {sale.concept}
-                    </span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <CreditCard size={12} />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Método</span>
-                    </div>
-                    <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-600 uppercase tracking-wider">
-                        {sale.method}
-                    </span>
-                </div>
-
-            </div>
-
-            {/* Reservation Link Button */}
+            {/* Reserva Vinculada */}
             {sale.reservationId && (
-                <div className="px-6 pb-4 pt-1">
-                    <button className="w-full py-2 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-center gap-2 text-blue-600 cursor-default">
-                        <span className="text-[9px] font-bold uppercase tracking-widest">VINCULADO A RESERVA #{sale.reservationId}</span>
-                    </button>
-                </div>
+              <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-xl">
+                <p className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                  <CheckCircle size={16} className="text-blue-600" />
+                  Vinculado a Reserva #{sale.reservationId}
+                </p>
+              </div>
             )}
 
+          </div>
         </div>
 
-        {/* Footer Button */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100">
-            <button 
-                onClick={() => onDownload(sale.id)}
-                className="w-full py-3 bg-[#0f172a] hover:bg-slate-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5"
-            >
-                <Download size={14} /> Comprobante PDF
-            </button>
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-all"
+          >
+            Cerrar
+          </button>
+          <button
+            onClick={() => onDownload(sale.id)}
+            className="flex-1 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <Download size={16} /> Descargar PDF
+          </button>
         </div>
 
       </div>

@@ -1,146 +1,180 @@
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// src/context/AuthContext.tsx
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '../../types';
+import { authService } from '@/src/features/auth/pages/authService';
+import { profileService, PerfilData } from '@/shared/services/perfilservices.ts';
 
 interface AuthContextType {
-  user: User | null;
-  isLoading: boolean; // Nuevo estado
-  login: (email: string, password: string) => Promise<boolean>; // Ahora devuelve una promesa
-  logout: () => void;
+  user:            User | null;
+  isLoading:       boolean;
+  login:           (email: string, password: string) => Promise<boolean>;
+  logout:          () => void;
   isAuthenticated: boolean;
+  /** Llámalo después de actualizar el perfil para sincronizar el contexto */
+  refreshUser:     () => Promise<void>;
+  /** Actualización optimista directa (sin llamada al servidor) */
+  updateUser:      (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const SESSION_KEYS = { TOKEN: 'token', USER: 'user' } as const
+
+const getSession = () => ({
+  token:    localStorage.getItem(SESSION_KEYS.TOKEN),
+  userData: localStorage.getItem(SESSION_KEYS.USER),
+})
+
+const setSession = (token: string, user: User) => {
+  localStorage.setItem(SESSION_KEYS.TOKEN, token)
+  localStorage.setItem(SESSION_KEYS.USER, JSON.stringify(user))
+}
+
+const clearSession = () => {
+  localStorage.removeItem(SESSION_KEYS.TOKEN)
+  localStorage.removeItem(SESSION_KEYS.USER)
+}
+
+const ROL_MAP: Record<string, UserRole> = {
+  ADMIN:    UserRole.ADMIN,
+  admin:    UserRole.ADMIN,
+  EMPLEADO: UserRole.EMPLEADO,
+  empleado: UserRole.EMPLEADO,
+  CLIENTE:  UserRole.CLIENTE,
+  cliente:  UserRole.CLIENTE,
+}
+
+/** Convierte un PerfilData (API) → User (frontend) */
+const perfilToUser = (perfil: PerfilData): User => ({
+  id:             String(perfil.id),
+  name:           perfil.nombre,
+  lastName:       perfil.apellido,
+  email:          perfil.email,
+  role:           ROL_MAP[perfil.rol] ?? UserRole.CLIENTE,
+  isActive:       true,
+  documentType:   perfil.tipoDocumento,
+  documentNumber: perfil.numeroDocumento,
+  gender:         'M',
+  birthDate:      perfil.fechaNacimiento,
+  phone:          perfil.telefonoPrincipal,
+  secondaryPhone: perfil.telefonoAlternativo,
+  city:           perfil.ciudad,
+  neighborhood:   perfil.barrio,
+  address:        perfil.direccion,
+  avatar:         perfil.foto ?? undefined,
+})
+
+// ─── PROVIDER ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser]           = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Lógica de Login con credenciales de prueba
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulamos un delay de red para mostrar la pantalla de carga (2 segundos)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  useEffect(() => {
+    const { token, userData } = getSession()
 
-    // Validación de contraseña general para pruebas
-    if (password === '123456') {
-      
-      // Admin
-      if (email === 'admin@texas.com') {
-        setUser({
-          id: '1',
-          name: 'Administrador',
-          lastName: 'Principal',
-          email: email,
-          role: UserRole.ADMIN,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000001',
-          gender: 'M',
-          birthDate: '1980-01-01',
-          phone: '3001234567',
-          city: 'Medellín',
-          neighborhood: 'El Poblado',
-          address: 'Calle 10 # 5-51',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
-      
-      // Músico / Empleado
-      if (email === 'empleado@texas.com') {
-        setUser({
-          id: '2',
-          name: 'Músico',
-          lastName: 'Staff',
-          email: email,
-          role: UserRole.EMPLEADO,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000002',
-          gender: 'M',
-          birthDate: '1992-05-15',
-          phone: '3007654321',
-          city: 'Medellín',
-          neighborhood: 'Laureles',
-          address: 'Av Nutibara # 70-10',
-          mainInstrument: 'Trompeta',
-          experienceYears: 5,
-          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
-
-      // Cliente 1
-      if (email === 'cliente@texas.com') {
-        setUser({
-          id: '3',
-          name: 'Cliente',
-          lastName: 'VIP',
-          email: email,
-          role: UserRole.CLIENTE,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1000000003',
-          gender: 'F',
-          birthDate: '1995-08-20',
-          phone: '3101112233',
-          city: 'Envigado',
-          neighborhood: 'Jardines',
-          address: 'Cra 43A # 25S-15',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
-      }
-
-      // Cliente 2: Brayan Castañeda
-      if (email === 'brayan@texas.com') {
-        setUser({
-          id: '4',
-          name: 'Brayan',
-          lastName: 'Castañeda',
-          email: email,
-          role: UserRole.CLIENTE,
-          isActive: true,
-          documentType: 'CC',
-          documentNumber: '1152433654',
-          gender: 'M',
-          birthDate: '1998-11-20',
-          phone: '3219876543',
-          city: 'Medellín',
-          neighborhood: 'Robledo',
-          address: 'Calle 65 # 80-20',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-        });
-        setIsLoading(false);
-        return true;
+    if (token && userData) {
+      try {
+        const parsed = JSON.parse(userData) as User
+        setUser(parsed)
+        authService.setAuthToken(token)
+      } catch {
+        clearSession()
       }
     }
 
-    // Si falla
-    setIsLoading(false);
-    return false;
-  };
+    setIsLoading(false)
+  }, [])
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true)
+    try {
+      const data = await authService.login(email, password)
+
+      const usuario: User = {
+        id:             String(data.usuario.id),
+        name:           data.usuario.nombre,
+        lastName:       data.usuario.apellido            || '',
+        email:          data.usuario.email,
+        role:           ROL_MAP[data.usuario.rol]        ?? UserRole.CLIENTE,
+        isActive:       true,
+        documentType:   'CC',
+        documentNumber: '',
+        gender:         'M',
+        birthDate:      '',
+        phone:          data.usuario.telefonoPrincipal   || '',
+        secondaryPhone: data.usuario.telefonoAlternativo || '',
+        city:           data.usuario.ciudad              || '',
+        neighborhood:   data.usuario.barrio              || '',
+        address:        data.usuario.direccion           || '',
+      }
+
+      setSession(data.token, usuario)
+      authService.setAuthToken(data.token)
+      setUser(usuario)
+      return true
+
+    } catch (error) {
+      console.error('Login error:', error)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  /**
+   * Recarga el perfil desde el servidor y actualiza el contexto + localStorage.
+   * Úsalo en ProfilePage después de un PUT exitoso.
+   */
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const perfil  = await profileService.obtener()
+      const updated = perfilToUser(perfil)
+      const token   = localStorage.getItem(SESSION_KEYS.TOKEN) || ''
+      setSession(token, updated)
+      setUser(updated)
+    } catch (error) {
+      console.error('refreshUser error:', error)
+    }
+  }
+
+  /**
+   * Actualización optimista: modifica el contexto y el localStorage sin llamar al servidor.
+   * Útil para reflejar cambios inmediatamente en la UI mientras el PUT ya se ejecutó.
+   */
+  const updateUser = (partial: Partial<User>): void => {
+    setUser(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, ...partial }
+      const token   = localStorage.getItem(SESSION_KEYS.TOKEN) || ''
+      setSession(token, updated)
+      return updated
+    })
+  }
 
   const logout = () => {
-    setUser(null);
-  };
+    clearSession()
+    authService.setAuthToken(null)
+    setUser(null)
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      isAuthenticated: !!user,
+      isLoading,
+      refreshUser,
+      updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
-  );
-};
+  )
+}
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within an AuthProvider')
+  return context
+}

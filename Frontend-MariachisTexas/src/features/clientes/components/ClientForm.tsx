@@ -1,15 +1,34 @@
+import React, { useState } from 'react';
+import { User as UserIcon, MapPin, Phone, Calendar, Hash, Mail, Building, Flag, ChevronDown, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
+import { PhotoUploadWidget } from '@/shared/components/Photouploadwidget .tsx';
 
-import React from 'react';
-import { User as UserIcon, MapPin, Phone, Calendar, Hash, Mail, Building, Flag, Camera, ChevronDown } from 'lucide-react';
+export interface ClientFormErrors {
+  email?: string;
+  name?: string;
+  lastName?: string;
+  documentNumber?: string;
+  phone?: string;
+  password?: string;
+  confirmPassword?: string;
+}
 
 interface Props {
   formData: any;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
+  errors?: ClientFormErrors;
+  photo?: any; // Objeto retornado por usePhotoUpload
+  isViewOnly?: boolean;
 }
 
-export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload, onSubmit }) => {
+export const ClientForm: React.FC<Props> = ({ formData, onChange, onSubmit, errors = {} as ClientFormErrors, photo, isViewOnly = false }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() - 18);
+  const maxDateString = maxDate.toISOString().split('T')[0];
+
   return (
     <form id="client-form" onSubmit={onSubmit} className="space-y-8">
         
@@ -21,30 +40,12 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
             
             <div className="flex flex-col md:flex-row gap-8 items-start">
                 
-                {/* Foto de Perfil */}
-                <div className="flex-shrink-0 mx-auto md:mx-0">
-                    <div className="relative group cursor-pointer w-32 h-32">
-                        <div className="w-full h-full rounded-full bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden transition-all group-hover:border-emerald-100">
-                            {formData.avatar ? (
-                                <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                <UserIcon size={40} className="text-slate-300" />
-                            )}
-                        </div>
-                        <div className="absolute bottom-0 right-0 bg-emerald-600 p-2.5 rounded-full text-white shadow-lg hover:bg-emerald-700 transition-all transform hover:scale-110 z-10 border-2 border-white">
-                            <Camera size={14} />
-                        </div>
-                        <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={onImageUpload}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
-                        />
-                    </div>
-                    <p className="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase tracking-wide">
-                        Foto de Perfil
-                    </p>
-                </div>
+                {/* Widget de Foto de Perfil */}
+                {photo && (
+                  <div className="flex-shrink-0 mx-auto md:mx-0">
+                    <PhotoUploadWidget photo={photo} currentUrl={formData.avatar} />
+                  </div>
+                )}
 
                 {/* Campos de Información Personal */}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
@@ -53,51 +54,69 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                     <div>
                         <label className="label-form">Nombres <span className="text-red-500">*</span></label>
                         <div className="relative">
-                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <UserIcon className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.name ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                             <input 
                                 type="text" 
                                 name="name" 
                                 required 
+                                disabled={isViewOnly}
                                 value={formData.name} 
                                 onChange={onChange} 
-                                className="input-form pl-10" 
+                                className={`input-form pl-10 transition-all ${errors.name ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                                 placeholder="Ej: Juan Antonio"
                             />
                         </div>
+                        {errors.name && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.name}
+                          </p>
+                        )}
                     </div>
 
                     {/* Apellidos */}
                     <div>
                         <label className="label-form">Apellidos <span className="text-red-500">*</span></label>
                         <div className="relative">
-                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <UserIcon className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.lastName ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                             <input 
                                 type="text" 
                                 name="lastName" 
                                 required 
+                                disabled={isViewOnly}
                                 value={formData.lastName} 
                                 onChange={onChange} 
-                                className="input-form pl-10" 
+                                className={`input-form pl-10 transition-all ${errors.lastName ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                                 placeholder="Ej: Pérez Gomez"
                             />
                         </div>
+                        {errors.lastName && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.lastName}
+                          </p>
+                        )}
                     </div>
 
                     {/* Email */}
                     <div className="md:col-span-2">
                         <label className="label-form">Correo Electrónico <span className="text-red-500">*</span></label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.email ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                             <input 
                                 type="email" 
                                 name="email" 
                                 required 
+                                disabled={isViewOnly}
                                 value={formData.email} 
                                 onChange={onChange} 
-                                className="input-form pl-10" 
-                                placeholder="cliente@email.com" 
+                                className={`input-form pl-10 transition-all ${errors.email ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+                                placeholder="cliente@ejemplo.com"
                             />
                         </div>
+                        {errors.email && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.email}
+                          </p>
+                        )}
                     </div>
 
                     {/* Tipo Documento */}
@@ -109,11 +128,11 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                                 value={formData.documentType} 
                                 onChange={onChange} 
                                 required
+                                disabled={isViewOnly}
                                 className="input-form appearance-none cursor-pointer"
                             >
                                 <option value="CC">Cédula de Ciudadanía</option>
                                 <option value="CE">Cédula de Extranjería</option>
-                                <option value="TI">Tarjeta Identidad</option>
                                 <option value="PAS">Pasaporte</option>
                             </select>
                         </div>
@@ -123,16 +142,22 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                     <div>
                         <label className="label-form">Número Documento <span className="text-red-500">*</span></label>
                         <div className="relative">
-                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <Hash className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.documentNumber ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                             <input 
                                 type="text" 
                                 name="documentNumber" 
                                 required 
                                 value={formData.documentNumber} 
                                 onChange={onChange} 
-                                className="input-form pl-10" 
+                                disabled={isViewOnly}
+                                className={`input-form pl-10 transition-all ${errors.documentNumber ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                             />
                         </div>
+                        {errors.documentNumber && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.documentNumber}
+                          </p>
+                        )}
                     </div>
 
                     {/* Fecha Nacimiento */}
@@ -146,6 +171,8 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                                 required 
                                 value={formData.birthDate} 
                                 onChange={onChange} 
+                                max={maxDateString}
+                                disabled={isViewOnly}
                                 className="input-form pl-10" 
                             />
                         </div>
@@ -159,6 +186,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                                 name="gender" 
                                 value={formData.gender} 
                                 onChange={onChange} 
+                                disabled={isViewOnly}
                                 className="input-form appearance-none cursor-pointer"
                             >
                                 <option value="M">Masculino</option>
@@ -166,6 +194,66 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                                 <option value="O">Otro</option>
                             </select>
                         </div>
+                    </div>
+                    {/* Contraseñas (Nuevos campos para consistencia) */}
+                    <div className="md:col-span-1">
+                        <label className="label-form">Contraseña <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                            <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.password ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                name="password" 
+                                required={!formData.id} // Solo requerido si es nuevo
+                                value={formData.password || ''} 
+                                onChange={onChange} 
+                                disabled={isViewOnly}
+                                className={`input-form pl-10 transition-all ${errors.password ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                                tabIndex={-1}
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                        {errors.password && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.password}
+                          </p>
+                        )}
+                    </div>
+
+                    <div className="md:col-span-1">
+                        <label className="label-form">Confirmar Contraseña <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                            <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.confirmPassword ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
+                            <input 
+                                type={showConfirmPassword ? "text" : "password"}
+                                name="confirmPassword" 
+                                required={!formData.id} // Solo requerido si es nuevo
+                                value={formData.confirmPassword || ''} 
+                                onChange={onChange} 
+                                disabled={isViewOnly}
+                                className={`input-form pl-10 transition-all ${errors.confirmPassword ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                                tabIndex={-1}
+                            >
+                                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                        {errors.confirmPassword && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                            <AlertCircle size={12} /> {errors.confirmPassword}
+                          </p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -184,16 +272,22 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                 <div>
                     <label className="label-form">Teléfono Principal <span className="text-red-500">*</span></label>
                     <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-slate-400'} transition-colors`} size={16} />
                         <input 
                             type="tel" 
                             name="phone" 
                             required 
                             value={formData.phone} 
                             onChange={onChange} 
-                            className="input-form pl-10" 
+                            disabled={isViewOnly}
+                            className={`input-form pl-10 transition-all ${errors.phone ? 'border-red-400 bg-red-50 focus:border-red-500 ring-2 ring-red-100' : ''}`}
                         />
                     </div>
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} /> {errors.phone}
+                      </p>
+                    )}
                 </div>
 
                 {/* Segundo Teléfono */}
@@ -206,6 +300,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                             name="secondaryPhone" 
                             value={formData.secondaryPhone} 
                             onChange={onChange} 
+                            disabled={isViewOnly}
                             className="input-form pl-10" 
                             placeholder="Opcional" 
                         />
@@ -223,6 +318,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                             required 
                             value={formData.city} 
                             onChange={onChange} 
+                            disabled={isViewOnly}
                             className="input-form pl-10" 
                         />
                     </div>
@@ -238,6 +334,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                             required 
                             value={formData.neighborhood} 
                             onChange={onChange} 
+                            disabled={isViewOnly}
                             className="input-form" 
                         />
                     </div>
@@ -254,6 +351,7 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                             required 
                             value={formData.address} 
                             onChange={onChange} 
+                            disabled={isViewOnly}
                             className="input-form pl-10" 
                             placeholder="Ej: Calle 10 # 40-20" 
                         />
@@ -266,9 +364,10 @@ export const ClientForm: React.FC<Props> = ({ formData, onChange, onImageUpload,
                     <div className="relative">
                         <select 
                             name="serviceZone" 
-                            value={formData.serviceZone || 'Urbano'} 
+                            value={formData.serviceZone} 
                             onChange={onChange} 
                             required
+                            disabled={isViewOnly}
                             className="input-form appearance-none cursor-pointer"
                         >
                             <option value="Urbano">Urbano (Medellín y Área Metropolitana)</option>
