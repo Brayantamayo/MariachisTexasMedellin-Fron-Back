@@ -336,7 +336,7 @@ export const convertirCotizacion = async (id: number) => {
     })
     await transporter.sendMail({ from: process.env.MAIL_FROM, to: emailDestino, ...mail })
       .then(info => {
-        console.log('✅ Correo cotización aprobada enviado a:', emailDestino)
+        console.log('Correo cotización aprobada enviado a:', emailDestino)
         // En Ethereal, muestra la URL de preview para ver el correo
         const previewUrl = (nodemailer as any).getTestMessageUrl?.(info)
         if (previewUrl) console.log('📧 Preview URL:', previewUrl)
