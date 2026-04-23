@@ -7,7 +7,8 @@ import prisma from '../../config/prisma'
 const ROLES_ADMIN = ['ADMIN', 'EMPLEADO']
 
 // ─── OBTENER TODOS LOS RESERVAS ───────────────────────────────────────────────────────────
-export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {const rol = req.user?.rol
+export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const rol = req.user?.rol
   if (rol && ROLES_ADMIN.includes(rol)) {
     return res.json(await reservaService.getReservas())
   }
@@ -41,31 +42,33 @@ export const addAbono = asyncHandler(async (req: AuthRequest, res: Response) => 
 })
 
 // ─── OBTENER HORAS DISPONIBLES ──────────────────────────────────────────────────────
-export const getAvailableHours = asyncHandler(async (req: Request, res: Response) => {const date = Array.isArray(req.params.date) ? req.params.date[0] : req.params.date
+export const getAvailableHours = asyncHandler(async (req: Request, res: Response) => {
+  const date = Array.isArray(req.params.date) ? req.params.date[0] : req.params.date
 
-// ─── Validar formato YYYY-MM-DD ───────────────────────────────────────────
-const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
-if (!dateRegex.test(date)) {
-  return res.status(400).json({
-    message: 'Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-04-15)'
-  })
-}
+  // ─── Validar formato YYYY-MM-DD ───────────────────────────────────────────
+  const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+  if (!dateRegex.test(date)) {
+    return res.status(400).json({
+      message: 'Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-04-15)'
+    })
+  }
 
-// ─── Validar que sea una fecha real (ej: no 2026-02-31) ───────────────────
-const parsed = new Date(`${date}T00:00:00`)
-if (isNaN(parsed.getTime())) {
-  return res.status(400).json({
-    message: 'La fecha proporcionada no es válida'
-  })
-}
+  // ─── Validar que sea una fecha real (ej: no 2026-02-31) ───────────────────
+  const parsed = new Date(`${date}T00:00:00`)
+  if (isNaN(parsed.getTime())) {
+    return res.status(400).json({
+      message: 'La fecha proporcionada no es válida'
+    })
+  }
 
-const excludeId = req.query.excludeId ? Number(req.query.excludeId) : undefined
+  const excludeId = req.query.excludeId ? Number(req.query.excludeId) : undefined
   res.json(await reservaService.getAvailableHours(date, excludeId))
 })
 
 // ─── OBTENER POR ID  ────────────────────────────────────────────────────────────────
-export const getById = asyncHandler(async (req: AuthRequest, res: Response) => {const id      = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-const reserva = await reservaService.getReservaById(Number(id))
+export const getById = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  const reserva = await reservaService.getReservaById(Number(id))
   if (req.user?.rol === 'CLIENTE') {
     const usuario = await prisma.usuario.findUnique({ where: { id: Number(req.user.id) } })
     if (reserva.clientEmail !== usuario?.email) {
@@ -102,5 +105,16 @@ export const anular = asyncHandler(async (req: AuthRequest, res: Response) => {
 
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
-export const remove = asyncHandler(async (req: Request, res: Response) => {const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-res.json(await reservaService.deleteReserva(Number(id)))})
+export const remove = asyncHandler(async (req: Request, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  res.json(await reservaService.deleteReserva(Number(id)))
+})
+
+// ─── REPROGRAMAR ───────────────────────────────────────────────────────────────
+export const reprogramar = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id      = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  const isAdmin = ['ADMIN', 'EMPLEADO'].includes(req.user?.rol ?? '')
+  const { eventDate, startTime, endTime } = req.body
+ 
+  res.json(await reservaService.reprogramarReserva(Number(id), { eventDate, startTime, endTime }, isAdmin))
+})

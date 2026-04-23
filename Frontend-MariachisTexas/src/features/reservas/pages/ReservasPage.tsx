@@ -12,6 +12,7 @@ import { DateDetailsModal } from '@/src/features/reservas/components/DateDetails
 import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { ReprogramarReservaModal } from '../components/Reprogramarreservamodal .tsx';
 
 const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
   const [now, setNow] = useState(new Date())
@@ -107,6 +108,10 @@ export const ReservasPage: React.FC = () => {
     handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization, processCancel, handleTimeSlotBlock, handleViewReserva,
+    // ─── NUEVO ────────────────────────────────────────────────────────────────
+    isReprogramarOpen, setIsReprogramarOpen,
+    reprogramarReserva, setReprogramarReserva,
+    handleOpenReprogramar, handleReprogramar,
   } = useReservasManager();
 
   const handleDateMouseDown = (dateStr: string) => {
@@ -174,7 +179,7 @@ export const ReservasPage: React.FC = () => {
   const filteredReservations = reservations.filter(r => {
     const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || r.id.includes(searchTerm);
     if (isClient) return matchesSearch;
-    return matchesSearch && ['PENDIENTE', 'CONFIRMADA', 'ANULADA'].includes(r.status);
+    return matchesSearch && ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'].includes(r.status);
   });
 
   const renderCalendar = () => {
@@ -203,12 +208,11 @@ export const ReservasPage: React.FC = () => {
 
       const totalItems = dayEvents.length + dayRehearsals.length + dayQuotes.length;
 
-      // Color del indicador según prioridad: Azul (FINALIZADO) > Verde (CONFIRMADA) > Naranja (PENDIENTE)
-      // Prioridad: PENDIENTE (naranja) → CONFIRMADA (verde) → FINALIZADO (azul)
       const s = (ev: any) => (ev.status ?? '').toUpperCase()
       let dotColorClass = 'bg-slate-300'
       if (totalItems > 0) dotColorClass = 'bg-orange-400'
       if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
+      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
       if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
@@ -266,22 +270,25 @@ export const ReservasPage: React.FC = () => {
             {dayEvents
               .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
               .map(ev => {
-                const s = (ev.status ?? '').toUpperCase()
+                const st = (ev.status ?? '').toUpperCase()
                 const isMine = reservations.some(r => r.id === ev.id)
 
                 let statusStyle = 'bg-amber-50 border-amber-200 text-amber-800'
                 let timeStyle = 'text-amber-600'
 
-                if (s === 'CONFIRMADA') {
+                if (st === 'CONFIRMADA') {
                   statusStyle = 'bg-emerald-50 border-emerald-200 text-emerald-800'
                   timeStyle = 'text-emerald-600'
                 }
-                if (s === 'FINALIZADO') {
+                if (st === 'REPROGRAMADA') {
+                  statusStyle = 'bg-[#e1f8ff] border-[#0c808b]/30 text-[#0c808b]'
+                  timeStyle = 'text-[#0c808b]'
+                }
+                if (st === 'FINALIZADO') {
                   statusStyle = 'bg-blue-50 border-blue-200 text-blue-800'
                   timeStyle = 'text-blue-500'
                 }
 
-                // Si es cliente y no es su reserva, mostrar en gris y como "Reservado"
                 if (isClient && !isMine) {
                   statusStyle = 'bg-slate-100 border-slate-100 text-slate-400'
                   timeStyle = 'text-slate-400'
@@ -294,13 +301,10 @@ export const ReservasPage: React.FC = () => {
                 return (
                   <div key={ev.id} title={label} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${statusStyle}`}>
                     <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-                    <span className="font-medium truncate flex-1">
-                      {label}
-                    </span>
+                    <span className="font-medium truncate flex-1">{label}</span>
                   </div>
                 )
               })}
-
           </div>
 
           {isFullDayBlock && (
@@ -341,7 +345,6 @@ export const ReservasPage: React.FC = () => {
         document.body
       )}
 
-      {/*Boton de reserva */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
@@ -367,10 +370,6 @@ export const ReservasPage: React.FC = () => {
         </div>
       </div>
 
-
-
-
-
       {isClient && <PendingPaymentBanner reservations={reservations} />}
 
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
@@ -394,6 +393,8 @@ export const ReservasPage: React.FC = () => {
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
               onCancel={processCancel}
               onDelete={(id) => setDeleteReservaModal({ isOpen: true, id })}
+              // ─── NUEVO ──────────────────────────────────────────────────
+              onReprogramar={handleOpenReprogramar}
             />
           </div>
         ) : (
@@ -426,7 +427,6 @@ export const ReservasPage: React.FC = () => {
         onFinalize={processFinalization}
         onCancel={(id, motivo) => processCancel(id, motivo)}
         onReschedule={(res) => {
-          // Buscar la reserva real con ID numérico en la lista de reservas
           const realRes = reservations.find(r => r.id === res.id) ?? res;
           setEditingReserva(realRes);
           setIsDetailOpen(false);
@@ -453,6 +453,14 @@ export const ReservasPage: React.FC = () => {
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
       <ConfirmationModal isOpen={deleteTimeBlocksModal.isOpen} onClose={() => setDeleteTimeBlocksModal({ ...deleteTimeBlocksModal, isOpen: false })} onConfirm={handleConfirmDeleteTimeBlocks} title="¿Liberar Horarios?" message="Se eliminarán todos los bloqueos de horas en este día." confirmText="Liberar Todo" />
       <ConfirmationModal isOpen={deleteReservaModal.isOpen} onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })} onConfirm={handleDeleteReserva} title="¿Eliminar Reserva?" message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado." confirmText="Sí, eliminar" />
+
+      {/* ─── NUEVO: Modal de Reprogramación ─────────────────────────────────── */}
+      <ReprogramarReservaModal
+        isOpen={isReprogramarOpen}
+        onClose={() => { setIsReprogramarOpen(false); setReprogramarReserva(null); }}
+        reservation={reprogramarReserva}
+        onSave={handleReprogramar}
+      />
     </div>
   );
 };

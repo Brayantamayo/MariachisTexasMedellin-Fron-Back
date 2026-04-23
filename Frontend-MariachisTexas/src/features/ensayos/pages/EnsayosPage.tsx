@@ -11,6 +11,8 @@ import { RehearsalsTable } from '../components/RehearsalsTable';
 import { RehearsalCreateModal } from '../components/RehearsalCreateModal';
 import { RehearsalEditModal } from '../components/RehearsalEditModal';
 import { RehearsalDetailModal } from '../components/RehearsalDetailModal';
+import { DateDetailsModal } from '@/src/features/reservas/components/DateDetailsModal';
+import { ReservaDetailModal } from '@/src/features/reservas/components/ReservaDetailModal';
 
 const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
@@ -31,6 +33,7 @@ export const EnsayosPage: React.FC = () => {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<Rehearsal | null>(null);
   const [selectedDateForCreate, setSelectedDateForCreate] = useState<string | null>(null);
+  const [selectedTimeForCreate, setSelectedTimeForCreate] = useState<string | null>(null);
 
   // ── Datos de reservas/cotizaciones/bloqueos del hook compartido ─────────────
   const {
@@ -38,6 +41,14 @@ export const EnsayosPage: React.FC = () => {
     blocks,
     quotations,
     canManage,
+    isDateDetailsOpen, setIsDateDetailsOpen,
+    selectedDateForDetails, setSelectedDateForDetails,
+    deleteBlockModal, setDeleteBlockModal,
+    handleTimeSlotBlock,
+    isDetailOpen: isReservaDetailOpen,
+    setIsDetailOpen: setIsReservaDetailOpen,
+    selectedReserva,
+    handleViewReserva,
   } = useReservasManager();
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -148,15 +159,16 @@ export const EnsayosPage: React.FC = () => {
       let dotColorClass = 'bg-slate-300';
       if (totalItems > 0)                                               dotColorClass = 'bg-purple-400';
       if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400';
+      if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]';
       if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'FINALIZADO')) dotColorClass = 'bg-blue-500';
 
       days.push(
         <div
         key={day}
         onClick={() => {
-            if (!isFullDayBlock && !isPast && canManage) {
-            setSelectedDateForCreate(dateStr);
-            setIsCreateOpen(true);
+            if (!isFullDayBlock && !isPast) {
+            setSelectedDateForDetails(dateStr);
+            setIsDateDetailsOpen(true);
             }
             }}
           style={{
@@ -225,6 +237,7 @@ export const EnsayosPage: React.FC = () => {
     let style    = 'bg-amber-50 border-amber-200 text-amber-800';
     let timeStyle = 'text-amber-600';
     if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-200 text-emerald-800'; timeStyle = 'text-emerald-600'; }
+    if (s === 'REPROGRAMADA') { style = 'bg-[#e1f8ff] border-[#0c808b]/30 text-[#0c808b]'; timeStyle = 'text-[#0c808b]'; }
     if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-200 text-blue-800'; timeStyle = 'text-blue-500'; }
     return (
       <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${style}`}>
@@ -406,6 +419,10 @@ export const EnsayosPage: React.FC = () => {
                 <span className="text-xs text-slate-500 font-medium">Reserva confirmada</span>
               </div>
               <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#0c808b]" />
+                <span className="text-xs text-slate-500 font-medium">Reprogramada</span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
                 <span className="text-xs text-slate-500 font-medium">Cotización</span>
               </div>
@@ -423,10 +440,35 @@ export const EnsayosPage: React.FC = () => {
         )}
       </div>
 
-      <RehearsalCreateModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedDateForCreate(null); }} onSave={handleCreateRehearsal} selectedDate={selectedDateForCreate} />
+      <RehearsalCreateModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedDateForCreate(null); setSelectedTimeForCreate(null); }} onSave={handleCreateRehearsal} selectedDate={selectedDateForCreate} selectedTime={selectedTimeForCreate} />
       <RehearsalEditModal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedRehearsal(null); }} onSave={handleUpdateRehearsal} rehearsal={selectedRehearsal} />
       <RehearsalDetailModal isOpen={isDetailOpen} onClose={() => { setIsDetailOpen(false); setSelectedRehearsal(null); }} rehearsal={selectedRehearsal} />
       <ConfirmationModal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })} onConfirm={confirmDelete} title="¿Eliminar Ensayo?" message="Esta acción eliminará el evento del calendario. No se puede deshacer." />
+      
+      <DateDetailsModal
+        isOpen={isDateDetailsOpen}
+        onClose={() => setIsDateDetailsOpen(false)}
+        date={selectedDateForDetails}
+        reservations={calendarReservations.filter(r => r.eventDate === selectedDateForDetails && r.status !== 'ANULADA')}
+        blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails || '') && b.endDate >= (selectedDateForDetails || '') && b.isActive)}
+        rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
+        quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
+        onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
+        onCreateNew={(time) => { 
+          setIsDateDetailsOpen(false); 
+          setSelectedDateForCreate(selectedDateForDetails); 
+          setSelectedTimeForCreate(time || null);
+          setIsCreateOpen(true); 
+        }}
+        onBlockTime={handleTimeSlotBlock}
+        onDeleteBlock={(id) => setDeleteBlockModal({ isOpen: true, blockId: id })}
+      />
+      
+      <ReservaDetailModal
+        isOpen={isReservaDetailOpen}
+        onClose={() => setIsReservaDetailOpen(false)}
+        reservation={selectedReserva}
+      />
     </div>
   );
 };

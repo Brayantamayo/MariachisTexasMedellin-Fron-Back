@@ -6,62 +6,62 @@ import { toLocalTime, buildClientName } from '../../utils/date.helpers'
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 const mapToSale = (v: any) => {
-  const reserva    = v.reserva
+  const reserva = v.reserva
   const cotizacion = reserva?.cotizacion
-  const cliente    = v.cliente ?? cotizacion?.cliente
+  const cliente = v.cliente ?? cotizacion?.cliente
   const clienteName = cliente
     ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
     : ''
 
   const ventaFinalizada = v.estado === 'FINALIZADO'
-  const ventaCancelada  = v.estado === 'CANCELADA'
-  const pendingAmount   = reserva
+  const ventaCancelada = v.estado === 'CANCELADA'
+  const pendingAmount = reserva
     ? (ventaFinalizada || ventaCancelada ? 0 : Number(reserva.saldoPendiente))
     : 0
   const isFullyPaid = ventaFinalizada || pendingAmount <= 0.01
 
   return {
-    id:                String(v.id),
-    date:              v.fechaVenta?.toISOString() ?? '',
-    type:              v.tipo === 'DIRECTA' ? 'Directa' : 'Por Reserva',
-    clientName:        clienteName,
-    clientId:          String(v.clienteId),
-    clientEmail:       cliente?.email ?? '',
-    concept:           v.reservaId ? `Reserva #${v.reservaId}` : 'Venta Directa',
-    method:            v.metodoPago,
-    amount:            Number(v.montoTotal),
-    totalAmount:       Number(v.montoTotal),
+    id: String(v.id),
+    date: v.fechaVenta?.toISOString() ?? '',
+    type: v.tipo === 'DIRECTA' ? 'Directa' : 'Por Reserva',
+    clientName: clienteName,
+    clientId: String(v.clienteId),
+    clientEmail: cliente?.email ?? '',
+    concept: v.reservaId ? `Reserva #${v.reservaId}` : 'Venta Directa',
+    method: v.metodoPago,
+    amount: Number(v.montoTotal),
+    totalAmount: Number(v.montoTotal),
     pendingAmount,
-    paidAmount:        Number(v.montoPagado),
-    reservationId:     v.reservaId ? String(v.reservaId) : undefined,
+    paidAmount: Number(v.montoPagado),
+    reservationId: v.reservaId ? String(v.reservaId) : undefined,
     reservationStatus: ventaCancelada ? 'CANCELADA' : isFullyPaid ? 'FINALIZADO' : 'CONFIRMADO',
-    eventDate:         cotizacion?.fechaEvento
+    eventDate: cotizacion?.fechaEvento
       ? cotizacion.fechaEvento.toISOString().split('T')[0]
       : undefined,
-    eventType:         cotizacion?.tipoEvento ?? '',
-    status:            ventaCancelada ? 'Cancelada' : isFullyPaid ? 'Finalizado' : 'Confirmado',
-    abonos:            reserva?.abonos?.map((a: any) => ({
-      id:     String(a.id),
+    eventType: cotizacion?.tipoEvento ?? '',
+    status: ventaCancelada ? 'Cancelada' : isFullyPaid ? 'Finalizado' : 'Confirmado',
+    abonos: reserva?.abonos?.map((a: any) => ({
+      id: String(a.id),
       amount: Number(a.monto),
-      date:   a.fechaPago?.toISOString() ?? '',
+      date: a.fechaPago?.toISOString() ?? '',
       method: a.metodoPago ?? '',
-      notes:  a.notas ?? '',
+      notes: a.notas ?? '',
     })) ?? [],
     // ─── Nuevos campos ──────────────────────────────────────────────────────
-    eventTime:     cotizacion?.horaInicio ? toLocalTime(cotizacion.horaInicio) : undefined,
-    eventEndTime:  cotizacion?.horaFin    ? toLocalTime(cotizacion.horaFin)    : undefined,
-    eventLocation: cotizacion?.direccionEvento   ?? undefined,
-    homenajeado:   cotizacion?.nombreHomenajeado ?? undefined,
-    notes:         cotizacion?.notasAdicionales  ?? undefined,
-    services:      cotizacion?.servicios?.map((s: any) => ({
-                     nombre:   s.servicio.nombre,
-                     cantidad: s.cantidad,
-                     precio:   Number(s.servicio.precio),
-                   })) ?? [],
-    repertoire:    cotizacion?.repertorios?.map((r: any) => ({
-                     titulo:  r.repertorio.titulo,
-                     artista: r.repertorio.artista,
-                   })) ?? [],
+    eventTime: cotizacion?.horaInicio ? toLocalTime(cotizacion.horaInicio) : undefined,
+    eventEndTime: cotizacion?.horaFin ? toLocalTime(cotizacion.horaFin) : undefined,
+    eventLocation: cotizacion?.direccionEvento ?? undefined,
+    homenajeado: cotizacion?.nombreHomenajeado ?? undefined,
+    notes: cotizacion?.notasAdicionales ?? undefined,
+    services: cotizacion?.servicios?.map((s: any) => ({
+      nombre: s.servicio.nombre,
+      cantidad: s.cantidad,
+      precio: Number(s.servicio.precio),
+    })) ?? [],
+    repertoire: cotizacion?.repertorios?.map((r: any) => ({
+      titulo: r.repertorio.titulo,
+      artista: r.repertorio.artista,
+    })) ?? [],
   }
 }
 
@@ -122,13 +122,13 @@ const validarFecha = (fecha: any, campo: string, soloHoy = false): string => {
 // ─── INCLUDE REUTILIZABLE ─────────────────────────────────────────────────────
 
 const cotizacionInclude = {
-  cliente:     { include: { usuario: true } },
-  servicios:   { include: { servicio: true } },
+  cliente: { include: { usuario: true } },
+  servicios: { include: { servicio: true } },
   repertorios: { include: { repertorio: true } },
 }
 
 const reservaInclude = {
-  abonos:     true,
+  abonos: true,
   cotizacion: { include: cotizacionInclude },
 }
 
@@ -158,8 +158,8 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
 
   const reservasSinVenta = await prisma.reserva.findMany({
     where: {
-      estado: 'CONFIRMADA',
-      id:     { notIn: reservaConVentaIds },
+      estado: { in: ['CONFIRMADA', 'REPROGRAMADA'] },
+      id: { notIn: reservaConVentaIds },
       ...(usuarioId
         ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
         : {}),
@@ -171,54 +171,54 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
   const ventasMapped = ventas.map(mapToSale)
 
   const reservasMapped = reservasSinVenta.map((r: any) => {
-    const cot     = r.cotizacion
+    const cot = r.cotizacion
     const cliente = cot?.cliente
-    const pagado  = Number(r.totalValor) - Number(r.saldoPendiente)
+    const pagado = Number(r.totalValor) - Number(r.saldoPendiente)
 
     return {
-      id:                `RES-${r.id}`,
-      date:              r.createdAt?.toISOString() ?? '',
-      type:              'Por Reserva',
-      clientName:        cliente
+      id: `RES-${r.id}`,
+      date: r.createdAt?.toISOString() ?? '',
+      type: 'Por Reserva',
+      clientName: cliente
         ? buildClientName(cliente.usuario?.nombre, cliente.apellido)
         : '',
-      clientId:          String(cot?.clienteId ?? ''),
-      clientEmail:       cliente?.email ?? '',
-      concept:           `Reserva #${r.id}`,
-      method:            r.abonos[0]?.metodoPago ?? 'TRANSFERENCIA',
-      amount:            Number(r.totalValor),
-      totalAmount:       Number(r.totalValor),
-      pendingAmount:     Number(r.saldoPendiente),
-      paidAmount:        pagado,
-      reservationId:     String(r.id),
+      clientId: String(cot?.clienteId ?? ''),
+      clientEmail: cliente?.email ?? '',
+      concept: `Reserva #${r.id}`,
+      method: r.abonos[0]?.metodoPago ?? 'TRANSFERENCIA',
+      amount: Number(r.totalValor),
+      totalAmount: Number(r.totalValor),
+      pendingAmount: Number(r.saldoPendiente),
+      paidAmount: pagado,
+      reservationId: String(r.id),
       reservationStatus: 'CONFIRMADO',
-      eventDate:         cot?.fechaEvento
+      eventDate: cot?.fechaEvento
         ? new Date(cot.fechaEvento).toISOString().split('T')[0]
         : undefined,
-      eventType:         cot?.tipoEvento ?? '',
-      status:            'Confirmado',
-      abonos:            r.abonos.map((a: any) => ({
-        id:     String(a.id),
+      eventType: cot?.tipoEvento ?? '',
+      status: 'Confirmado',
+      abonos: r.abonos.map((a: any) => ({
+        id: String(a.id),
         amount: Number(a.monto),
-        date:   a.fechaPago?.toISOString() ?? '',
+        date: a.fechaPago?.toISOString() ?? '',
         method: a.metodoPago ?? '',
-        notes:  a.notas ?? '',
+        notes: a.notas ?? '',
       })),
       // ─── Nuevos campos ────────────────────────────────────────────────────
-      eventTime:     cot?.horaInicio ? toLocalTime(cot.horaInicio) : undefined,
-      eventEndTime:  cot?.horaFin    ? toLocalTime(cot.horaFin)    : undefined,
-      eventLocation: cot?.direccionEvento   ?? undefined,
-      homenajeado:   cot?.nombreHomenajeado ?? undefined,
-      notes:         cot?.notasAdicionales  ?? undefined,
-      services:      cot?.servicios?.map((s: any) => ({
-                       nombre:   s.servicio.nombre,
-                       cantidad: s.cantidad,
-                       precio:   Number(s.servicio.precio),
-                     })) ?? [],
-      repertoire:    cot?.repertorios?.map((r: any) => ({
-                       titulo:  r.repertorio.titulo,
-                       artista: r.repertorio.artista,
-                     })) ?? [],
+      eventTime: cot?.horaInicio ? toLocalTime(cot.horaInicio) : undefined,
+      eventEndTime: cot?.horaFin ? toLocalTime(cot.horaFin) : undefined,
+      eventLocation: cot?.direccionEvento ?? undefined,
+      homenajeado: cot?.nombreHomenajeado ?? undefined,
+      notes: cot?.notasAdicionales ?? undefined,
+      services: cot?.servicios?.map((s: any) => ({
+        nombre: s.servicio.nombre,
+        cantidad: s.cantidad,
+        precio: Number(s.servicio.precio),
+      })) ?? [],
+      repertoire: cot?.repertorios?.map((r: any) => ({
+        titulo: r.repertorio.titulo,
+        artista: r.repertorio.artista,
+      })) ?? [],
     }
   })
 
@@ -240,7 +240,7 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
     throw new VentaError('Una venta de tipo RESERVA debe incluir un ID de reserva.', 'RESERVA_SIN_ID', 400)
 
   const cliente = await prisma.cliente.findUnique({
-    where:   { id: Number(d.clienteId) },
+    where: { id: Number(d.clienteId) },
     include: { usuario: true },
   })
   if (!cliente)
@@ -249,14 +249,14 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
   if (!d.reservaId) {
     const venta = await prisma.venta.create({
       data: {
-        reservaId:   null,
-        clienteId:   Number(d.clienteId),
-        tipo:        'DIRECTA',
-        estado:      'FINALIZADO',
-        montoTotal:  Number(d.montoTotal),
+        reservaId: null,
+        clienteId: Number(d.clienteId),
+        tipo: 'DIRECTA',
+        estado: 'FINALIZADO',
+        montoTotal: Number(d.montoTotal),
         montoPagado: Number(d.montoTotal),
-        fechaVenta:  new Date(d.fechaVenta),
-        metodoPago:  d.metodoPago,
+        fechaVenta: new Date(d.fechaVenta),
+        metodoPago: d.metodoPago,
       },
       include: {
         cliente: { include: { usuario: true } },
@@ -267,11 +267,11 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
   }
 
   const reserva = await prisma.reserva.findUnique({
-    where:   { id: Number(d.reservaId) },
+    where: { id: Number(d.reservaId) },
     include: {
       cotizacion: { include: cotizacionInclude },
-      abonos:     true,
-      venta:      true,
+      abonos: true,
+      venta: true,
     },
   })
 
@@ -287,8 +287,8 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
       'VENTA_DUPLICADA', 409
     )
 
-  const montoTotalFinal  = Number(reserva.totalValor)
-  const saldoPendiente   = Number(reserva.saldoPendiente)
+  const montoTotalFinal = Number(reserva.totalValor)
+  const saldoPendiente = Number(reserva.saldoPendiente)
   const abonosAnteriores = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
   const montoPagadoFinal = abonosAnteriores + saldoPendiente
 
@@ -299,31 +299,31 @@ export const createVenta = async (data: VentaCreateInput): Promise<any> => {
   const venta = await prisma.$transaction(async (tx) => {
     await tx.abono.create({
       data: {
-        reservaId:  Number(d.reservaId),
+        reservaId: Number(d.reservaId),
         clienteId,
-        monto:      saldoPendiente,
-        fechaPago:  new Date(d.fechaVenta),
+        monto: saldoPendiente,
+        fechaPago: new Date(d.fechaVenta),
         metodoPago: d.metodoPago as any,
-        notas:      null,
+        notas: null,
         nuevoSaldo: 0,
       },
     })
 
     await tx.reserva.update({
       where: { id: Number(d.reservaId) },
-      data:  { saldoPendiente: 0, estado: 'FINALIZADO' },
+      data: { saldoPendiente: 0, estado: 'FINALIZADO' },
     })
 
     return tx.venta.create({
       data: {
-        reservaId:   Number(d.reservaId),
-        clienteId:   Number(d.clienteId),
-        tipo:        'RESERVA',
-        estado:      'FINALIZADO',
-        montoTotal:  montoTotalFinal,
+        reservaId: Number(d.reservaId),
+        clienteId: Number(d.clienteId),
+        tipo: 'RESERVA',
+        estado: 'FINALIZADO',
+        montoTotal: montoTotalFinal,
         montoPagado: montoPagadoFinal,
-        fechaVenta:  new Date(d.fechaVenta),
-        metodoPago:  d.metodoPago,
+        fechaVenta: new Date(d.fechaVenta),
+        metodoPago: d.metodoPago,
       },
       include: {
         cliente: { include: { usuario: true } },
@@ -345,8 +345,8 @@ export const addAbonoFromVentas = async (
   if (!Number.isInteger(reservaId) || reservaId <= 0)
     throw new VentaError('El ID de reserva debe ser un número entero positivo', 'ID_INVALIDO', 400)
 
-  const monto  = validarMonto(data.amount, 'amount')
-  const fecha  = validarFecha(data.date, 'date', true)
+  const monto = validarMonto(data.amount, 'amount')
+  const fecha = validarFecha(data.date, 'date', true)
   const metodo = validarMetodoPago(data.method)
 
   if (data.notes && data.notes.trim().length > 500)
@@ -355,7 +355,7 @@ export const addAbonoFromVentas = async (
     throw new VentaError('Las notas contienen caracteres no permitidos', 'NOTAS_INVALIDAS', 400)
 
   const reserva = await prisma.reserva.findUnique({
-    where:   { id: reservaId },
+    where: { id: reservaId },
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true },
   })
 
@@ -368,7 +368,7 @@ export const addAbonoFromVentas = async (
   if (reserva.estado === 'FINALIZADO')
     throw new VentaError('La reserva ya está completamente pagada', 'RESERVA_FINALIZADA', 409)
 
-  const totalValor  = Number(reserva.totalValor)
+  const totalValor = Number(reserva.totalValor)
   const saldoActual = Number(reserva.saldoPendiente)
 
   if (saldoActual <= 0.01)
@@ -389,16 +389,16 @@ export const addAbonoFromVentas = async (
         reservaId,
         clienteId,
         monto,
-        fechaPago:  new Date(fecha),
+        fechaPago: new Date(fecha),
         metodoPago: metodo as any,
-        notas:      data.notes?.trim() ?? null,
+        notas: data.notes?.trim() ?? null,
         nuevoSaldo: 0,
       },
     })
 
     await tx.reserva.update({
       where: { id: reservaId },
-      data:  { saldoPendiente: 0, estado: 'FINALIZADO' },
+      data: { saldoPendiente: 0, estado: 'FINALIZADO' },
     })
 
     const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
@@ -408,24 +408,24 @@ export const addAbonoFromVentas = async (
         data: {
           reservaId,
           clienteId,
-          tipo:        'RESERVA',
-          estado:      'FINALIZADO',
-          montoTotal:  totalValor,
+          tipo: 'RESERVA',
+          estado: 'FINALIZADO',
+          montoTotal: totalValor,
           montoPagado: totalAbonos,
-          fechaVenta:  new Date(),
-          metodoPago:  metodo as any,
+          fechaVenta: new Date(),
+          metodoPago: metodo as any,
         },
       })
     } else {
       await tx.venta.update({
         where: { id: reserva.venta.id },
-        data:  { estado: 'FINALIZADO', montoPagado: totalAbonos },
+        data: { estado: 'FINALIZADO', montoPagado: totalAbonos },
       })
     }
   })
 
   return {
-    message:   'Abono registrado exitosamente. ¡Reserva finalizada y pagada completamente!',
+    message: 'Abono registrado exitosamente. ¡Reserva finalizada y pagada completamente!',
     reservaId,
     monto,
   }
@@ -436,13 +436,13 @@ export const addAbonoFromVentas = async (
 export const getPayableReservations = async (): Promise<any[]> => {
   const reservas = await prisma.reserva.findMany({
     where: {
-      estado:         { in: ['CONFIRMADA'] },
+      estado: { in: ['CONFIRMADA', 'REPROGRAMADA'] },
       saldoPendiente: { gt: 0 },
-      venta:          null,
+      venta: null,
     },
     include: {
       cotizacion: { include: { cliente: { include: { usuario: true } } } },
-      abonos:     true,
+      abonos: true,
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -450,14 +450,14 @@ export const getPayableReservations = async (): Promise<any[]> => {
   return reservas.map(r => {
     const totalAbonado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
     return {
-      id:            String(r.id),
-      clientName:    buildClientName(r.cotizacion?.cliente?.usuario?.nombre, r.cotizacion?.cliente?.apellido),
-      clientId:      String(r.cotizacion?.clienteId ?? ''),
-      eventType:     r.cotizacion?.tipoEvento ?? 'Evento',
-      totalAmount:   Number(r.totalValor),
-      paidAmount:    totalAbonado,
+      id: String(r.id),
+      clientName: buildClientName(r.cotizacion?.cliente?.usuario?.nombre, r.cotizacion?.cliente?.apellido),
+      clientId: String(r.cotizacion?.clienteId ?? ''),
+      eventType: r.cotizacion?.tipoEvento ?? 'Evento',
+      totalAmount: Number(r.totalValor),
+      paidAmount: totalAbonado,
       pendingAmount: Number(r.saldoPendiente),
-      paymentCount:  r.abonos.length,
+      paymentCount: r.abonos.length,
     }
   })
 }

@@ -149,6 +149,15 @@ export const DateDetailsModal: React.FC<Props> = ({
       label:  'Confirmada',
       dot:    'bg-emerald-500',
     }
+    if (s === 'REPROGRAMADA') return {
+      border: 'border-[#0c808b]/30',
+      bg:     'bg-[#e1f8ff]',
+      text:   'text-[#0c808b]',
+      sub:    'text-[#0c808b]',
+      badge:  'bg-white text-[#0c808b] border-[#0c808b]/30',
+      label:  'Reprogramada',
+      dot:    'bg-[#0c808b]',
+    }
     // PENDIENTE
     return {
       border: 'border-amber-300',

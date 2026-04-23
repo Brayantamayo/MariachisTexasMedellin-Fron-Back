@@ -648,16 +648,30 @@ export const ReservaForm: React.FC<Props> = ({
               className="flex-1 py-4 border border-slate-200 rounded-xl text-xs font-bold uppercase text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={blockStatus.isBlocked}
+            <button type="submit" disabled={blockStatus.isBlocked || isSaving}
               className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all transform flex items-center justify-center gap-2
-                ${blockStatus.isBlocked
-                  ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                ${(blockStatus.isBlocked || isSaving)
+                  ? 'bg-slate-400 cursor-not-allowed shadow-none hover:translate-y-0'
                   : isPublic
                     ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-orange-900/20 hover:-translate-y-1'
                     : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-900/20 hover:-translate-y-0.5'
                 }`}>
-              {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Reserva'}
-              {!blockStatus.isBlocked && <ArrowLeft className="rotate-180" size={18} />}
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin w-5 h-5 text-white" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Guardando...
+                </>
+              ) : blockStatus.isBlocked ? (
+                'Fecha Bloqueada'
+              ) : (
+                <>
+                  Guardar Reserva
+                  <ArrowLeft className="rotate-180" size={18} />
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -27,6 +27,7 @@ const getStatusStyle = (status: string) => {
     case 'PENDIENTE':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'CONFIRMADA': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
     case 'ANULADA':    return 'bg-red-50 text-red-600 border-red-100'
+    case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30'
     // Legacy por si acaso
     case 'Pendiente':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'Confirmado': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
@@ -41,6 +42,7 @@ const getStatusLabel = (status: string) => {
     case 'PENDIENTE':  return 'Pendiente'
     case 'CONFIRMADA': return 'Confirmada'
     case 'ANULADA':    return 'Anulada'
+    case 'REPROGRAMADA': return 'Reprogramada'
     default:           return status
   }
 }
@@ -70,7 +72,7 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
   const isActive = !['ANULADA', 'Anulado', 'Finalizado'].includes(reservation.status)
   const isClient = user?.role === UserRole.CLIENTE
   const isAdmin  = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO
-  const canActOnReservation = isActive && (isClient || isAdmin)
+  const canActOnReservation = isActive && isAdmin;
 
   const selectedSongs = allSongs.filter(s => reservation.repertoireIds?.includes(s.id))
 
