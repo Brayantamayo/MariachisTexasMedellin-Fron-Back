@@ -35,6 +35,34 @@ interface ReservaGroup {
   abonos:           Abono[];
 }
 
+const getReservationStatusDisplay = (status: string | undefined, pending: number) => {
+  if (status === 'ANULADA') {
+    return {
+      label: 'Anulada',
+      className: 'bg-red-50 text-red-600 border-red-100',
+    };
+  }
+
+  if (pending <= 0.01) {
+    return {
+      label: 'Pagado',
+      className: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    };
+  }
+
+  if (status === 'CONFIRMADA') {
+    return {
+      label: 'Confirmada',
+      className: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    };
+  }
+
+  return {
+    label: 'Pendiente',
+    className: 'bg-amber-50 text-amber-600 border-amber-100',
+  };
+};
+
 const metodoPagoLabel: Record<string, string> = {
   EFECTIVO:      'Efectivo',
   TRANSFERENCIA: 'Transferencia',
@@ -572,6 +600,7 @@ export const AbonosPage: React.FC = () => {
                   {currentItems.map(group => {
                     const isExpanded  = expandedId === group.reservationId;
                     const isPaid      = group.pending <= 0.01;
+                    const statusDisplay = getReservationStatusDisplay(group.reservationStatus, group.pending);
 
                     return (
                       <React.Fragment key={group.reservationId}>
@@ -592,16 +621,8 @@ export const AbonosPage: React.FC = () => {
                           </td>
                           {/* Estado de la reserva */}
                           <td className="py-4 px-4">
-                            <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${
-                              group.reservationStatus === 'ANULADA'
-                                ? 'bg-red-50 text-red-600 border-red-100'
-                                : group.reservationStatus === 'CONFIRMADA'
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                : 'bg-amber-50 text-amber-600 border-amber-100'
-                            }`}>
-                              {group.reservationStatus === 'ANULADA' ? 'Anulada'
-                               : group.reservationStatus === 'CONFIRMADA' ? 'Confirmada'
-                               : 'Pendiente'}
+                            <span className={`inline-block px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${statusDisplay.className}`}>
+                              {statusDisplay.label}
                             </span>
                           </td>
                           <td className="py-4 px-4">
