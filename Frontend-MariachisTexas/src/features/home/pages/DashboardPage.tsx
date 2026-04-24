@@ -1,723 +1,1430 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { Reservation } from '@/types';
+import { Quotation, Rehearsal, Reservation } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
+import { ventaService, Sale } from '../../ventas/services/ventaService';
+import { cotizacionService } from '../../cotizaciones/services/cotizacionService';
+import { rehearsalService } from '../../ensayos/services/rehearsalService';
 import { clientService } from '../../clientes/services/clientService';
-import api from '@/shared/api/api';
 import {
-    TrendingUp, Users, Calendar, DollarSign, Music,
-    ArrowRight, CheckCircle, X, BarChart2, PieChart as PieChartIcon,
-    Activity, Target, AlertCircle
+  Activity,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarClock,
+  CalendarDays,
+  CalendarRange,
+  CheckCircle2,
+  FileText,
+  HandCoins,
+  LoaderCircle,
+  Mic2,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
-// ─── Paleta ───────────────────────────────────────────────────────────────────
-const RED        = '#ce1126';
-const RED_LIGHT  = '#fef2f2';
-const DARK       = '#0f172a';
-const SLATE      = '#64748b';
-const SLATE_100  = '#f1f5f9';
-const SLATE_200  = '#e2e8f0';
-const GREEN      = '#10b981';
-const AMBER      = '#f59e0b';
-const CHART_COLORS = [RED, DARK, SLATE, AMBER, GREEN];
+const COLORS = {
+  ink: '#111827',
+  slate: '#64748b',
+  slateSoft: '#cbd5e1',
+  slateLine: '#e2e8f0',
+  white: '#ffffff',
+  red: '#ce1126',
+  redSoft: '#fee2e2',
+  amber: '#f59e0b',
+  amberSoft: '#fef3c7',
+  emerald: '#10b981',
+  emeraldSoft: '#d1fae5',
+  blue: '#0f766e',
+  blueSoft: '#ccfbf1',
+};
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (v: number) =>
-    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M`
-    : v >= 1_000   ? `$${Math.round(v / 1_000)}k`
-    : `$${v}`;
+const PIE_COLORS = [COLORS.red, COLORS.ink, COLORS.amber, COLORS.emerald, COLORS.blue];
+const WEEK_DAYS = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+const SLOT_LABELS = ['Manana', 'Tarde', 'Noche', 'Madrugada'];
 
-const today = new Date().toLocaleDateString('es-CO', {
-    weekday: 'long', day: 'numeric', month: 'long'
-});
-
-// ─── KpiCard ──────────────────────────────────────────────────────────────────
-interface KpiCardProps {
-    title: string;
-    value: string;
-    icon: React.ElementType;
-    accent: string;
-    bgAccent: string;
-    trend: string;
-    trendUp?: boolean;
-    onClick?: () => void;
+interface DashboardData {
+  reservations: Reservation[];
+  sales: Sale[];
+  quotations: Quotation[];
+  rehearsals: Rehearsal[];
+  clientsCount: number;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({
-    title, value, icon: Icon, accent, bgAccent, trend, trendUp, onClick
-}) => (
-    <div
-        onClick={onClick}
-        style={{
-            background: '#ffffff',
-            border: `1px solid ${SLATE_200}`,
-            borderRadius: 20,
-            padding: '20px 22px',
-            position: 'relative',
-            overflow: 'hidden',
-            cursor: onClick ? 'pointer' : 'default',
-            transition: 'box-shadow 0.15s, transform 0.15s',
-        }}
-        onMouseEnter={e => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 24px rgba(0,0,0,0.08)';
-            (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-        }}
-        onMouseLeave={e => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-            (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-        }}
-    >
-        {/* accent strip */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: '20px 20px 0 0' }} />
+interface ActivityItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: Date;
+  amount?: number;
+  kind: 'reserva' | 'cotizacion' | 'venta';
+}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, marginTop: 4 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: bgAccent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon size={20} color={accent} />
-            </div>
-            <ArrowRight size={14} color={SLATE} style={{ transform: 'rotate(-45deg)', opacity: 0.4 }} />
-        </div>
+interface AgendaItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: Date;
+  kind: 'reserva' | 'ensayo';
+  status: string;
+}
 
-        <p style={{ fontSize: 10, fontWeight: 700, color: SLATE, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-            {title}
-        </p>
-        <h3 style={{ fontSize: 26, fontWeight: 700, color: DARK, fontVariantNumeric: 'tabular-nums' }}>
-            {value}
-        </h3>
-        <p style={{ fontSize: 10, marginTop: 6, color: trendUp === false ? RED : trendUp ? GREEN : SLATE, fontWeight: 500 }}>
-            {trendUp === true ? '▲ ' : trendUp === false ? '▼ ' : ''}{trend}
-        </p>
-    </div>
-);
+interface AlertItem {
+  id: string;
+  title: string;
+  description: string;
+  tone: 'danger' | 'warning' | 'success';
+}
 
-// ─── SectionCard ──────────────────────────────────────────────────────────────
-const SectionCard: React.FC<{
-    title: string;
-    subtitle?: string;
-    icon?: React.ElementType;
-    iconColor?: string;
-    children: React.ReactNode;
-    style?: React.CSSProperties;
-    dark?: boolean;
-}> = ({ title, subtitle, icon: Icon, iconColor, children, style, dark }) => (
-    <div style={{
-        background: dark ? DARK : '#ffffff',
-        border: `1px solid ${dark ? '#1e293b' : SLATE_200}`,
-        borderRadius: 22,
-        padding: 22,
-        ...style,
-    }}>
-        <div style={{ marginBottom: 16 }}>
-            <h3 style={{
-                fontFamily: 'Georgia, serif',
-                fontSize: 15,
-                fontWeight: 700,
-                color: dark ? '#f1f5f9' : DARK,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 2,
-            }}>
-                {Icon && <Icon size={17} color={iconColor || (dark ? '#94a3b8' : RED)} />}
-                {title}
-            </h3>
-            {subtitle && (
-                <p style={{ fontSize: 11, color: dark ? '#64748b' : SLATE, marginLeft: Icon ? 25 : 0 }}>
-                    {subtitle}
-                </p>
-            )}
-        </div>
-        {children}
-    </div>
-);
-
-// ─── Custom Tooltip ───────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div style={{
-            background: '#ffffff',
-            border: `1px solid ${SLATE_200}`,
-            borderRadius: 12,
-            padding: '10px 14px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
-            fontSize: 12,
-        }}>
-            <p style={{ fontWeight: 700, color: DARK, marginBottom: 4 }}>{label}</p>
-            {payload.map((p: any, i: number) => (
-                <p key={i} style={{ color: p.color, marginBottom: 2 }}>
-                    {p.name}: {typeof p.value === 'number' && p.name?.toLowerCase().includes('ingreso')
-                        ? fmt(p.value) : p.value}
-                </p>
-            ))}
-        </div>
-    );
+const startOfToday = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-// ─── GoalBar ─────────────────────────────────────────────────────────────────
-const GoalBar: React.FC<{ label: string; pct: number; color: string }> = ({ label, pct, color }) => {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const t = setTimeout(() => {
-            if (ref.current) ref.current.style.width = `${pct}%`;
-        }, 300);
-        return () => clearTimeout(t);
-    }, [pct]);
-
-    return (
-        <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: DARK, marginBottom: 5 }}>
-                <span>{label}</span>
-                <span style={{ color: SLATE }}>{pct}%</span>
-            </div>
-            <div style={{ height: 6, background: SLATE_100, borderRadius: 6, overflow: 'hidden' }}>
-                <div
-                    ref={ref}
-                    style={{ height: '100%', width: '0%', background: color, borderRadius: 6, transition: 'width 1s ease' }}
-                />
-            </div>
-        </div>
-    );
+const startOfMonth = (base = new Date(), offset = 0) => {
+  const date = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-// ─── RepertoireBar ────────────────────────────────────────────────────────────
-const RepertoireBar: React.FC<{ name: string; author: string; count: number; pct: number; color: string }> = ({
-    name, author, count, pct, color
-}) => {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const t = setTimeout(() => {
-            if (ref.current) ref.current.style.width = `${pct}%`;
-        }, 400);
-        return () => clearTimeout(t);
-    }, [pct]);
-
-    return (
-        <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 5 }}>
-                <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#f1f5f9' }}>{name}</p>
-                    <p style={{ fontSize: 10, color: '#64748b' }}>{author}</p>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color }}>{count}</span>
-            </div>
-            <div style={{ height: 4, background: '#1e293b', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                    ref={ref}
-                    style={{ height: '100%', width: '0%', background: color, borderRadius: 4, transition: 'width 0.9s ease' }}
-                />
-            </div>
-        </div>
-    );
+const endOfMonth = (base = new Date(), offset = 0) => {
+  const date = new Date(base.getFullYear(), base.getMonth() + offset + 1, 0);
+  date.setHours(23, 59, 59, 999);
+  return date;
 };
 
-// ─── EventBadge ───────────────────────────────────────────────────────────────
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-    const isConfirmed = status === 'Confirmado';
-    return (
-        <span style={{
-            fontSize: 9,
-            fontWeight: 700,
-            padding: '3px 8px',
-            borderRadius: 20,
-            background: isConfirmed ? '#ecfdf5' : '#fffbeb',
-            color: isConfirmed ? '#059669' : '#d97706',
-            whiteSpace: 'nowrap',
-            letterSpacing: '0.04em',
-        }}>
-            {status}
-        </span>
-    );
+const startOfWeek = (base: Date) => {
+  const date = new Date(base);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-// ─── Heatmap ─────────────────────────────────────────────────────────────────
-const DAYS  = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const SLOTS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
-const OCC   = [
-    [0.1, 0.4, 0.9, 0.7, 0.6, 1.0, 0.8],
-    [0.2, 0.5, 0.7, 0.6, 0.8, 0.9, 0.7],
-    [0.0, 0.2, 0.8, 0.5, 0.9, 1.0, 0.9],
-    [0.0, 0.0, 0.1, 0.0, 0.1, 0.3, 0.2],
-];
-const heatColor = (v: number) =>
-    v === 0 ? '#f8fafc' : v < 0.4 ? '#fef2f2' : v < 0.7 ? '#fecaca' : v < 0.9 ? '#f87171' : RED;
+const endOfWeek = (base: Date) => {
+  const date = startOfWeek(base);
+  date.setDate(date.getDate() + 6);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
 
-const Heatmap: React.FC = () => (
-    <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: 5, minWidth: 500 }}>
-            {/* header */}
-            <div />
-            {DAYS.map(d => (
-                <div key={d} style={{ fontSize: 10, fontWeight: 700, color: SLATE, textAlign: 'center', paddingBottom: 4 }}>
-                    {d}
-                </div>
-            ))}
-            {/* rows */}
-            {SLOTS.map((slot, si) => (
-                <React.Fragment key={slot}>
-                    <div style={{ fontSize: 10, color: SLATE, display: 'flex', alignItems: 'center' }}>{slot}</div>
-                    {DAYS.map((_, di) => {
-                        const v = OCC[si][di];
-                        return (
-                            <div
-                                key={di}
-                                title={`${slot} ${DAYS[di]}: ${Math.round(v * 100)}% ocupado`}
-                                style={{
-                                    height: 32,
-                                    borderRadius: 7,
-                                    background: heatColor(v),
-                                    cursor: 'pointer',
-                                    transition: 'opacity 0.15s',
-                                    border: `1px solid ${SLATE_200}`,
-                                }}
-                                onMouseEnter={e => (e.currentTarget.style.opacity = '0.7')}
-                                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                            />
-                        );
-                    })}
-                </React.Fragment>
-            ))}
-        </div>
-        {/* legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 10, color: SLATE }}>
-            <span>Libre</span>
-            {['#fef2f2', '#fecaca', '#f87171', RED].map(c => (
-                <div key={c} style={{ width: 14, height: 14, borderRadius: 3, background: c, border: `1px solid ${SLATE_200}` }} />
-            ))}
-            <span>Lleno</span>
-        </div>
-    </div>
-);
+const shortCurrency = (value: number) => {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}k`;
+  return `$${Math.round(value).toLocaleString('es-CO')}`;
+};
 
-// ─── ProjectionSlider ─────────────────────────────────────────────────────────
-const ProjectionSlider: React.FC = () => {
-    const [events,  setEvents]  = useState(20);
-    const [ticket,  setTicket]  = useState(700_000);
-    const [rate,    setRate]    = useState(70);
+const fullCurrency = (value: number) =>
+  `$${Math.round(value || 0).toLocaleString('es-CO')}`;
 
-    const result = Math.round(events * ticket * (rate / 100));
+const formatPercent = (value: number) => `${Math.round(value)}%`;
 
-    const SliderRow: React.FC<{
-        label: string;
-        min: number; max: number; step: number;
-        value: number; onChange: (v: number) => void;
-        display: string;
-    }> = ({ label, min, max, step, value, onChange, display }) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-            <span style={{ fontSize: 11, color: SLATE, width: 100, flexShrink: 0 }}>{label}</span>
-            <input
-                type="range" min={min} max={max} step={step} value={value}
-                onChange={e => onChange(+e.target.value)}
-                style={{ flex: 1, accentColor: RED, cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: 11, fontWeight: 700, color: DARK, minWidth: 44, textAlign: 'right' }}>
-                {display}
+const formatCompactDate = (date: Date) =>
+  new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+
+const formatFullDate = (date: Date) =>
+  new Intl.DateTimeFormat('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date);
+
+const normalizeReservationStatus = (status: string) => {
+  const normalized = (status || '').trim().toUpperCase();
+  if (normalized === 'CONFIRMADO' || normalized === 'FINALIZADO') return 'CONFIRMADA';
+  if (normalized === 'ANULADO') return 'ANULADA';
+  if (normalized === 'REPROGRAMADO') return 'REPROGRAMADA';
+  return normalized || 'PENDIENTE';
+};
+
+const normalizeQuotationStatus = (status: string) => (status || '').trim().toUpperCase();
+
+const toDateTime = (date: string, time?: string) => {
+  const safeTime = time && time.length >= 5 ? time.slice(0, 5) : '00:00';
+  return new Date(`${date}T${safeTime}:00`);
+};
+
+const reservationDate = (reservation: Reservation) =>
+  toDateTime(reservation.eventDate, reservation.startTime || reservation.eventTime);
+
+const rehearsalDate = (rehearsal: Rehearsal) =>
+  toDateTime(rehearsal.date || rehearsal.fecha || '', rehearsal.time || rehearsal.hora);
+
+const getReservationPending = (reservation: Reservation) =>
+  Math.max(0, Number(reservation.pendingBalance ?? reservation.totalAmount - reservation.paidAmount));
+
+const getMonthLabel = (date: Date) =>
+  date.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '');
+
+const getWeekdayIndex = (date: Date) => (date.getDay() + 6) % 7;
+
+const getSlotIndex = (hour: number) => {
+  if (hour >= 6 && hour < 12) return 0;
+  if (hour >= 12 && hour < 18) return 1;
+  if (hour >= 18 && hour < 24) return 2;
+  return 3;
+};
+
+const getMetricDelta = (current: number, previous: number) => {
+  if (previous <= 0) {
+    if (current <= 0) return 0;
+    return 100;
+  }
+  return ((current - previous) / previous) * 100;
+};
+
+const tooltipFormatter = (value: number, name: string) => {
+  if (name.toLowerCase().includes('ingresos') || name.toLowerCase().includes('ticket')) {
+    return [fullCurrency(value), name];
+  }
+  return [value, name];
+};
+
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl shadow-slate-900/10">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        {payload.map((entry: any, index: number) => (
+          <div key={`${entry.name}-${index}`} className="flex items-center justify-between gap-4 text-xs">
+            <span className="flex items-center gap-2 text-slate-500">
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              {entry.name}
             </span>
-        </div>
-    );
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <SliderRow label="Eventos / mes" min={5} max={40} step={1} value={events} onChange={setEvents} display={`${events}`} />
-            <SliderRow label="Ticket promedio" min={200_000} max={2_000_000} step={50_000} value={ticket} onChange={setTicket} display={fmt(ticket)} />
-            <SliderRow label="% Confirmación" min={40} max={100} step={1} value={rate} onChange={setRate} display={`${rate}%`} />
-
-            <div style={{
-                marginTop: 18,
-                background: DARK,
-                borderRadius: 14,
-                padding: '18px 20px',
-                textAlign: 'center',
-            }}>
-                <div style={{ fontSize: 28, fontWeight: 700, color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(result)}
-                </div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Proyección mensual estimada</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                    {events} eventos · {rate}% confirmación
-                </div>
-            </div>
-        </div>
-    );
+            <span className="font-bold text-slate-800">
+              {tooltipFormatter(Number(entry.value), entry.name)[0]}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
-// ─── DashboardPage ────────────────────────────────────────────────────────────
+const DashboardCard: React.FC<{
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+}> = ({ title, subtitle, children, actions }) => (
+  <section className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-6">
+    <div className="mb-5 flex items-start justify-between gap-4">
+      <div>
+        <h3 className="text-sm font-black uppercase tracking-[0.22em] text-slate-800">{title}</h3>
+        {subtitle && <p className="mt-2 text-sm text-slate-500">{subtitle}</p>}
+      </div>
+      {actions}
+    </div>
+    {children}
+  </section>
+);
+
+const TrendBadge: React.FC<{ value: number; suffix: string }> = ({ value, suffix }) => {
+  const positive = value >= 0;
+  const Icon = positive ? ArrowUpRight : ArrowDownRight;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${
+        positive
+          ? 'bg-emerald-500/10 text-emerald-600'
+          : 'bg-red-500/10 text-red-600'
+      }`}
+    >
+      <Icon size={13} />
+      {Math.abs(Math.round(value))}% {suffix}
+    </span>
+  );
+};
+
+const StatCard: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: 'red' | 'amber' | 'emerald' | 'slate';
+  meta: React.ReactNode;
+}> = ({ icon: Icon, label, value, tone, meta }) => {
+  const tones = {
+    red: 'from-red-500/15 to-red-500/5 text-red-600 border-red-200/60',
+    amber: 'from-amber-500/15 to-amber-500/5 text-amber-600 border-amber-200/60',
+    emerald: 'from-emerald-500/15 to-emerald-500/5 text-emerald-600 border-emerald-200/60',
+    slate: 'from-slate-700/10 to-slate-500/5 text-slate-700 border-slate-200/80',
+  };
+
+  return (
+    <div className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl border bg-gradient-to-br ${tones[tone]}`}
+        >
+          <Icon size={20} />
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">{label}</p>
+          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">{value}</p>
+        </div>
+      </div>
+      <div className="mt-4">{meta}</div>
+    </div>
+  );
+};
+
+const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' | 'agenda' }> = ({
+  status,
+  kind,
+}) => {
+  const normalized =
+    kind === 'quotation' ? normalizeQuotationStatus(status) : normalizeReservationStatus(status);
+
+  const styles =
+    normalized === 'CONFIRMADA' || normalized === 'CONVERTIDA'
+      ? 'bg-emerald-500/10 text-emerald-600'
+      : normalized === 'ANULADA'
+      ? 'bg-slate-200/70 text-slate-600'
+      : normalized === 'REPROGRAMADA'
+      ? 'bg-cyan-500/10 text-cyan-700'
+      : normalized === 'PENDIENTE' || normalized === 'EN_ESPERA'
+      ? 'bg-amber-500/10 text-amber-600'
+      : 'bg-slate-100 text-slate-600';
+
+  const label =
+    normalized === 'CONFIRMADA'
+      ? 'Confirmada'
+      : normalized === 'CONVERTIDA'
+      ? 'Convertida'
+      : normalized === 'REPROGRAMADA'
+      ? 'Reprogramada'
+      : normalized === 'ANULADA'
+      ? 'Anulada'
+      : normalized === 'EN_ESPERA'
+      ? 'En espera'
+      : normalized === 'LISTO'
+      ? 'Listo'
+      : normalized === 'PENDIENTE'
+      ? 'Pendiente'
+      : status;
+
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${styles}`}>
+      {label}
+    </span>
+  );
+};
+
+const Heatmap: React.FC<{ matrix: number[][] }> = ({ matrix }) => {
+  const max = Math.max(1, ...matrix.flat());
+
+  const getCellClass = (value: number) => {
+    const ratio = value / max;
+    if (value === 0) return 'bg-slate-100 text-slate-400';
+    if (ratio < 0.35) return 'bg-red-100 text-red-500';
+    if (ratio < 0.7) return 'bg-red-200 text-red-600';
+    return 'bg-[#ce1126] text-white';
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[620px] grid-cols-[88px_repeat(7,minmax(0,1fr))] gap-2">
+        <div />
+        {WEEK_DAYS.map(day => (
+          <div
+            key={day}
+            className="pb-1 text-center text-[11px] font-black uppercase tracking-[0.18em] text-slate-400"
+          >
+            {day}
+          </div>
+        ))}
+        {SLOT_LABELS.map((slot, rowIndex) => (
+          <React.Fragment key={slot}>
+            <div className="flex items-center text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {slot}
+            </div>
+            {WEEK_DAYS.map((_, colIndex) => {
+              const value = matrix[rowIndex]?.[colIndex] ?? 0;
+              return (
+                <div
+                  key={`${slot}-${colIndex}`}
+                  className={`flex h-14 items-center justify-center rounded-2xl border border-white/70 text-sm font-black shadow-sm ${getCellClass(
+                    value
+                  )}`}
+                  title={`${slot} ${WEEK_DAYS[colIndex]}: ${value} registro(s)`}
+                >
+                  {value}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const LoadingDashboard = () => (
+  <div className="space-y-6">
+    <div className="rounded-[2.25rem] border border-white/60 bg-slate-950 px-6 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.2)]">
+      <div className="h-4 w-44 animate-pulse rounded-full bg-white/10" />
+      <div className="mt-4 h-12 w-80 animate-pulse rounded-full bg-white/10" />
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-28 animate-pulse rounded-[1.5rem] bg-white/8" />
+        ))}
+      </div>
+    </div>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-40 animate-pulse rounded-[1.75rem] border border-white/60 bg-white/70"
+        />
+      ))}
+    </div>
+    <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-[360px] animate-pulse rounded-[2rem] border border-white/60 bg-white/70"
+        />
+      ))}
+    </div>
+  </div>
+);
+
 export const DashboardPage: React.FC = () => {
-    const { user } = useAuth();
+  const { user } = useAuth();
+  const [dashboard, setDashboard] = useState<DashboardData>({
+    reservations: [],
+    sales: [],
+    quotations: [],
+    rehearsals: [],
+    clientsCount: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const [stats, setStats] = useState({
-        income: 0,
-        activeReservations: 0,
-        pendingBalance: 0,
-        totalClients: 0,
-        upcomingEvents:    [] as Reservation[],
-        recentActivity:    [] as Reservation[],
-        monthlyIncomeData: [] as any[],
-        eventTypeData:     [] as any[],
-        weeklyTrendData:   [] as any[],
-    });
-    const [loading,          setLoading         ] = useState(true);
-    const [showToast,        setShowToast        ] = useState(false);
-    const [eventFilter,      setEventFilter      ] = useState<'all' | 'Confirmado' | 'Pendiente'>('all');
+  useEffect(() => {
+    let cancelled = false;
 
-    // ── Carga de datos ────────────────────────────────────────────────────────
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const reservations = await reservaService.getReservations();
-                const rawSales     = await api.get('/ventas');
-                const sales        = Array.isArray(rawSales.data) ? rawSales.data : (rawSales.data?.data ?? []);
-                const cr           = await clientService.getClients();
-                const clients      = Array.isArray(cr) ? cr : cr.clients;
+    const loadDashboard = async () => {
+      setLoading(true);
+      setErrorMessage(null);
 
-                const activeRes   = reservations.filter(r => r.status === 'Confirmado' || r.status === 'Pendiente');
-                const totalIncome = sales.reduce((a: number, s: any) => a + s.amount, 0);
-                const pending     = activeRes.reduce((a, r) => a + (r.totalAmount - r.paidAmount), 0);
+      const results = await Promise.allSettled([
+        reservaService.getReservations(),
+        ventaService.getSales(),
+        cotizacionService.getQuotations(),
+        rehearsalService.getRehearsals(),
+        clientService.getClients(),
+      ]);
 
-                // Últimos 6 meses
-                const last6 = Array.from({ length: 6 }, (_, i) => {
-                    const d = new Date();
-                    d.setDate(1);
-                    d.setMonth(d.getMonth() - i);
-                    return { label: d.toLocaleString('es-CO', { month: 'short' }), month: d.getMonth(), year: d.getFullYear() };
-                }).reverse();
+      if (cancelled) return;
 
-                const monthlyIncomeData = last6.map(m => ({
-                    name: m.label,
-                    ingresos: sales
-                        .filter((s: any) => { const d = new Date(s.date); return d.getMonth() === m.month && d.getFullYear() === m.year; })
-                        .reduce((a: number, s: any) => a + s.amount, 0),
-                }));
+      const reservations = results[0].status === 'fulfilled' ? results[0].value : [];
+      const sales = results[1].status === 'fulfilled' ? results[1].value : [];
+      const quotations = results[2].status === 'fulfilled' ? results[2].value : [];
+      const rehearsals = results[3].status === 'fulfilled' ? results[3].value : [];
+      const clientsCount =
+        results[4].status === 'fulfilled' ? results[4].value.clients.length : 0;
 
-                // Tipos de evento
-                const typesCount: Record<string, number> = {};
-                reservations.forEach(r => { const t = r.eventType || 'Otro'; typesCount[t] = (typesCount[t] || 0) + 1; });
-                const eventTypeData = Object.entries(typesCount).map(([name, value]) => ({ name, value }));
+      const failures = results.filter(result => result.status === 'rejected').length;
 
-                // Tendencia semanal
-                const weeklyTrendData = Array.from({ length: 4 }, (_, i) => {
-                    const start = new Date();
-                    start.setDate(start.getDate() - (i * 7) - start.getDay());
-                    start.setHours(0, 0, 0, 0);
-                    const end = new Date(start);
-                    end.setDate(end.getDate() + 6);
-                    end.setHours(23, 59, 59, 999);
-                    const week = reservations.filter(r => { const d = new Date(r.createdAt); return d >= start && d <= end; });
-                    return {
-                        name: `Sem ${4 - i}`,
-                        confirmadas: week.filter(r => r.status === 'Confirmado').length,
-                        pendientes:  week.filter(r => r.status === 'Pendiente').length,
-                    };
-                }).reverse();
+      setDashboard({
+        reservations,
+        sales,
+        quotations,
+        rehearsals,
+        clientsCount,
+      });
 
-                const sorted = [...activeRes].sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+      if (failures > 0) {
+        setErrorMessage(
+          'Algunos módulos no respondieron. El dashboard se cargó con la información disponible.'
+        );
+      }
 
-                setStats({
-                    income: totalIncome,
-                    activeReservations: activeRes.length,
-                    pendingBalance: pending,
-                    totalClients: clients.length,
-                    upcomingEvents: sorted.slice(0, 8),
-                    recentActivity: reservations.slice(0, 5),
-                    monthlyIncomeData,
-                    eventTypeData,
-                    weeklyTrendData,
-                });
-            } finally {
-                setLoading(false);
-                setTimeout(() => setShowToast(true), 500);
-                setTimeout(() => setShowToast(false), 5000);
-            }
-        };
-        load();
-    }, [user]);
+      setLoading(false);
+      setRefreshing(false);
+    };
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
-    const WelcomeToast = () => createPortal(
-        <div style={{
-            position: 'fixed', top: 24, right: 24, zIndex: 200,
-            transition: 'all 0.4s ease',
-            transform: showToast ? 'translateY(0)' : 'translateY(-12px)',
-            opacity:   showToast ? 1 : 0,
-            pointerEvents: showToast ? 'auto' : 'none',
-        }}>
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '14px 20px', borderRadius: 18,
-                background: '#ffffff',
-                border: `1px solid ${SLATE_200}`,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                minWidth: 300,
-            }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CheckCircle size={18} color={GREEN} />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 700, fontSize: 13, color: DARK }}>¡Bienvenido, {user?.name}!</p>
-                    <p style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>Sesión iniciada correctamente.</p>
-                </div>
-                <button onClick={() => setShowToast(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 8, color: SLATE }}>
-                    <X size={16} />
-                </button>
-            </div>
-        </div>,
-        document.body
-    );
+    loadDashboard();
 
-    // ── Loading ───────────────────────────────────────────────────────────────
-    if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: SLATE, fontSize: 14 }}>
-            Cargando tablero…
-        </div>
-    );
+    return () => {
+      cancelled = true;
+    };
+  }, [user, reloadToken]);
 
-    // ── Filtered events ───────────────────────────────────────────────────────
-    const filteredEvents = eventFilter === 'all'
-        ? stats.upcomingEvents
-        : stats.upcomingEvents.filter(e => e.status === eventFilter);
+  const today = startOfToday();
+  const currentMonthStart = startOfMonth();
+  const currentMonthEnd = endOfMonth();
+  const previousMonthStart = startOfMonth(new Date(), -1);
+  const previousMonthEnd = endOfMonth(new Date(), -1);
+  const next14Days = new Date(today);
+  next14Days.setDate(next14Days.getDate() + 14);
+  const next30Days = new Date(today);
+  next30Days.setDate(next30Days.getDate() + 30);
+  const next60Days = new Date(today);
+  next60Days.setDate(next60Days.getDate() + 60);
 
-    // ── Render ────────────────────────────────────────────────────────────────
+  const reservations = dashboard.reservations.map(reservation => ({
+    ...reservation,
+    normalizedStatus: normalizeReservationStatus(reservation.status),
+    pendingValue: getReservationPending(reservation),
+    eventDateTime: reservationDate(reservation),
+  }));
+
+  const quotations = dashboard.quotations.map(quotation => ({
+    ...quotation,
+    normalizedStatus: normalizeQuotationStatus(quotation.status),
+    eventDateTime: toDateTime(quotation.eventDate, quotation.startTime),
+  }));
+
+  const rehearsals = dashboard.rehearsals.map(rehearsal => ({
+    ...rehearsal,
+    normalizedStatus: (rehearsal.status || 'PENDIENTE').toUpperCase(),
+    eventDateTime: rehearsalDate(rehearsal),
+  }));
+
+  const activeReservations = reservations.filter(reservation =>
+    ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'].includes(reservation.normalizedStatus)
+  );
+  const futureReservations = activeReservations
+    .filter(reservation => reservation.eventDateTime >= today)
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+  const pendingQuotes = quotations.filter(quotation => quotation.normalizedStatus === 'EN_ESPERA');
+  const convertedQuotes = quotations.filter(
+    quotation => quotation.normalizedStatus === 'CONVERTIDA'
+  );
+  const pendingRehearsals = rehearsals
+    .filter(rehearsal => rehearsal.normalizedStatus === 'PENDIENTE')
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+
+  const currentMonthRevenue = dashboard.sales
+    .filter(sale => {
+      const saleDate = new Date(sale.date);
+      return saleDate >= currentMonthStart && saleDate <= currentMonthEnd;
+    })
+    .reduce((total, sale) => total + Number(sale.amount || 0), 0);
+
+  const previousMonthRevenue = dashboard.sales
+    .filter(sale => {
+      const saleDate = new Date(sale.date);
+      return saleDate >= previousMonthStart && saleDate <= previousMonthEnd;
+    })
+    .reduce((total, sale) => total + Number(sale.amount || 0), 0);
+
+  const currentMonthReservationsCount = activeReservations.filter(reservation => {
+    return reservation.eventDateTime >= currentMonthStart && reservation.eventDateTime <= currentMonthEnd;
+  }).length;
+
+  const previousMonthReservationsCount = activeReservations.filter(reservation => {
     return (
-        <div style={{ background: '#ffffff', minHeight: '100vh', padding: '32px 0 40px' }}>
-            <WelcomeToast />
-
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-                {/* ── HEADER ─────────────────────────────────────────────────────── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 700, color: DARK }}>
-                            Hola, {user?.name} ✦
-                        </h1>
-                        <p style={{ fontSize: 13, color: SLATE, marginTop: 4 }}>
-                            Resumen financiero y operativo de hoy
-                        </p>
-                    </div>
-                    <div style={{
-                        background: DARK, color: '#ffffff',
-                        padding: '8px 18px', borderRadius: 24,
-                        fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
-                        textTransform: 'capitalize',
-                    }}>
-                        {today}
-                    </div>
-                </div>
-
-                {/* ── KPIs ───────────────────────────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                    <KpiCard title="Ingresos Mes"     value={fmt(stats.income)}                    icon={TrendingUp} accent={RED}   bgAccent={RED_LIGHT}  trend="12% vs mes anterior"    trendUp={true} />
-                    <KpiCard title="Reservas Activas" value={stats.activeReservations.toString()}  icon={Calendar}   accent={DARK}  bgAccent={SLATE_100}  trend="3 eventos esta semana"              />
-                    <KpiCard title="Saldo por Cobrar" value={fmt(stats.pendingBalance)}            icon={AlertCircle}accent={AMBER} bgAccent="#fffbeb"    trend="Gestión requerida"      trendUp={false}/>
-                    <KpiCard title="Total Clientes"   value={stats.totalClients.toString()}        icon={Users}      accent={GREEN} bgAccent="#ecfdf5"    trend="+2 nuevos esta semana"  trendUp={true} />
-                </div>
-
-                {/* ── ROW 1: Barras + Donut ──────────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Ingresos mensuales" subtitle="Últimos 6 meses de ventas" icon={BarChart2} iconColor={RED}>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={stats.monthlyIncomeData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_100} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 11 }} dy={8} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} tickFormatter={fmt} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar
-                                    dataKey="ingresos"
-                                    name="Ingresos"
-                                    radius={[6, 6, 0, 0]}
-                                    barSize={36}
-                                >
-                                    {stats.monthlyIncomeData.map((_: any, i: number) => (
-                                        <Cell
-                                            key={i}
-                                            fill={i === stats.monthlyIncomeData.length - 1 ? RED : SLATE_200}
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-
-                    <SectionCard title="Tipos de evento" subtitle="Distribución por categoría" icon={PieChartIcon} iconColor={SLATE}>
-                        {/* leyenda custom */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                            {stats.eventTypeData.map((d: any, i: number) => (
-                                <span key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: SLATE }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], display: 'inline-block' }} />
-                                    {d.name} {d.value}
-                                </span>
-                            ))}
-                        </div>
-                        <ResponsiveContainer width="100%" height={210}>
-                            <PieChart>
-                                <Pie data={stats.eventTypeData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value">
-                                    {stats.eventTypeData.map((_: any, i: number) => (
-                                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(v: any, name: any) => [v, name]} contentStyle={{ borderRadius: 12, border: `1px solid ${SLATE_200}`, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-                </div>
-
-                {/* ── ROW 2: Area + Metas + Repertorio ──────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Tendencia de reservas" subtitle="Confirmadas vs pendientes por semana" icon={Activity} iconColor={GREEN}>
-                        <ResponsiveContainer width="100%" height={175}>
-                            <AreaChart data={stats.weeklyTrendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="gConf" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%"  stopColor={RED}  stopOpacity={0.12} />
-                                        <stop offset="95%" stopColor={RED}  stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="gPend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%"  stopColor={DARK} stopOpacity={0.08} />
-                                        <stop offset="95%" stopColor={DARK} stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} dy={6} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} />
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_100} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="confirmadas" name="Confirmadas" stroke={RED}  strokeWidth={2.5} fill="url(#gConf)" />
-                                <Area type="monotone" dataKey="pendientes"  name="Pendientes"  stroke={DARK} strokeWidth={2}   fill="url(#gPend)" />
-                                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-
-                    <SectionCard title="Metas del mes" subtitle="Progreso hacia objetivos" icon={Target} iconColor={AMBER}>
-                        <GoalBar label="Ingresos mensuales"   pct={84} color={RED}   />
-                        <GoalBar label="Nuevos clientes"      pct={66} color={DARK}  />
-                        <GoalBar label="Reservas confirmadas" pct={75} color={GREEN} />
-                        <GoalBar label="NPS satisfacción"     pct={92} color={AMBER} />
-                    </SectionCard>
-
-                    <SectionCard title="Top repertorio" subtitle="Canciones más solicitadas" icon={Music} dark>
-                        {[
-                            { name: 'El Rey',          author: 'José A. Jiménez',    count: 98, pct: 95, color: RED      },
-                            { name: 'Si Nos Dejan',    author: 'José A. Jiménez',    count: 85, pct: 80, color: '#64748b' },
-                            { name: 'Hermoso Cariño',  author: 'Vicente Fernández',  count: 72, pct: 65, color: '#475569' },
-                            { name: 'Volver, Volver',  author: 'Vicente Fernández',  count: 61, pct: 55, color: '#334155' },
-                            { name: 'Cielito Lindo',   author: 'Quirino Mendoza',    count: 54, pct: 48, color: '#1e293b' },
-                        ].map(s => <RepertoireBar key={s.name} {...s} />)}
-                    </SectionCard>
-                </div>
-
-                {/* ── ROW 3: Eventos + Proyección ────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Próximos eventos" subtitle="Ordenados por fecha" icon={Calendar} iconColor={DARK}>
-                        {/* Tabs */}
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                            {(['all', 'Confirmado', 'Pendiente'] as const).map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setEventFilter(f)}
-                                    style={{
-                                        fontSize: 11, fontWeight: 600,
-                                        padding: '5px 13px', borderRadius: 20,
-                                        border: `1px solid ${eventFilter === f ? DARK : SLATE_200}`,
-                                        background: eventFilter === f ? DARK : 'transparent',
-                                        color: eventFilter === f ? '#fff' : SLATE,
-                                        cursor: 'pointer', transition: 'all 0.15s',
-                                    }}
-                                >
-                                    {f === 'all' ? 'Todos' : f}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
-                            {filteredEvents.length === 0 && (
-                                <p style={{ color: SLATE, fontSize: 13, textAlign: 'center', padding: 24 }}>Sin eventos</p>
-                            )}
-                            {filteredEvents.map(ev => (
-                                <div key={ev.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10,
-                                    padding: '10px 14px', borderRadius: 13,
-                                    background: SLATE_100, border: `1px solid ${SLATE_200}`,
-                                }}>
-                                    <div style={{
-                                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                                        background: ev.status === 'Confirmado' ? GREEN : AMBER,
-                                    }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <p style={{ fontSize: 12, fontWeight: 600, color: DARK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {ev.eventType} — {ev.clientName}
-                                        </p>
-                                        <p style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>
-                                            {new Date(ev.eventDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                                        </p>
-                                    </div>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: DARK, whiteSpace: 'nowrap' }}>
-                                        {fmt(ev.totalAmount)}
-                                    </span>
-                                    <StatusBadge status={ev.status} />
-                                </div>
-                            ))}
-                        </div>
-                    </SectionCard>
-
-                    <SectionCard title="Proyección de ingresos" subtitle="Simulador interactivo de escenarios" icon={TrendingUp} iconColor={GREEN}>
-                        <ProjectionSlider />
-                    </SectionCard>
-                </div>
-
-                {/* ── HEATMAP ────────────────────────────────────────────────────── */}
-                <SectionCard title="Mapa de calor — Disponibilidad semanal" subtitle="Ocupación por día y franja horaria · últimas 4 semanas" icon={BarChart2} iconColor={RED}>
-                    <Heatmap />
-                </SectionCard>
-
-                {/* ── ACTIVIDAD RECIENTE ─────────────────────────────────────────── */}
-                <SectionCard title="Actividad reciente" subtitle="Últimas reservas registradas" icon={Activity} iconColor={SLATE}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {stats.recentActivity.length === 0 && (
-                            <p style={{ color: SLATE, fontSize: 13, textAlign: 'center', padding: 24 }}>Sin actividad reciente.</p>
-                        )}
-                        {stats.recentActivity.map(r => (
-                            <div key={r.id} style={{
-                                display: 'flex', alignItems: 'center', gap: 14,
-                                padding: '12px 16px', borderRadius: 14,
-                                background: SLATE_100, border: `1px solid ${SLATE_200}`,
-                            }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: '50%',
-                                    background: '#ffffff', border: `1px solid ${SLATE_200}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 13, fontWeight: 700, color: DARK, flexShrink: 0,
-                                }}>
-                                    {r.clientName.charAt(0)}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p style={{ fontSize: 13, fontWeight: 600, color: DARK }}>
-                                        {r.eventType} — {r.clientName}
-                                    </p>
-                                    <p style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>
-                                        {new Date(r.createdAt).toLocaleDateString('es-CO')} · {r.status}
-                                    </p>
-                                </div>
-                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                    <p style={{ fontSize: 13, fontWeight: 700, color: DARK }}>{fmt(r.totalAmount)}</p>
-                                    <p style={{ fontSize: 10, color: SLATE, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                        Valor total
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </SectionCard>
-
-            </div>
-        </div>
+      reservation.eventDateTime >= previousMonthStart &&
+      reservation.eventDateTime <= previousMonthEnd
     );
+  }).length;
+
+  const receivableBalance = activeReservations.reduce(
+    (total, reservation) => total + reservation.pendingValue,
+    0
+  );
+
+  const pipelineValue =
+    pendingQuotes.reduce((total, quotation) => total + Number(quotation.totalAmount || 0), 0) +
+    receivableBalance;
+
+  const paidReservationsCount = activeReservations.filter(
+    reservation => reservation.pendingValue <= 0.01
+  ).length;
+  const paymentHealth = activeReservations.length
+    ? (paidReservationsCount / activeReservations.length) * 100
+    : 0;
+  const quoteConversion = quotations.length
+    ? (convertedQuotes.length / quotations.length) * 100
+    : 0;
+  const averageTicket = dashboard.sales.length
+    ? dashboard.sales.reduce((sum, sale) => sum + Number(sale.amount || 0), 0) /
+      dashboard.sales.length
+    : 0;
+
+  const revenueDelta = getMetricDelta(currentMonthRevenue, previousMonthRevenue);
+  const reservationsDelta = getMetricDelta(
+    currentMonthReservationsCount,
+    previousMonthReservationsCount
+  );
+
+  const monthlyRevenueData = Array.from({ length: 6 }, (_, index) => {
+    const offset = index - 5;
+    const start = startOfMonth(new Date(), offset);
+    const end = endOfMonth(new Date(), offset);
+    const label = getMonthLabel(start);
+
+    const ingresos = dashboard.sales
+      .filter(sale => {
+        const saleDate = new Date(sale.date);
+        return saleDate >= start && saleDate <= end;
+      })
+      .reduce((total, sale) => total + Number(sale.amount || 0), 0);
+
+    const reservas = reservations.filter(
+      reservation => reservation.createdAt && new Date(reservation.createdAt) >= start && new Date(reservation.createdAt) <= end
+    ).length;
+
+    return { name: label, ingresos, reservas };
+  });
+
+  const weeklyFlowData = Array.from({ length: 8 }, (_, index) => {
+    const start = startOfWeek(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (7 * (7 - index))));
+    const end = endOfWeek(start);
+    const label = `${formatCompactDate(start)} - ${formatCompactDate(end)}`;
+
+    const cotizaciones = quotations.filter(quotation => {
+      const createdAt = new Date(quotation.createdAt);
+      return createdAt >= start && createdAt <= end;
+    }).length;
+
+    const reservasSemana = reservations.filter(reservation => {
+      const createdAt = new Date(reservation.createdAt);
+      return createdAt >= start && createdAt <= end;
+    }).length;
+
+    const ventasSemana = dashboard.sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      return saleDate >= start && saleDate <= end;
+    }).length;
+
+    return {
+      name: `Sem ${index + 1}`,
+      periodo: label,
+      Cotizaciones: cotizaciones,
+      Reservas: reservasSemana,
+      Ventas: ventasSemana,
+    };
+  });
+
+  const reservationStatusData = [
+    {
+      name: 'Confirmadas',
+      value: reservations.filter(reservation => reservation.normalizedStatus === 'CONFIRMADA').length,
+    },
+    {
+      name: 'Pendientes',
+      value: reservations.filter(reservation => reservation.normalizedStatus === 'PENDIENTE').length,
+    },
+    {
+      name: 'Reprogramadas',
+      value: reservations.filter(reservation => reservation.normalizedStatus === 'REPROGRAMADA').length,
+    },
+    {
+      name: 'Anuladas',
+      value: reservations.filter(reservation => reservation.normalizedStatus === 'ANULADA').length,
+    },
+  ].filter(item => item.value > 0);
+
+  const topEventTypesData = Object.entries(
+    reservations.reduce<Record<string, number>>((accumulator, reservation) => {
+      const key = reservation.eventType || 'Otro';
+      accumulator[key] = (accumulator[key] || 0) + 1;
+      return accumulator;
+    }, {})
+  )
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  const weekdayRadarData = WEEK_DAYS.map((day, index) => {
+    const reservasDia = futureReservations.filter(
+      reservation => getWeekdayIndex(reservation.eventDateTime) === index
+    ).length;
+    const ensayosDia = pendingRehearsals.filter(
+      rehearsal => getWeekdayIndex(rehearsal.eventDateTime) === index
+    ).length;
+
+    return {
+      day,
+      Agenda: reservasDia + ensayosDia,
+      Reservas: reservasDia,
+      Ensayos: ensayosDia,
+    };
+  });
+
+  const occupancyMatrix = (() => {
+    const matrix = Array.from({ length: SLOT_LABELS.length }, () => Array(7).fill(0));
+
+    futureReservations
+      .filter(reservation => reservation.eventDateTime <= next60Days)
+      .forEach(reservation => {
+        const row = getSlotIndex(reservation.eventDateTime.getHours());
+        const column = getWeekdayIndex(reservation.eventDateTime);
+        matrix[row][column] += 1;
+      });
+
+    pendingQuotes
+      .filter(quotation => quotation.eventDateTime >= today && quotation.eventDateTime <= next60Days)
+      .forEach(quotation => {
+        const row = getSlotIndex(quotation.eventDateTime.getHours());
+        const column = getWeekdayIndex(quotation.eventDateTime);
+        matrix[row][column] += 1;
+      });
+
+    pendingRehearsals
+      .filter(rehearsal => rehearsal.eventDateTime <= next60Days)
+      .forEach(rehearsal => {
+        const row = getSlotIndex(rehearsal.eventDateTime.getHours());
+        const column = getWeekdayIndex(rehearsal.eventDateTime);
+        matrix[row][column] += 1;
+      });
+
+    return matrix;
+  })();
+
+  const agendaItems: AgendaItem[] = [
+    ...futureReservations.slice(0, 6).map(reservation => ({
+      id: `res-${reservation.id}`,
+      title: `${reservation.eventType} con ${reservation.clientName}`,
+      subtitle: `Reserva #${reservation.id} · ${fullCurrency(reservation.totalAmount)}`,
+      date: reservation.eventDateTime,
+      kind: 'reserva' as const,
+      status: reservation.normalizedStatus,
+    })),
+    ...pendingRehearsals.slice(0, 4).map(rehearsal => ({
+      id: `ens-${rehearsal.id}`,
+      title: rehearsal.title,
+      subtitle: rehearsal.location,
+      date: rehearsal.eventDateTime,
+      kind: 'ensayo' as const,
+      status: rehearsal.normalizedStatus,
+    })),
+  ]
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 8);
+
+  const activityFeed: ActivityItem[] = [
+    ...reservations.map(reservation => ({
+      id: `reservation-${reservation.id}`,
+      title: `${reservation.eventType} · ${reservation.clientName}`,
+      subtitle: `Reserva creada · ${normalizeReservationStatus(reservation.status)}`,
+      date: new Date(reservation.createdAt),
+      amount: Number(reservation.totalAmount || 0),
+      kind: 'reserva' as const,
+    })),
+    ...quotations.map(quotation => ({
+      id: `quotation-${quotation.id}`,
+      title: `${quotation.eventType} · ${quotation.clientName}`,
+      subtitle: `Cotizacion · ${normalizeQuotationStatus(quotation.status)}`,
+      date: new Date(quotation.createdAt),
+      amount: Number(quotation.totalAmount || 0),
+      kind: 'cotizacion' as const,
+    })),
+    ...dashboard.sales.map(sale => ({
+      id: `sale-${sale.id}`,
+      title: sale.concept || sale.eventType || 'Venta registrada',
+      subtitle: `${sale.clientName} · ${sale.method}`,
+      date: new Date(sale.date),
+      amount: Number(sale.amount || 0),
+      kind: 'venta' as const,
+    })),
+  ]
+    .filter(item => !Number.isNaN(item.date.getTime()))
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .slice(0, 7);
+
+  const topClients = Object.values(
+    reservations.reduce<Record<string, { name: string; reservas: number; valor: number }>>(
+      (accumulator, reservation) => {
+        const key = reservation.clientName || reservation.clientEmail || reservation.clientId || reservation.id;
+        if (!accumulator[key]) {
+          accumulator[key] = { name: reservation.clientName || 'Cliente', reservas: 0, valor: 0 };
+        }
+        accumulator[key].reservas += 1;
+        accumulator[key].valor += Number(reservation.totalAmount || 0);
+        return accumulator;
+      },
+      {}
+    )
+  )
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 5);
+
+  const alerts: AlertItem[] = [
+    ...futureReservations
+      .filter(reservation => reservation.pendingValue > 0.01 && reservation.eventDateTime <= next14Days)
+      .slice(0, 3)
+      .map(reservation => ({
+        id: `alert-res-${reservation.id}`,
+        title: `Cobro pendiente en reserva #${reservation.id}`,
+        description: `${reservation.clientName} tiene ${fullCurrency(
+          reservation.pendingValue
+        )} por pagar y el evento es el ${formatCompactDate(reservation.eventDateTime)}.`,
+        tone: 'danger' as const,
+      })),
+    ...pendingQuotes
+      .filter(quotation => {
+        const createdAt = new Date(quotation.createdAt);
+        const days = Math.floor((today.getTime() - createdAt.getTime()) / 86400000);
+        return days >= 7;
+      })
+      .slice(0, 2)
+      .map(quotation => ({
+        id: `alert-quote-${quotation.id}`,
+        title: `Cotizacion abierta desde hace varios dias`,
+        description: `${quotation.clientName} sigue en espera con una propuesta de ${fullCurrency(
+          quotation.totalAmount
+        )}.`,
+        tone: 'warning' as const,
+      })),
+    ...pendingRehearsals
+      .filter(rehearsal => rehearsal.eventDateTime <= next14Days)
+      .slice(0, 2)
+      .map(rehearsal => ({
+        id: `alert-ens-${rehearsal.id}`,
+        title: `Ensayo proximo`,
+        description: `${rehearsal.title} esta programado para el ${formatCompactDate(
+          rehearsal.eventDateTime
+        )}.`,
+        tone: 'success' as const,
+      })),
+  ].slice(0, 6);
+
+  const currentMonthAgenda = futureReservations.filter(
+    reservation => reservation.eventDateTime >= currentMonthStart && reservation.eventDateTime <= currentMonthEnd
+  ).length;
+
+  const next7DaysAgenda = agendaItems.filter(item => item.date <= next30Days).length;
+
+  if (loading) return <LoadingDashboard />;
+
+  return (
+    <div
+      className="min-h-screen space-y-6 text-slate-900"
+      style={{
+        backgroundImage:
+          'radial-gradient(circle at top left, rgba(206,17,38,0.12), transparent 28%), radial-gradient(circle at top right, rgba(245,158,11,0.10), transparent 22%), linear-gradient(180deg, #fffaf8 0%, #f8fafc 32%, #f8fafc 100%)',
+      }}
+    >
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 px-6 py-8 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] md:px-8 md:py-9">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-16 top-0 h-48 w-48 rounded-full bg-red-500/20 blur-[90px]" />
+          <div className="absolute right-0 top-10 h-40 w-40 rounded-full bg-amber-400/15 blur-[80px]" />
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              backgroundSize: '28px 28px',
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-red-100">
+              <Sparkles size={14} className="text-red-200" />
+              Dashboard ejecutivo
+            </div>
+            <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">
+              Un panel comercial y operativo conectado a tu sistema
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300 md:text-base">
+              Aqui ves ingresos, reservas, cotizaciones, ensayos y alertas reales del negocio en
+              una sola vista. La idea es que este dashboard ya sirva para decidir, no solo para
+              decorar.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
+                {formatFullDate(today)}
+              </div>
+              <div className="rounded-full border border-red-400/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100">
+                {currentMonthAgenda} eventos en agenda este mes
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[440px]">
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-5 backdrop-blur-xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Pipeline activo
+              </p>
+              <p className="mt-3 text-3xl font-black">{shortCurrency(pipelineValue)}</p>
+              <p className="mt-2 text-sm text-slate-300">
+                Entre cotizaciones abiertas y saldos pendientes.
+              </p>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-emerald-400/15 bg-emerald-400/10 p-5 backdrop-blur-xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">
+                Cobro sano
+              </p>
+              <p className="mt-3 text-3xl font-black">{formatPercent(paymentHealth)}</p>
+              <p className="mt-2 text-sm text-emerald-100/80">
+                Reservas activas con pago completo.
+              </p>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-amber-300/15 bg-amber-300/10 p-5 backdrop-blur-xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">
+                Conversion comercial
+              </p>
+              <p className="mt-3 text-3xl font-black">{formatPercent(quoteConversion)}</p>
+              <p className="mt-2 text-sm text-amber-50/80">
+                Cotizaciones que ya terminaron en reserva.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {errorMessage && (
+        <div className="flex items-start gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800 shadow-sm">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <p className="text-sm font-medium">{errorMessage}</p>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={Wallet}
+          label="Ingresos del mes"
+          value={shortCurrency(currentMonthRevenue)}
+          tone="red"
+          meta={<TrendBadge value={revenueDelta} suffix="vs mes pasado" />}
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Reservas activas"
+          value={String(activeReservations.length)}
+          tone="slate"
+          meta={<TrendBadge value={reservationsDelta} suffix="en agenda mensual" />}
+        />
+        <StatCard
+          icon={HandCoins}
+          label="Saldo por cobrar"
+          value={shortCurrency(receivableBalance)}
+          tone="amber"
+          meta={
+            <p className="text-sm font-medium text-slate-500">
+              {futureReservations.filter(reservation => reservation.pendingValue > 0.01).length} reservas con
+              cobro abierto.
+            </p>
+          }
+        />
+        <StatCard
+          icon={Users}
+          label="Base de clientes"
+          value={String(dashboard.clientsCount)}
+          tone="emerald"
+          meta={
+            <p className="text-sm font-medium text-slate-500">
+              Ticket promedio actual: <span className="font-black text-slate-800">{shortCurrency(averageTicket)}</span>
+            </p>
+          }
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+        <DashboardCard
+          title="Ingresos por mes"
+          subtitle="Comportamiento real de ventas registradas durante los ultimos 6 meses."
+          actions={
+            <button
+              onClick={() => {
+                setRefreshing(true);
+                setReloadToken(current => current + 1);
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-600 transition-colors hover:border-red-200 hover:text-red-600"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              Actualizar
+            </button>
+          }
+        >
+          <div className="mb-6 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Mes actual</p>
+              <p className="mt-2 text-xl font-black text-slate-900">{fullCurrency(currentMonthRevenue)}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Mes anterior</p>
+              <p className="mt-2 text-xl font-black text-slate-900">{fullCurrency(previousMonthRevenue)}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ticket promedio</p>
+              <p className="mt-2 text-xl font-black text-slate-900">{fullCurrency(averageTicket)}</p>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={310}>
+            <AreaChart data={monthlyRevenueData} margin={{ top: 8, right: 10, left: -16, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dashboardRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.red} stopOpacity={0.24} />
+                  <stop offset="95%" stopColor={COLORS.red} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={COLORS.slateLine} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: COLORS.slate, fontSize: 11 }}
+                tickFormatter={shortCurrency}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="ingresos"
+                stroke={COLORS.red}
+                strokeWidth={3}
+                fill="url(#dashboardRevenue)"
+                name="Ingresos"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Mix de reservas"
+          subtitle="Distribucion real por estado para saber si la operacion viene sana o trabada."
+        >
+          <div className="grid gap-5 md:grid-cols-[1fr_180px] md:items-center">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={reservationStatusData}
+                  dataKey="value"
+                  innerRadius={68}
+                  outerRadius={106}
+                  paddingAngle={5}
+                >
+                  {reservationStatusData.map((entry, index) => (
+                    <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<ChartTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="space-y-3">
+              {reservationStatusData.length === 0 ? (
+                <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                  No hay reservas suficientes para construir esta grafica.
+                </p>
+              ) : (
+                reservationStatusData.map((entry, index) => (
+                  <div key={entry.name} className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                        />
+                        <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
+                      </div>
+                      <span className="text-lg font-black text-slate-900">{entry.value}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DashboardCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <DashboardCard
+          title="Flujo comercial semanal"
+          subtitle="Cuantas cotizaciones, reservas y ventas se movieron en las ultimas 8 semanas."
+        >
+          <ResponsiveContainer width="100%" height={330}>
+            <BarChart data={weeklyFlowData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={COLORS.slateLine} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="Cotizaciones" fill={COLORS.amber} radius={[8, 8, 0, 0]} />
+              <Bar dataKey="Reservas" fill={COLORS.red} radius={[8, 8, 0, 0]} />
+              <Bar dataKey="Ventas" fill={COLORS.ink} radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Tipos de evento mas pedidos"
+          subtitle="Top actual segun las reservas registradas."
+        >
+          <ResponsiveContainer width="100%" height={330}>
+            <BarChart
+              data={topEventTypesData}
+              layout="vertical"
+              margin={{ top: 4, right: 20, left: 10, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke={COLORS.slateLine} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: COLORS.slate, fontSize: 11 }}
+                width={92}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="value" name="Solicitudes" fill={COLORS.red} radius={[0, 10, 10, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </DashboardCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr_0.9fr]">
+        <DashboardCard
+          title="Presion de agenda"
+          subtitle="Carga de reservas y ensayos por dia de la semana."
+        >
+          <ResponsiveContainer width="100%" height={300}>
+            <RadarChart data={weekdayRadarData}>
+              <PolarGrid stroke={COLORS.slateLine} />
+              <PolarAngleAxis dataKey="day" tick={{ fill: COLORS.slate, fontSize: 11 }} />
+              <PolarRadiusAxis tick={{ fill: COLORS.slate, fontSize: 10 }} axisLine={false} />
+              <Tooltip content={<ChartTooltip />} />
+              <Radar
+                dataKey="Agenda"
+                stroke={COLORS.red}
+                fill={COLORS.red}
+                fillOpacity={0.2}
+                strokeWidth={2.5}
+                name="Agenda"
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Mapa de ocupacion"
+          subtitle="Reserva, ensayo o cotizacion futura por dia y franja horaria."
+        >
+          <Heatmap matrix={occupancyMatrix} />
+        </DashboardCard>
+
+        <DashboardCard
+          title="Salud del negocio"
+          subtitle="Tres señales rapidas para saber donde enfocar."
+        >
+          <div className="space-y-4">
+            <div className="rounded-[1.5rem] bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Cobro completo</p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">{formatPercent(paymentHealth)}</p>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                {paidReservationsCount} de {activeReservations.length} reservas activas ya estan pagadas.
+              </p>
+            </div>
+
+            <div className="rounded-[1.5rem] bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Cotizaciones abiertas</p>
+                  <p className="mt-1 text-2xl font-black text-slate-900">{pendingQuotes.length}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                Hay {shortCurrency(pendingQuotes.reduce((sum, quotation) => sum + Number(quotation.totalAmount || 0), 0))} en oportunidad comercial pendiente.
+              </p>
+            </div>
+
+            <div className="rounded-[1.5rem] bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-700">
+                  <Mic2 size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ensayos pendientes</p>
+                  <p className="mt-1 text-2xl font-black text-slate-900">{pendingRehearsals.length}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                {pendingRehearsals.filter(rehearsal => rehearsal.eventDateTime <= next14Days).length} caen dentro de las proximas dos semanas.
+              </p>
+            </div>
+          </div>
+        </DashboardCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <DashboardCard
+          title="Agenda inmediata"
+          subtitle="Lo que viene en reservas y ensayos dentro del flujo operativo."
+        >
+          <div className="space-y-3">
+            {agendaItems.length === 0 ? (
+              <div className="rounded-[1.5rem] bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                No hay eventos proximos cargados en este momento.
+              </div>
+            ) : (
+              agendaItems.map(item => (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/80 bg-slate-50/70 px-4 py-4 md:flex-row md:items-center"
+                >
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                      item.kind === 'reserva'
+                        ? 'bg-red-500/10 text-red-600'
+                        : 'bg-cyan-500/10 text-cyan-700'
+                    }`}
+                  >
+                    {item.kind === 'reserva' ? <CalendarRange size={20} /> : <Mic2 size={20} />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-black text-slate-800">{item.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+                  </div>
+                  <div className="flex items-center gap-3 md:flex-col md:items-end">
+                    <p className="text-sm font-bold text-slate-700">{formatCompactDate(item.date)}</p>
+                    <StatusPill status={item.status} kind="agenda" />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Alertas y oportunidades"
+          subtitle="Cobros, propuestas y tareas que merecen atencion antes que escalen."
+        >
+          <div className="space-y-3">
+            {alerts.length === 0 ? (
+              <div className="rounded-[1.5rem] bg-emerald-50 px-5 py-8 text-center text-sm font-medium text-emerald-700">
+                No hay alertas criticas ahora mismo. El tablero se ve estable.
+              </div>
+            ) : (
+              alerts.map(alert => (
+                <div
+                  key={alert.id}
+                  className={`rounded-[1.5rem] border px-4 py-4 ${
+                    alert.tone === 'danger'
+                      ? 'border-red-200 bg-red-50'
+                      : alert.tone === 'warning'
+                      ? 'border-amber-200 bg-amber-50'
+                      : 'border-emerald-200 bg-emerald-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                        alert.tone === 'danger'
+                          ? 'bg-red-100 text-red-600'
+                          : alert.tone === 'warning'
+                          ? 'bg-amber-100 text-amber-600'
+                          : 'bg-emerald-100 text-emerald-600'
+                      }`}
+                    >
+                      {alert.tone === 'success' ? (
+                        <CheckCircle2 size={18} />
+                      ) : (
+                        <AlertTriangle size={18} />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-800">{alert.title}</p>
+                      <p className="mt-1 text-sm text-slate-600">{alert.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DashboardCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <DashboardCard
+          title="Actividad reciente"
+          subtitle="Ultimos movimientos registrados entre reservas, cotizaciones y ventas."
+        >
+          <div className="space-y-3">
+            {activityFeed.length === 0 ? (
+              <div className="rounded-[1.5rem] bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                Aun no hay actividad reciente para mostrar.
+              </div>
+            ) : (
+              activityFeed.map(item => (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/80 bg-white px-4 py-4 md:flex-row md:items-center"
+                >
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                      item.kind === 'venta'
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : item.kind === 'cotizacion'
+                        ? 'bg-amber-500/10 text-amber-600'
+                        : 'bg-red-500/10 text-red-600'
+                    }`}
+                  >
+                    {item.kind === 'venta' ? (
+                      <Wallet size={19} />
+                    ) : item.kind === 'cotizacion' ? (
+                      <FileText size={19} />
+                    ) : (
+                      <Activity size={19} />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-black text-slate-800">{item.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+                  </div>
+
+                  <div className="md:text-right">
+                    <p className="text-sm font-bold text-slate-700">{formatCompactDate(item.date)}</p>
+                    {typeof item.amount === 'number' && (
+                      <p className="mt-1 text-sm font-black text-slate-900">{fullCurrency(item.amount)}</p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Clientes con mayor valor"
+          subtitle="Ranking simple por reservas registradas y valor acumulado."
+        >
+          <div className="space-y-4">
+            {topClients.length === 0 ? (
+              <div className="rounded-[1.5rem] bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                Todavia no hay suficiente historico para construir el ranking.
+              </div>
+            ) : (
+              topClients.map((client, index) => {
+                const maxValue = topClients[0]?.valor || 1;
+                const width = Math.max(10, (client.valor / maxValue) * 100);
+
+                return (
+                  <div key={`${client.name}-${index}`} className="rounded-[1.5rem] bg-slate-50 px-4 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-slate-800">{client.name}</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {client.reservas} reserva(s) · {fullCurrency(client.valor)}
+                        </p>
+                      </div>
+                      <span className="text-sm font-black text-slate-400">#{index + 1}</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-red-600 to-amber-500"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DashboardCard>
+      </div>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_14px_42px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
+              <TrendingUp size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Cierre comercial</p>
+              <p className="mt-1 text-xl font-black text-slate-900">{formatPercent(quoteConversion)}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            {convertedQuotes.length} de {quotations.length} cotizaciones terminaron en una reserva.
+          </p>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_14px_42px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <CalendarClock size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Agenda 30 dias</p>
+              <p className="mt-1 text-xl font-black text-slate-900">{next7DaysAgenda}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Entre reservas y ensayos visibles en el corto plazo.
+          </p>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_14px_42px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+              <CheckCircle2 size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Reservas pagadas</p>
+              <p className="mt-1 text-xl font-black text-slate-900">{paidReservationsCount}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Del total activo, {formatPercent(paymentHealth)} ya no tiene saldo pendiente.
+          </p>
+        </div>
+      </section>
+
+      {refreshing && (
+        <div className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-3 rounded-full border border-white/70 bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-2xl shadow-slate-900/20">
+          <LoaderCircle size={16} className="animate-spin" />
+          Actualizando dashboard...
+        </div>
+      )}
+    </div>
+  );
 };
