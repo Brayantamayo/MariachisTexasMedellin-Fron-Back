@@ -98,6 +98,12 @@ interface AlertItem {
   tone: 'danger' | 'warning' | 'success';
 }
 
+interface HeroRipple {
+  id: number;
+  x: number;
+  y: number;
+}
+
 const startOfToday = () => {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
@@ -435,6 +441,8 @@ export const DashboardPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [heroCursor, setHeroCursor] = useState({ x: 50, y: 50, active: false });
+  const [heroRipples, setHeroRipples] = useState<HeroRipple[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -825,6 +833,29 @@ export const DashboardPage: React.FC = () => {
 
   const next7DaysAgenda = agendaItems.filter(item => item.date <= next30Days).length;
 
+  const updateHeroCursor = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    setHeroCursor({ x, y, active: true });
+    return { x, y };
+  };
+
+  const handleHeroPointerMove = (event: React.MouseEvent<HTMLElement>) => {
+    updateHeroCursor(event);
+  };
+
+  const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
+    const { x, y } = updateHeroCursor(event);
+    const rippleId = Date.now() + Math.random();
+
+    setHeroRipples(prev => [...prev, { id: rippleId, x, y }]);
+    window.setTimeout(() => {
+      setHeroRipples(prev => prev.filter(ripple => ripple.id !== rippleId));
+    }, 900);
+  };
+
   if (loading) return <LoadingDashboard />;
 
   return (
@@ -835,7 +866,25 @@ export const DashboardPage: React.FC = () => {
           'radial-gradient(circle at top left, rgba(206,17,38,0.12), transparent 28%), radial-gradient(circle at top right, rgba(245,158,11,0.10), transparent 22%), linear-gradient(180deg, #fffaf8 0%, #f8fafc 32%, #f8fafc 100%)',
       }}
     >
+      <style>{`
+        @keyframes dashboard-water-ripple {
+          0% {
+            opacity: 0.55;
+            transform: translate(-50%, -50%) scale(0.2);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.8);
+          }
+        }
+      `}</style>
       <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 px-6 py-8 text-white shadow-[0_30px_90px_rgba(15,23,42,0.28)] md:px-8 md:py-9">
+        <div
+          className="absolute inset-0 z-[1] cursor-pointer"
+          onMouseMove={handleHeroPointerMove}
+          onMouseLeave={() => setHeroCursor(prev => ({ ...prev, active: false }))}
+          onClick={handleHeroClick}
+        />
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -left-16 top-0 h-48 w-48 rounded-full bg-red-500/20 blur-[90px]" />
           <div className="absolute right-0 top-10 h-40 w-40 rounded-full bg-amber-400/15 blur-[80px]" />
@@ -847,6 +896,26 @@ export const DashboardPage: React.FC = () => {
               backgroundSize: '28px 28px',
             }}
           />
+          <div
+            className="absolute inset-0 transition-opacity duration-200"
+            style={{
+              opacity: heroCursor.active ? 1 : 0.45,
+              background: `radial-gradient(circle at ${heroCursor.x}% ${heroCursor.y}%, rgba(206,17,38,0.34), transparent 12%), radial-gradient(circle at ${heroCursor.x}% ${heroCursor.y}%, rgba(248,113,113,0.18), transparent 26%)`,
+            }}
+          />
+          {heroRipples.map(ripple => (
+            <div
+              key={ripple.id}
+              className="absolute rounded-full border border-red-300/40 bg-red-500/10"
+              style={{
+                left: `${ripple.x}%`,
+                top: `${ripple.y}%`,
+                width: '11rem',
+                height: '11rem',
+                animation: 'dashboard-water-ripple 900ms ease-out forwards',
+              }}
+            />
+          ))}
         </div>
 
         <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">

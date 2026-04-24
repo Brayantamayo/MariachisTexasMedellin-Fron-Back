@@ -1,95 +1,51 @@
-// ─── TIPOS ────────────────────────────────────────────────────────────────────
 interface EmailBienvenidaParams {
-  nombre:                 string
-  loginUrl:               string
-  reservasUrl:            string
+  nombre: string
+  loginUrl: string
+  reservasUrl: string
   cotizacionesVinculadas: number
 }
 
 interface EmailOtpParams {
   nombre: string
-  otp:    string
+  otp: string
 }
 
 interface EmailCotizacionAprobadaParams {
   nombreCliente: string
-  fechaStr:      string
-  horaInicio:    string
-  horaFin:       string
+  fechaStr: string
+  horaInicio: string
+  horaFin: string
   totalEstimado: number
-  registerUrl:   string
-  loginUrl:      string
+  registerUrl: string
+  loginUrl: string
 }
 
 interface EmailReservaCreadaParams {
-  nombreCliente:    string
-  fechaFormateada:  string
-  startTime:        string
-  endTime:          string
-  location:         string
-  eventType:        string
-  totalAmount:      number
-  anticipo:         number
-  loginUrl:         string
+  nombreCliente: string
+  fechaFormateada: string
+  startTime: string
+  endTime: string
+  location: string
+  eventType: string
+  totalAmount: number
+  anticipo: number
+  loginUrl: string
 }
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const colors = {
-  bg:           '#0c0c0c',
-  cardBg:       '#141414',
-  cardBorder:   '#1e1e1e',
-  accent:       '#e74c3c',
-  accentDark:   '#c0392b',
-  accentGlow:   '#ff6b6b',
-  gold:         '#f1c40f',
-  green:        '#2ecc71',
-  greenDark:    '#27ae60',
-  orange:       '#f39c12',
-  text:         '#ffffff',
-  textMuted:    '#9ca3af',
-  textDim:      '#6b7280',
-  divider:      '#1f1f1f',
+  pageBg: '#f5f5f5',
+  cardBg: '#ffffff',
+  panelBg: '#f8fafc',
+  border: '#e5e7eb',
+  heading: '#0f172a',
+  text: '#334155',
+  muted: '#64748b',
+  accent: '#b91c1c',
+  accentDark: '#991b1b',
+  success: '#166534',
+  warning: '#92400e',
 }
 
-// ─── HEADER ───────────────────────────────────────────────────────────────────
-const header = `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr>
-      <td style="padding:0;">
-        <!-- Top accent bar -->
-        <div style="height:4px;background:linear-gradient(90deg,${colors.accentDark},${colors.accent},${colors.accentDark});border-radius:12px 12px 0 0;"></div>
-        <!-- Logo area -->
-        <div style="text-align:center;padding:32px 0 24px;">
-          <div style="display:inline-block;background:${colors.cardBg};border:1px solid ${colors.cardBorder};border-radius:16px;padding:16px 32px;">
-            <span style="font-size:28px;line-height:1;">🎺</span>
-            <span style="font-size:22px;font-weight:800;color:${colors.accent};letter-spacing:1px;vertical-align:middle;margin-left:8px;">MARIACHIS TEXAS</span>
-          </div>
-        </div>
-      </td>
-    </tr>
-  </table>
-`
-
-// ─── FOOTER ───────────────────────────────────────────────────────────────────
-const footer = `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr>
-      <td style="padding:32px 0 8px;">
-        <div style="height:1px;background:linear-gradient(90deg,transparent,${colors.divider},transparent);"></div>
-        <div style="text-align:center;padding-top:20px;">
-          <p style="color:${colors.textDim};font-size:11px;margin:0 0 4px;letter-spacing:0.5px;">
-            🎶 Mariachis Texas — Medellín, Colombia
-          </p>
-          <p style="color:${colors.textDim};font-size:10px;margin:0;">
-            La mejor música en vivo para tus eventos
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-`
-
-// ─── WRAPPER ──────────────────────────────────────────────────────────────────
 const wrapper = (content: string) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -97,15 +53,17 @@ const wrapper = (content: string) => `
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="margin:0;padding:0;background:#000000;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#000000;">
+<body style="margin:0;padding:0;background:${colors.pageBg};font-family:Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${colors.pageBg};">
     <tr>
       <td align="center" style="padding:24px 16px;">
-        <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:${colors.bg};border:1px solid ${colors.cardBorder};border-radius:12px;overflow:hidden;">
+        <table width="640" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;background:${colors.cardBg};border:1px solid ${colors.border};border-radius:18px;overflow:hidden;">
           <tr>
-            <td style="padding:0 32px 32px;">
+            <td style="padding:0;">
               ${header}
-              ${content}
+              <div style="padding:32px 32px 12px;">
+                ${content}
+              </div>
               ${footer}
             </td>
           </tr>
@@ -117,253 +75,248 @@ const wrapper = (content: string) => `
 </html>
 `
 
-// ─── COMPONENTS ───────────────────────────────────────────────────────────────
-const button = (text: string, url: string, bg = colors.accent) => `
+const header = `
+  <div style="background:linear-gradient(135deg, ${colors.accentDark}, ${colors.accent});padding:28px 32px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td align="left">
+          <div style="display:inline-block;border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:12px 16px;background:rgba(255,255,255,0.08);">
+            <div style="font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:rgba(255,255,255,0.8);font-weight:700;margin-bottom:4px;">
+              Mariachis Texas
+            </div>
+            <div style="font-size:24px;line-height:1.1;font-weight:800;color:#ffffff;">
+              Comunicacion oficial
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+`
+
+const footer = `
+  <div style="padding:24px 32px 32px;">
+    <div style="height:1px;background:${colors.border};margin-bottom:18px;"></div>
+    <p style="margin:0;color:${colors.muted};font-size:12px;line-height:1.7;text-align:center;">
+      Mariachis Texas<br/>
+      Medellin, Colombia<br/>
+      Este mensaje fue generado por el sistema de gestion.
+    </p>
+  </div>
+`
+
+const intro = (title: string, body: string) => `
+  <h2 style="margin:0 0 10px;color:${colors.heading};font-size:28px;line-height:1.2;font-weight:800;">
+    ${title}
+  </h2>
+  <p style="margin:0;color:${colors.text};font-size:15px;line-height:1.75;">
+    ${body}
+  </p>
+`
+
+const panel = (content: string, tone: 'default' | 'accent' | 'success' | 'warning' = 'default') => {
+  const borderColor =
+    tone === 'accent' ? '#fecaca' : tone === 'success' ? '#bbf7d0' : tone === 'warning' ? '#fde68a' : colors.border
+  const background =
+    tone === 'accent' ? '#fef2f2' : tone === 'success' ? '#f0fdf4' : tone === 'warning' ? '#fffbeb' : colors.panelBg
+
+  return `
+    <div style="margin:22px 0;border:1px solid ${borderColor};border-radius:16px;background:${background};padding:20px 22px;">
+      ${content}
+    </div>
+  `
+}
+
+const detailRow = (label: string, value: string) => `
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+    <tr>
+      <td style="width:160px;vertical-align:top;color:${colors.muted};font-size:13px;line-height:1.6;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">
+        ${label}
+      </td>
+      <td style="color:${colors.heading};font-size:14px;line-height:1.6;font-weight:600;">
+        ${value}
+      </td>
+    </tr>
+  </table>
+`
+
+const bulletList = (items: string[]) => `
+  <ul style="margin:0;padding-left:18px;color:${colors.text};font-size:14px;line-height:1.8;">
+    ${items.map(item => `<li style="margin-bottom:8px;">${item}</li>`).join('')}
+  </ul>
+`
+
+const button = (text: string, url: string) => `
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr>
-      <td align="center" style="padding:24px 0;">
-        <a href="${url}"
-           style="display:inline-block;background:${bg};color:#ffffff;padding:16px 40px;
-                  border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;
-                  letter-spacing:0.3px;mso-padding-alt:0;text-align:center;
-                  box-shadow:0 4px 14px rgba(231,76,60,0.3);">
-          <!--[if mso]><i style="mso-font-width:150%;mso-text-raise:30px;" hidden>&nbsp;</i><![endif]-->
+      <td align="center" style="padding:24px 0 8px;">
+        <a href="${url}" style="display:inline-block;background:${colors.accent};color:#ffffff;text-decoration:none;padding:15px 28px;border-radius:12px;font-size:14px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">
           ${text}
-          <!--[if mso]><i style="mso-font-width:150%;" hidden>&nbsp;</i><![endif]-->
         </a>
       </td>
     </tr>
   </table>
 `
 
-const card = (content: string, borderColor = colors.accent) => `
-  <div style="background:${colors.cardBg};border:1px solid ${borderColor};border-radius:12px;padding:20px 24px;margin:20px 0;">
-    ${content}
-  </div>
-`
-
-const detailRow = (icon: string, label: string, value: string) => `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
-    <tr>
-      <td width="28" style="vertical-align:top;padding-top:2px;">
-        <span style="font-size:14px;">${icon}</span>
-      </td>
-      <td style="color:${colors.textMuted};font-size:13px;line-height:1.4;">
-        ${label}: <strong style="color:${colors.text};">${value}</strong>
-      </td>
-    </tr>
-  </table>
-`
-
-const divider = `<div style="height:1px;background:${colors.divider};margin:20px 0;"></div>`
-
-// ─── 1. BIENVENIDA ────────────────────────────────────────────────────────────
 export const emailBienvenida = (p: EmailBienvenidaParams) => ({
-  subject: '¡Bienvenido a Mariachis Texas! 🎺',
+  subject: 'Bienvenido a Mariachis Texas',
   html: wrapper(`
-    <h2 style="color:${colors.text};font-size:22px;font-weight:700;margin:0 0 6px;text-align:center;">
-      ¡Hola ${p.nombre}! 👋
-    </h2>
-    <p style="color:${colors.textMuted};font-size:14px;line-height:1.7;text-align:center;margin:8px 0 0;">
-      Tu registro fue exitoso. Ya puedes iniciar sesión y disfrutar de todos los beneficios.
-    </p>
+    ${intro(
+      `Bienvenido, ${p.nombre}`,
+      'Tu cuenta fue registrada correctamente. Desde este momento puedes ingresar al sistema para consultar tus reservas, revisar tu informacion y dar seguimiento a los servicios gestionados con nosotros.'
+    )}
 
-    ${p.cotizacionesVinculadas > 0 ? `
-      ${card(`
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="text-align:center;">
-              <span style="font-size:32px;display:block;margin-bottom:12px;">🎉</span>
-              <p style="color:${colors.text};font-weight:700;font-size:16px;margin:0 0 8px;">¡Buenas noticias!</p>
-              <p style="color:${colors.textMuted};font-size:14px;margin:0;line-height:1.6;">
-                Encontramos <strong style="color:${colors.accentGlow};">${p.cotizacionesVinculadas} reserva(s)</strong>
-                asociadas a tu correo.<br/>Ya están disponibles en tu cuenta.
+    ${
+      p.cotizacionesVinculadas > 0
+        ? panel(
+            `
+              <p style="margin:0 0 10px;color:${colors.heading};font-size:17px;font-weight:800;">
+                Reservas asociadas encontradas
               </p>
-            </td>
-          </tr>
-        </table>
-      `)}
-      ${button('Ver mis Reservas →', p.reservasUrl)}
-    ` : `
-      ${card(`
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="text-align:center;">
-              <span style="font-size:32px;display:block;margin-bottom:12px;">🎶</span>
-              <p style="color:${colors.textMuted};font-size:14px;margin:0;line-height:1.6;">
-                Tu cuenta está lista. Inicia sesión para explorar nuestros servicios y crear reservas.
+              <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
+                Identificamos ${p.cotizacionesVinculadas} reserva(s) vinculadas a este correo electronico. Ya puedes revisarlas dentro de tu cuenta.
               </p>
-            </td>
-          </tr>
-        </table>
-      `, colors.cardBorder)}
-      ${button('Iniciar Sesión →', p.loginUrl)}
-    `}
-  `)
+            `,
+            'accent'
+          ) + button('Ver mis reservas', p.reservasUrl)
+        : panel(
+            `
+              <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
+                Tu cuenta ya esta activa. Ingresa para consultar servicios, reservas y futuras cotizaciones.
+              </p>
+            `
+          ) + button('Iniciar sesion', p.loginUrl)
+    }
+
+    ${panel(
+      `
+        <p style="margin:0 0 12px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Condiciones generales del servicio
+        </p>
+        ${bulletList([
+          'No manejamos devoluciones una vez que el servicio ha sido confirmado y los pagos correspondientes han sido procesados.',
+          'La duracion del evento depende del tiempo que tome interpretar las canciones acordadas. Una vez finalizado ese repertorio, el servicio se da por terminado.',
+        ])}
+      `,
+      'warning'
+    )}
+
+    <p style="margin:18px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;">
+      Si necesitas soporte adicional, puedes responder este correo o comunicarte por nuestros canales de atencion.
+    </p>
+  `),
 })
 
-// ─── 2. OTP RECUPERACIÓN ──────────────────────────────────────────────────────
 export const emailOtp = (p: EmailOtpParams) => ({
-  subject: 'Código de recuperación — Mariachis Texas 🔐',
+  subject: 'Codigo de recuperacion - Mariachis Texas',
   html: wrapper(`
-    <div style="text-align:center;">
-      <span style="font-size:40px;display:block;margin-bottom:8px;">🔐</span>
-      <h2 style="color:${colors.text};font-size:20px;font-weight:700;margin:0 0 8px;">
-        Recuperar Contraseña
-      </h2>
-      <p style="color:${colors.textMuted};font-size:14px;line-height:1.6;margin:0 0 24px;">
-        Hola <strong style="color:${colors.text};">${p.nombre}</strong>, usa el siguiente código para restablecer tu contraseña.
-      </p>
-    </div>
+    ${intro(
+      'Recuperacion de acceso',
+      `Hola ${p.nombre}. Recibimos una solicitud para restablecer la contrasena de tu cuenta. Utiliza el siguiente codigo de verificacion para continuar con el proceso.`
+    )}
 
-    <!-- OTP Code Box -->
-    <div style="background:${colors.cardBg};border:2px solid ${colors.accent};border-radius:16px;padding:28px;text-align:center;margin:0 auto 24px;">
-      <p style="color:${colors.textDim};font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 12px;">Tu código</p>
-      <div style="font-size:48px;font-weight:900;letter-spacing:16px;color:${colors.text};font-family:'Courier New',monospace;line-height:1;">
-        ${p.otp}
-      </div>
-    </div>
+    ${panel(
+      `
+        <p style="margin:0 0 8px;color:${colors.muted};font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;text-align:center;">
+          Codigo de verificacion
+        </p>
+        <p style="margin:0;text-align:center;color:${colors.heading};font-size:42px;font-weight:900;letter-spacing:14px;font-family:Courier New, monospace;">
+          ${p.otp}
+        </p>
+      `,
+      'accent'
+    )}
 
-    ${card(`
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td width="24" style="vertical-align:top;padding-top:2px;">
-            <span style="font-size:13px;">⏱️</span>
-          </td>
-          <td style="color:${colors.textMuted};font-size:13px;line-height:1.6;">
-            Este código expira en <strong style="color:${colors.orange};">15 minutos</strong>.
-          </td>
-        </tr>
-        <tr><td colspan="2" style="height:8px;"></td></tr>
-        <tr>
-          <td width="24" style="vertical-align:top;padding-top:2px;">
-            <span style="font-size:13px;">🛡️</span>
-          </td>
-          <td style="color:${colors.textMuted};font-size:13px;line-height:1.6;">
-            Si no solicitaste esto, puedes ignorar este correo con seguridad.
-          </td>
-        </tr>
-      </table>
-    `, colors.cardBorder)}
-  `)
+    ${panel(
+      bulletList([
+        'Este codigo expira en 15 minutos.',
+        'Si no solicitaste este proceso, puedes ignorar este mensaje.',
+      ])
+    )}
+  `),
 })
 
-// ─── 3. COTIZACIÓN APROBADA ───────────────────────────────────────────────────
 export const emailCotizacionAprobada = (p: EmailCotizacionAprobadaParams) => ({
-  subject: '¡Tu cotización fue aprobada! — Mariachis Texas 🎺',
+  subject: 'Cotizacion aprobada - Mariachis Texas',
   html: wrapper(`
-    <div style="text-align:center;margin-bottom:4px;">
-      <span style="font-size:40px;display:block;margin-bottom:8px;">✅</span>
-      <h2 style="color:${colors.text};font-size:22px;font-weight:700;margin:0 0 8px;">
-        ¡Cotización Aprobada!
-      </h2>
-      <p style="color:${colors.textMuted};font-size:14px;line-height:1.6;margin:0;">
-        ${p.nombreCliente}, tu cotización ha sido convertida en una <strong style="color:${colors.green};">reserva oficial</strong>.
-      </p>
-    </div>
+    ${intro(
+      'Tu cotizacion fue aprobada',
+      `${p.nombreCliente}, la cotizacion ya fue aprobada y convertida en una reserva oficial dentro del sistema.`
+    )}
 
-    <!-- Event Details Card -->
-    ${card(`
-      <p style="color:${colors.textDim};font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 14px;font-weight:600;">
-        Detalles de tu reserva
-      </p>
-      ${detailRow('📅', 'Fecha', p.fechaStr)}
-      ${detailRow('⏰', 'Horario', `${p.horaInicio} — ${p.horaFin}`)}
-      <div style="height:1px;background:${colors.divider};margin:14px 0;"></div>
-      ${detailRow('💰', 'Valor estimado', `$${p.totalEstimado.toLocaleString('es-CO')} COP`)}
-    `)}
+    ${panel(
+      `
+        <p style="margin:0 0 14px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Resumen de la reserva
+        </p>
+        ${detailRow('Fecha', p.fechaStr)}
+        ${detailRow('Horario', `${p.horaInicio} - ${p.horaFin}`)}
+        ${detailRow('Valor estimado', `$${p.totalEstimado.toLocaleString('es-CO')} COP`)}
+      `
+    )}
 
-    <p style="color:${colors.textMuted};font-size:14px;line-height:1.7;text-align:center;margin:20px 0 4px;">
-      Para ver tu reserva y hacer seguimiento,<br/>crea tu cuenta con este mismo correo:
+    <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
+      Si aun no tienes cuenta, puedes registrarte con este mismo correo para consultar el estado de tu reserva y acceder a la informacion relacionada.
     </p>
 
-    ${button('Crear mi Cuenta →', p.registerUrl)}
+    ${button('Crear cuenta', p.registerUrl)}
 
-    <p style="color:${colors.textDim};font-size:12px;text-align:center;margin:0;">
-      ¿Ya tienes cuenta?
-      <a href="${p.loginUrl}" style="color:${colors.accent};text-decoration:underline;">Inicia sesión aquí</a>
+    <p style="margin:8px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;text-align:center;">
+      Si ya tienes una cuenta registrada, puedes ingresar directamente desde el siguiente enlace:
+      <a href="${p.loginUrl}" style="color:${colors.accent};font-weight:700;text-decoration:none;"> iniciar sesion</a>.
     </p>
-  `)
+  `),
 })
 
-// ─── 4. RESERVA CREADA ────────────────────────────────────────────────────────
 export const emailReservaCreada = (p: EmailReservaCreadaParams) => ({
-  subject: '¡Reserva creada exitosamente! — Mariachis Texas 🎺',
+  subject: 'Reserva creada exitosamente - Mariachis Texas',
   html: wrapper(`
-    <div style="text-align:center;margin-bottom:4px;">
-      <span style="font-size:40px;display:block;margin-bottom:8px;">🎉</span>
-      <h2 style="color:${colors.text};font-size:22px;font-weight:700;margin:0 0 8px;">
-        ¡Reserva Confirmada!
-      </h2>
-      <p style="color:${colors.textMuted};font-size:14px;line-height:1.6;margin:0;">
-        ${p.nombreCliente}, tu reserva ha sido creada exitosamente.
-      </p>
-    </div>
+    ${intro(
+      'Reserva registrada correctamente',
+      `${p.nombreCliente}, tu reserva fue creada exitosamente. A continuacion puedes revisar la informacion principal del servicio.`
+    )}
 
-    <!-- Event Details Card -->
-    ${card(`
-      <p style="color:${colors.textDim};font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 14px;font-weight:600;">
-        Detalles del evento
-      </p>
-      ${detailRow('📅', 'Fecha', p.fechaFormateada)}
-      ${detailRow('⏰', 'Horario', `${p.startTime} — ${p.endTime}`)}
-      ${detailRow('📍', 'Lugar', p.location)}
-      ${detailRow('🎭', 'Evento', p.eventType)}
-      <div style="height:1px;background:${colors.divider};margin:14px 0;"></div>
-      ${detailRow('💰', 'Valor Total', `$${p.totalAmount.toLocaleString('es-CO')} COP`)}
-    `)}
+    ${panel(
+      `
+        <p style="margin:0 0 14px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Detalles del evento
+        </p>
+        ${detailRow('Fecha', p.fechaFormateada)}
+        ${detailRow('Horario', `${p.startTime} - ${p.endTime}`)}
+        ${detailRow('Ubicacion', p.location)}
+        ${detailRow('Tipo de evento', p.eventType)}
+        ${detailRow('Valor total', `$${p.totalAmount.toLocaleString('es-CO')} COP`)}
+      `
+    )}
 
-    <!-- Payment Highlight -->
-    <div style="background:${colors.cardBg};border:2px solid ${colors.green};border-radius:14px;padding:24px;margin:20px 0;text-align:center;">
-      <p style="color:${colors.textDim};font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 4px;font-weight:600;">
-        Anticipo requerido (50%)
-      </p>
-      <p style="font-size:36px;font-weight:900;color:${colors.green};margin:10px 0;letter-spacing:1px;line-height:1;">
-        $${p.anticipo.toLocaleString('es-CO')} COP
-      </p>
-      <div style="height:1px;background:${colors.divider};margin:14px auto;max-width:200px;"></div>
-      <p style="color:${colors.textMuted};margin:0;font-size:12px;line-height:1.5;">
-        Saldo restante al finalizar: <strong style="color:${colors.text};">$${(p.totalAmount - p.anticipo).toLocaleString('es-CO')} COP</strong>
-      </p>
-    </div>
+    ${panel(
+      `
+        <p style="margin:0 0 10px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Condicion de pago inicial
+        </p>
+        <p style="margin:0 0 12px;color:${colors.text};font-size:14px;line-height:1.75;">
+          Para formalizar la reserva se requiere un anticipo correspondiente al 50% del valor total.
+        </p>
+        ${detailRow('Anticipo requerido', `$${p.anticipo.toLocaleString('es-CO')} COP`)}
+        ${detailRow('Saldo restante', `$${(p.totalAmount - p.anticipo).toLocaleString('es-CO')} COP`)}
+      `,
+      'success'
+    )}
 
-    <!-- Contact Card -->
-    ${card(`
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="text-align:center;">
-            <p style="color:${colors.textMuted};font-size:13px;margin:0 0 12px;line-height:1.5;">
-              📞 Comunícate con nosotros para realizar el pago:
-            </p>
-            <p style="color:${colors.accent};font-size:28px;font-weight:900;margin:0 0 12px;letter-spacing:3px;font-family:'Courier New',monospace;">
-              312 237 3486
-            </p>
-            <div style="display:inline-block;background:#1a1a1a;border:1px solid ${colors.divider};border-radius:8px;padding:8px 16px;">
-              <p style="color:${colors.textDim};font-size:11px;margin:0;">
-                💳 Transferencia · Nequi · Daviplata · Efectivo
-              </p>
-            </div>
-          </td>
-        </tr>
-      </table>
-    `, colors.cardBorder)}
+    ${panel(
+      `
+        <p style="margin:0 0 10px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Informacion importante
+        </p>
+        ${bulletList([
+          'La reserva permanecera en estado pendiente hasta que el anticipo sea registrado.',
+          'Una vez confirmado el pago inicial, el estado de la reserva pasara a confirmada.',
+          'Para soporte sobre el pago puedes comunicarte al numero 312 237 3486.',
+        ])}
+      `,
+      'warning'
+    )}
 
-    <!-- Important Notice -->
-    <div style="background:rgba(243,156,18,0.08);border:1px solid rgba(243,156,18,0.25);border-radius:10px;padding:16px 20px;margin:20px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td width="24" style="vertical-align:top;padding-top:1px;">
-            <span style="font-size:14px;">⚠️</span>
-          </td>
-          <td style="color:${colors.textMuted};font-size:13px;line-height:1.6;">
-            <strong style="color:${colors.text};">Importante:</strong> Tu reserva estará en estado
-            <strong style="color:${colors.orange};">Pendiente</strong> hasta registrar el anticipo.
-            Una vez confirmado pasará a <strong style="color:${colors.green};">Confirmada</strong>.
-          </td>
-        </tr>
-      </table>
-    </div>
-
-    ${button('Ver mi Reserva →', p.loginUrl)}
-  `)
+    ${button('Consultar mi reserva', p.loginUrl)}
+  `),
 })

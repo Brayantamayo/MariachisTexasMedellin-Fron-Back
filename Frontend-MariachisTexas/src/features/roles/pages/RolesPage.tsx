@@ -59,6 +59,7 @@ export const RolesPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       showNotification("Error al crear el rol.", "error");
+      throw error;
     }
   };
 
@@ -74,6 +75,7 @@ export const RolesPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       showNotification("Error al actualizar el rol.", "error");
+      throw error;
     }
   };
 
