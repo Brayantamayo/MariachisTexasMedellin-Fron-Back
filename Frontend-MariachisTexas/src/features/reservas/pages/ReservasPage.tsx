@@ -179,7 +179,17 @@ export const ReservasPage: React.FC = () => {
   const filteredReservations = reservations.filter(r => {
     const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || r.id.includes(searchTerm);
     if (isClient) return matchesSearch;
-    return matchesSearch && ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'].includes(r.status);
+    const visibleStatuses = ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'];
+    const pendingBalance = Math.max(
+      0,
+      Number(r.pendingBalance ?? Number(r.totalAmount ?? 0) - Number(r.paidAmount ?? 0))
+    );
+    const shouldHidePaidReservation =
+      r.status !== 'ANULADA' &&
+      visibleStatuses.includes(r.status) &&
+      pendingBalance <= 0.01;
+
+    return matchesSearch && visibleStatuses.includes(r.status) && !shouldHidePaidReservation;
   });
 
   const renderCalendar = () => {

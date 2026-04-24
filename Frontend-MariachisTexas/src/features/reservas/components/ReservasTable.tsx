@@ -23,10 +23,10 @@ interface Props {
 const getStatusBadgeStyles = (status: string) => {
   switch (status) {
     case 'PENDIENTE':      return 'bg-amber-100 text-amber-700 border-amber-300';
-case 'CONFIRMADA':     return 'bg-emerald-100 text-emerald-700 border-emerald-300';
-case 'ANULADA':        return 'bg-slate-100 text-slate-600 border-slate-300';
-case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30';
-default:               return 'bg-slate-100 text-slate-600 border-slate-300';
+    case 'CONFIRMADA':     return 'bg-emerald-100 text-emerald-700 border-emerald-300';
+    case 'ANULADA':        return 'bg-slate-100 text-slate-600 border-slate-300';
+    case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30';
+    default:               return 'bg-slate-100 text-slate-600 border-slate-300';
   }
 };
 
@@ -191,11 +191,6 @@ export const ReservasTable: React.FC<Props> = ({
                         {isActive && !isClient && (
                           <>
                             <ActionButton
-                              icon={DollarSign}
-                              onClick={() => onAddPayment(res.id)}
-                              tooltip="Registrar Abono"
-                            />
-                            <ActionButton
                               icon={Edit2}
                               onClick={() => onEdit(res)}
                               tooltip="Editar Reserva"
@@ -204,24 +199,35 @@ export const ReservasTable: React.FC<Props> = ({
                             {canReprogramar && (
                               <ActionButton
                                 icon={CalendarClock}
-                                
                                 tooltip="Reprogramar Reserva"
                                 onClick={() => onReprogramar(res)}
                               />
                             )}
-                            <ActionButton
-                              icon={Ban}
-                              tooltip="Anular Reserva"
-                              variant="danger"
-                              onClick={() => setAnularModal({ open: true, reservation: res })}
-                            />
+
+                            {/*Boton de registrar Pago inicial*/}
+                            {res.status === 'PENDIENTE' && (
+                              <ActionButton
+                                icon={DollarSign}
+                                onClick={() => onAddPayment(res.id)}
+                                tooltip="Registrar Abono"
+                              />
+                            )}
+
+                            {/* ─── BOTÓN ANULAR — solo en estado PENDIENTE ─── */}
+                            {res.status === 'PENDIENTE' && (
+                              <ActionButton
+                                icon={Ban}
+                                tooltip="Anular Reserva"
+                                onClick={() => setAnularModal({ open: true, reservation: res })}
+                              />
+                            )}
+                          
                           </>
                         )}
                         {isAnulada && isAdmin && (
                           <ActionButton
                             icon={Trash2}
                             tooltip="Eliminar"
-                            variant="danger"
                             onClick={() => setDeleteModal({ open: true, id: res.id })}
                           />
                         )}

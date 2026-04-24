@@ -17,8 +17,8 @@ const reservaInclude = {
   cotizacion: {
     include: {
       cliente: { include: { usuario: true } },
-      servicios: true,
-      repertorios: true,
+      servicios: { include: { servicio: true } },       
+      repertorios: { include: { repertorio: true } },
     },
   },
   abonos: true,
