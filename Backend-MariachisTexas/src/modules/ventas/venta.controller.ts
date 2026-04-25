@@ -39,6 +39,8 @@ export const getAll = asyncHandler(async (req: AuthRequest, res: Response) => {
     const ventas    = await ventaService.getVentas(usuarioId)
     return res.json({ ok: true, data: ventas, total: ventas.length })
   } catch (err) {
+    console.error('[VentaController] ERROR COMPLETO:', err)
+    console.error('[VentaController] STACK:', (err as Error).stack)
     return handleServiceError(err, res, 'Error al obtener las ventas')
   }
 })
