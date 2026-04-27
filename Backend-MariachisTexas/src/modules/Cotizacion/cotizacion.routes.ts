@@ -20,7 +20,7 @@ router.get('/:id', requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.getB
 
 router.put('/:id',             requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.update)
 router.patch('/:id/anular',    requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.anular)
-router.patch('/:id/convertir', requireRole(['ADMIN']),             cotizacionController.convertir)
+router.patch('/:id/convertir', requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.convertir)
 
 router.get('/:id/pdf', requireRole(['ADMIN', 'EMPLEADO']), cotizacionController.downloadPdf)
 

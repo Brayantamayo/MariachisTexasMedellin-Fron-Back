@@ -118,3 +118,9 @@ export const reprogramar = asyncHandler(async (req: AuthRequest, res: Response) 
  
   res.json(await reservaService.reprogramarReserva(Number(id), { eventDate, startTime, endTime }, isAdmin))
 })
+
+// ─── FINALIZAR ────────────────────────────────────────────────────────────────
+export const finalize = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  res.json(await reservaService.finalizeReserva(Number(id)))
+})

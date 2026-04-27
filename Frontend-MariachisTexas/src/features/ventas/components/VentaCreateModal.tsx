@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, DollarSign, AlertCircle } from 'lucide-react';
 
-const CLIENTE_DIRECTO = { id: 22, usuarioId: 28, nombre: 'Cliente Directa' } as const;
+const CLIENTE_DIRECTO = { id: 1, usuarioId: 5, nombre: 'Cliente Directa' } as const;
 
 const METODOS = [
   { value: 'TRANSFERENCIA', label: 'Transferencia' },

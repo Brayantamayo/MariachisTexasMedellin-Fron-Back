@@ -89,6 +89,7 @@ export const CotizacionesTable: React.FC<Props> = ({
               {currentItems.map((quote, index) => {
                 const isActive  = quote.status === 'EN_ESPERA';
                 const isAnulada = quote.status === 'ANULADA';
+                const isStaff   = userRole === UserRole.ADMIN || userRole === UserRole.EMPLEADO;
                 const isAdmin   = userRole === UserRole.ADMIN;
                 const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
@@ -139,7 +140,7 @@ export const CotizacionesTable: React.FC<Props> = ({
                       <div className="flex items-center justify-center gap-1.5">
                         <ActionButton icon={Eye}      onClick={() => onView(quote)}              tooltip="Ver Detalle" />
                         <ActionButton icon={Download} onClick={() => onDownload(quote.id)}       tooltip="Descargar PDF" />
-                        {isActive && isAdmin && (
+                        {isActive && isStaff && (
                           <>
                             <ActionButton icon={Edit2}       onClick={() => onEdit(quote)}                          tooltip="Editar" />
                             <ActionButton icon={CheckSquare} onClick={() => onConvert(quote.id, quote.totalAmount)} tooltip="Confirmar" />
