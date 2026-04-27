@@ -703,8 +703,8 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
         metodoPago: metodoPagoRaw as any
       }
     })
-    // Marcar reserva como CONFIRMADA (si vino de pago 100% directo estaba PENDIENTE)
-    await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'CONFIRMADA' } })
+    // Marcar reserva como FINALIZADO (si vino de pago 100% directo estaba PENDIENTE)
+    await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'FINALIZADO' } })
   }
 
   const esUltimoPago = nuevoSaldo <= 0.01
@@ -780,5 +780,74 @@ export const reprogramarReserva = async (
     })
   })
  
+  return getReservaById(id)
+}
+
+// ─── FINALIZAR (MANUAL) ──────────────────────────────────────────────────────
+export const finalizeReserva = async (id: number): Promise<ReservationResponse> => {
+  const r = await prisma.reserva.findUnique({
+    where: { id },
+    include: {
+      cotizacion: { include: { cliente: true } },
+      abonos: true,
+      venta: true,
+    },
+  })
+
+  if (!r) throw new AppError('Reserva no encontrada', 404)
+  if (r.estado === 'ANULADA') throw new AppError('No se puede finalizar una reserva anulada', 400)
+  if (r.estado === 'FINALIZADO') return getReservaById(id)
+
+  const saldoPendiente = Number(r.saldoPendiente)
+  const totalValor = Number(r.totalValor)
+  const clienteId = r.cotizacion?.clienteId
+
+  if (!clienteId) throw new AppError('Reserva sin cliente asociado', 400)
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Si hay saldo pendiente, registrar un abono simbólico o ajustar saldo
+    if (saldoPendiente > 0) {
+      await tx.abono.create({
+        data: {
+          reservaId: id,
+          clienteId,
+          monto: saldoPendiente,
+          fechaPago: new Date(),
+          metodoPago: 'EFECTIVO', // Por defecto si se finaliza manualmente
+          notas: 'Abono de cierre por finalización manual',
+          nuevoSaldo: 0,
+        },
+      })
+    }
+
+    // 2. Actualizar reserva
+    await tx.reserva.update({
+      where: { id },
+      data: { estado: 'FINALIZADO', saldoPendiente: 0 },
+    })
+
+    // 3. Crear venta si no existe
+    if (!r.venta) {
+      const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + saldoPendiente
+      await tx.venta.create({
+        data: {
+          reservaId: id,
+          clienteId,
+          tipo: 'RESERVA',
+          estado: 'FINALIZADO',
+          montoTotal: totalValor,
+          montoPagado: totalPagado,
+          fechaVenta: new Date(),
+          metodoPago: r.abonos[0]?.metodoPago ?? 'EFECTIVO',
+        },
+      })
+    } else if (r.venta.estado !== 'FINALIZADO') {
+      await tx.venta.update({
+        where: { id: r.venta.id },
+        data: { estado: 'FINALIZADO', montoPagado: totalValor },
+      })
+    }
+  })
+
   return getReservaById(id)
 }

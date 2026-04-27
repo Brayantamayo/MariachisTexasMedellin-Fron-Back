@@ -258,7 +258,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                   }`}
                 >
-                  Anticipo 50%
+                  1er Abono
                   <span className="block text-[10px] font-normal mt-0.5 opacity-80">
                     ${anticipo50.toLocaleString('es-CO')}
                   </span>
@@ -270,7 +270,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                   }`}
                 >
-                  Pago Total 100%
+                  2do Abono (Saldo)
                   <span className="block text-[10px] font-normal mt-0.5 opacity-80">
                     ${saldo.toLocaleString('es-CO')}
                   </span>
@@ -289,7 +289,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             <div className="bg-gradient-to-br from-red-50 to-red-100/50 border border-red-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest">
-                  {tipoPago === '100%' ? 'Pago Total (100%)' : 'Anticipo (50%)'}
+                  {tipoPago === '100%' ? '2do Abono (Saldo)' : '1er Abono'}
                 </p>
                 <DollarSign size={16} className="text-red-500" />
               </div>

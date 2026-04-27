@@ -156,7 +156,7 @@ export const CotizacionesPage: React.FC = () => {
           </h1>
           <p className="text-slate-500 mt-2 text-sm">Gestiona propuestas comerciales y conviértelas en reservas.</p>
         </div>
-        {user?.role === UserRole.ADMIN && (
+        {(user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO) && (
           <button onClick={() => setIsCreateOpen(true)}
             className="bg-[#ce1126] hover:bg-red-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase">
             <Plus size={18} strokeWidth={3} /> Nueva Cotización

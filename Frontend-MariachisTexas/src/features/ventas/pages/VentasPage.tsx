@@ -330,7 +330,7 @@ const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: Sa
                   <div key={abono.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                     <div>
                       <p className="text-xs font-bold text-slate-700">
-                        {idx === 0 ? '1er Abono (Anticipo 50%)' : '2do Abono (Saldo Final)'}
+                        {idx === 0 ? '1er Abono' : '2do Abono'}
                       </p>
                       <p className="text-[10px] text-slate-400">
                         {new Date(abono.date).toLocaleDateString('es-CO')} · {metodoPagoLabel[abono.method] ?? abono.method}

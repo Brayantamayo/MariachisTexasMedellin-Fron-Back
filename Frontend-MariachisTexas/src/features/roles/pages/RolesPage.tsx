@@ -5,6 +5,7 @@ import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { roleService } from '../services/roleService';
 import { Role } from '@/types';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 // Componentes Modulares
 import { RolesTable } from '../components/RolesTable';
@@ -13,6 +14,7 @@ import { RoleEditModal } from '../components/RoleEditModal';
 import { RoleDetailModal } from '../components/RoleDetailModal';
 
 export const RolesPage: React.FC = () => {
+  const SYSTEM_ROLE_NAMES = new Set(['ADMIN', 'EMPLEADO', 'CLIENTE']);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +33,9 @@ export const RolesPage: React.FC = () => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  const isSystemRole = (role?: Role | null) =>
+    Boolean(role?.isSystem) || SYSTEM_ROLE_NAMES.has(role?.name?.trim().toUpperCase() ?? '');
 
   const fetchRoles = async () => {
     setLoading(true);
@@ -65,6 +70,10 @@ export const RolesPage: React.FC = () => {
 
   const handleUpdateRole = async (roleData: any) => {
     if (!selectedRole) return;
+    if (isSystemRole(selectedRole)) {
+      showNotification('Los roles predeterminados no se pueden editar.', 'error');
+      return;
+    }
     try {
         const updatedRole = await roleService.updateRole(selectedRole.id, roleData);
         setRoles(prevRoles => prevRoles.map(role => 
@@ -74,28 +83,45 @@ export const RolesPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error) {
       console.error(error);
-      showNotification("Error al actualizar el rol.", "error");
+      showNotification(getErrorMessage(error, "Error al actualizar el rol."), "error");
       throw error;
     }
   };
 
   const handleDelete = (id: string) => {
+    const role = roles.find(r => r.id === id);
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no se pueden eliminar.', 'error');
+      return;
+    }
     setDeleteModal({ isOpen: true, roleId: id });
   };
 
   const confirmDelete = async () => {
     if (!deleteModal.roleId) return;
+    const role = roles.find(r => r.id === deleteModal.roleId);
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no se pueden eliminar.', 'error');
+      setDeleteModal({ isOpen: false, roleId: null });
+      return;
+    }
     try {
       await roleService.deleteRole(deleteModal.roleId);
       setRoles(prev => prev.filter(r => r.id !== deleteModal.roleId));
       showNotification('El rol ha sido eliminado del sistema.');
     } catch (error) {
       console.error("Error eliminando", error);
-      showNotification("No se pudo eliminar el rol.", "error");
+      showNotification(getErrorMessage(error, "No se pudo eliminar el rol."), "error");
+    } finally {
+      setDeleteModal({ isOpen: false, roleId: null });
     }
   };
 
   const handleToggleStatus = async (role: Role) => {
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no pueden cambiar de estado.', 'error');
+      return;
+    }
     const newStatus = !role.isActive;
     try {
         setRoles(prev => prev.map(r => r.id === role.id ? { ...r, isActive: newStatus } : r));
@@ -104,7 +130,7 @@ export const RolesPage: React.FC = () => {
     } catch (error) {
         console.error("Error cambiando estado", error);
         fetchRoles(); 
-        showNotification("Error al cambiar el estado.", "error");
+        showNotification(getErrorMessage(error, "Error al cambiar el estado."), "error");
     }
   };
 
@@ -187,7 +213,14 @@ export const RolesPage: React.FC = () => {
             roles={filteredRoles}
             loading={loading}
             onView={(role) => { setSelectedRole(role); setIsDetailOpen(true); }}
-            onEdit={(role) => { setSelectedRole(role); setIsEditOpen(true); }}
+            onEdit={(role) => {
+              if (isSystemRole(role)) {
+                showNotification('Los roles predeterminados no se pueden editar.', 'error');
+                return;
+              }
+              setSelectedRole(role);
+              setIsEditOpen(true);
+            }}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}
         />

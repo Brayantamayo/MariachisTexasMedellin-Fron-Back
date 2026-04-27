@@ -95,7 +95,7 @@ const AbonoDetailModal: React.FC<{
             <CreditCard className="text-emerald-400" size={22} />
           </div>
           <h3 className="text-sm font-serif font-bold text-white tracking-widest uppercase mb-0.5">
-            {isFirstAbono ? 'Anticipo 50%' : 'Pago Final'}
+            {isFirstAbono ? '1er Abono' : '2do Abono'}
           </h3>
           <p className="text-[9px] text-slate-400 font-mono uppercase">ABONO #{abono.id}</p>
         </div>
@@ -200,7 +200,7 @@ export const RegisterAbonoModal: React.FC<{
       : selectedRes.pending
     : 0;
   const isSecondAbono = selectedRes && selectedRes.paid > 0;
-  const abonoLabel    = isSecondAbono ? '2do Abono — Pago Final' : '1er Abono — Anticipo 50%';
+  const abonoLabel    = isSecondAbono ? '2do Abono' : '1er Abono';
  
   const handleSubmit = async () => {
     // Validación por campo
@@ -664,7 +664,7 @@ export const AbonosPage: React.FC = () => {
                                   {group.abonos.map((abono, idx) => (
                                     <div key={abono.id} className="grid grid-cols-5 px-6 py-4 items-center hover:bg-slate-50/30">
                                       <span className="text-xs font-bold text-slate-600">
-                                        {idx === 0 ? '1er Abono (50%)' : '2do Abono (Saldo)'}
+                                        {idx === 0 ? '1er Abono' : '2do Abono'}
                                       </span>
                                       <span className="text-xs text-slate-500 flex items-center gap-1">
                                         <Calendar size={11} className="text-slate-400" />

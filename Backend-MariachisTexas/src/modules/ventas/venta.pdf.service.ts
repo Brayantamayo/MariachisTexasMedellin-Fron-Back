@@ -186,7 +186,7 @@ export const generateReservaReceiptPdf = async (reserva: any, nombreCliente: str
   const paymentHistory = payments.length
     ? payments.map((abono: any, index: number) => `
         <div class="timeline-item">
-          <div class="timeline-title">${escapeHtml(index === 0 ? 'Anticipo 50%' : 'Pago complementario')}</div>
+          <div class="timeline-title">${escapeHtml(index === 0 ? '1er Abono' : 'Pago complementario')}</div>
           <div class="timeline-sub">
             Fecha: <span class="strong">${escapeHtml(formatShortDate(abono.fechaPago))}</span><br/>
             Metodo: <span class="strong">${escapeHtml(formatMethod(abono.metodoPago))}</span><br/>
