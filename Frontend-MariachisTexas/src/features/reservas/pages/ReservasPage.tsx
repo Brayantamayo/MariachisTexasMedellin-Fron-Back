@@ -263,7 +263,7 @@ export const ReservasPage: React.FC = () => {
             ))}
 
             {dayQuotes.map((quote, index) => (
-              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-red-200 bg-red-50 text-red-700'}`}>
+              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${ (isPast || isClient) ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-red-200 bg-red-50 text-red-700'}`}>
                 {isClient ? <Lock size={9} /> : <FileText size={9} />}
                 <span className="font-bold">{quote.startTime}</span>
                 {isClient ? ' Reservado' : ' Cotización'}
@@ -271,7 +271,7 @@ export const ReservasPage: React.FC = () => {
             ))}
 
             {dayRehearsals.map((reh, index) => (
-              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
+              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${ (isPast || isClient) ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-purple-200 bg-purple-50 text-purple-700'}`}>
                 {isClient ? <Lock size={9} /> : null}
                 <span className="font-bold">{reh.time}</span> {isClient ? 'Reservado' : 'Ensayo'}
               </div>
@@ -299,7 +299,7 @@ export const ReservasPage: React.FC = () => {
                   timeStyle = 'text-blue-500'
                 }
 
-                if (isClient && !isMine) {
+                if (isPast || (isClient && !isMine)) {
                   statusStyle = 'bg-slate-100 border-slate-100 text-slate-400'
                   timeStyle = 'text-slate-400'
                 }
