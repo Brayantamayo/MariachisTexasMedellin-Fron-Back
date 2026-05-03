@@ -22,26 +22,26 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
   const tokenRef = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
-    nombre:              '',
-    apellido:            '',
-    tipoDocumento:       'CC',
-    numeroDocumento:     '',
-    email:               '',
-    telefono:            '',
+    nombre: '',
+    apellido: '',
+    tipoDocumento: 'CC',
+    numeroDocumento: '',
+    email: '',
+    telefono: '',
     telefonoAlternativo: '',
-    fechaNacimiento:     '',
-    ciudad:              'Medellín',
-    direccion:           '',
-    barrio:              '',
-    zonaServicio:        'URBANA',
-    password:            '',
-    confirmPassword:     '',
-    foto:                ''
+    fechaNacimiento: '',
+    ciudad: 'Medellín',
+    direccion: '',
+    barrio: '',
+    zonaServicio: 'URBANA',
+    password: '',
+    confirmPassword: '',
+    foto: ''
   });
 
   const [errors, setErrors] = useState<string[]>([]);
-  const [fotoPreview,     setFotoPreview]     = useState<string>('');
-  const [uploadingFoto,   setUploadingFoto]   = useState(false);
+  const [fotoPreview, setFotoPreview] = useState<string>('');
+  const [uploadingFoto, setUploadingFoto] = useState(false);
   const [uploadFotoError, setUploadFotoError] = useState<string | null>(null);
   const fotoInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,17 +56,17 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
         const partes = (data.nombre ?? '').trim().split(' ');
         setFormData(prev => ({
           ...prev,
-          email:               data.email,
-          nombre:              partes[0] || '',
-          apellido:            partes.slice(1).join(' ') || '',
-          telefono:            data.telefono  || '',
+          email: data.email,
+          nombre: partes[0] || '',
+          apellido: partes.slice(1).join(' ') || '',
+          telefono: data.telefono || '',
           telefonoAlternativo: data.telefono2 || '',
         }));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
-  const [isLoading,    setIsLoading]    = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -103,37 +103,37 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploadingFoto) { showNotification('Espera a que termine de subir la foto.', 'error'); return; }
-    if (formData.password !== formData.confirmPassword) { 
+    if (formData.password !== formData.confirmPassword) {
       setErrors(prev => [...prev, 'confirmPassword']);
-      showNotification('Las contraseñas no coinciden.', 'error'); 
-      return; 
+      showNotification('Las contraseñas no coinciden.', 'error');
+      return;
     }
-    if (formData.password.length < 6) { 
+    if (formData.password.length < 6) {
       setErrors(prev => [...prev, 'password']);
-      showNotification('La contraseña debe tener al menos 6 caracteres.', 'error'); 
-      return; 
+      showNotification('La contraseña debe tener al menos 6 caracteres.', 'error');
+      return;
     }
 
     setIsLoading(true);
     try {
       await authService.registro({
-        nombre:               formData.nombre,
-        apellido:             formData.apellido,
-        tipoDocumento:        formData.tipoDocumento,
-        numeroDocumento:      formData.numeroDocumento,
-        fechaNacimiento:      formData.fechaNacimiento,
-        email:                formData.email,
-        telefonoPrincipal:    formData.telefono,
-        telefonoAlternativo:  formData.telefonoAlternativo || undefined,
-        ciudad:               formData.ciudad,
-        barrio:               formData.barrio,
-        direccion:            formData.direccion,
-        zonaServicio:         formData.zonaServicio,
-        password:             formData.password,
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        tipoDocumento: formData.tipoDocumento,
+        numeroDocumento: formData.numeroDocumento,
+        fechaNacimiento: formData.fechaNacimiento,
+        email: formData.email,
+        telefonoPrincipal: formData.telefono,
+        telefonoAlternativo: formData.telefonoAlternativo || undefined,
+        ciudad: formData.ciudad,
+        barrio: formData.barrio,
+        direccion: formData.direccion,
+        zonaServicio: formData.zonaServicio,
+        password: formData.password,
         passwordConfirmation: formData.confirmPassword,
-        foto:                 formData.foto || undefined,
+        foto: formData.foto || undefined,
       });
-      if (tokenRef.current) authService.marcarTokenUsado(tokenRef.current).catch(() => {});
+      if (tokenRef.current) authService.marcarTokenUsado(tokenRef.current).catch(() => { });
       showNotification('¡Registro exitoso! Redirigiendo al inicio de sesión...', 'success');
       setTimeout(() => onNavigate('/login'), 2000);
     } catch (error: any) {
@@ -230,11 +230,11 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 pt-20 pb-8 bg-[#050505] text-white overflow-hidden relative">
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 scale-110"
         style={{ backgroundImage: 'url("/mariachi-bg.png")', filter: 'blur(2px)' }}
       />
-      
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-600/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-secondary-600/10 rounded-full blur-[120px]" />
@@ -242,12 +242,10 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
-          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${
-            notification.type === 'success' ? 'bg-dark-900/95 border-secondary-600' : 'bg-dark-900/95 border-primary-600'
-          }`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              notification.type === 'success' ? 'bg-secondary-900 text-secondary-500' : 'bg-primary-900 text-primary-500'
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] ${notification.type === 'success' ? 'bg-dark-900/95 border-secondary-600' : 'bg-dark-900/95 border-primary-600'
             }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${notification.type === 'success' ? 'bg-secondary-900 text-secondary-500' : 'bg-primary-900 text-primary-500'
+              }`}>
               {notification.type === 'success' ? <CheckCircle size={20} strokeWidth={3} /> : <AlertCircle size={20} strokeWidth={3} />}
             </div>
             <div className="flex-1">
@@ -269,15 +267,14 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
         <div className="p-6 md:p-8">
           <div className="text-center mb-6">
             <h3 className="text-2xl font-serif font-bold text-white mb-1 tracking-wide uppercase">Únete a la familia</h3>
-            
+
             <div className="flex items-center justify-center gap-3 mt-4">
               {STEPS.map((step, idx) => (
                 <React.Fragment key={step.id}>
                   <div className="flex flex-col items-center gap-1.5">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                      currentStep === step.id ? 'border-secondary-500 bg-secondary-900/50 text-secondary-400' : 
-                      currentStep > step.id ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-800 bg-dark-800 text-gray-600'
-                    }`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${currentStep === step.id ? 'border-secondary-500 bg-secondary-900/50 text-secondary-400' :
+                        currentStep > step.id ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-800 bg-dark-800 text-gray-600'
+                      }`}>
                       {currentStep > step.id ? <CheckCircle size={18} /> : <step.icon size={16} />}
                     </div>
                     <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === step.id ? 'text-secondary-400' : 'text-gray-600'}`}>
@@ -300,9 +297,9 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                   <div className="relative group cursor-pointer" onClick={() => !uploadingFoto && fotoInputRef.current?.click()}>
                     <div className={`w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden transition-all
                       ${uploadingFoto ? 'border-secondary-400 opacity-70' : 'border-gray-700 group-hover:border-secondary-500'}`}>
-                      {uploadingFoto ? <Loader2 size={24} className="animate-spin text-secondary-400" /> : 
-                       fotoPreview ? <img src={fotoPreview} alt="Foto" className="w-full h-full object-cover" /> : 
-                       <Camera className="text-gray-600 group-hover:text-secondary-500" size={24} />}
+                      {uploadingFoto ? <Loader2 size={24} className="animate-spin text-secondary-400" /> :
+                        fotoPreview ? <img src={fotoPreview} alt="Foto" className="w-full h-full object-cover" /> :
+                          <Camera className="text-gray-600 group-hover:text-secondary-500" size={24} />}
                     </div>
                     {!uploadingFoto && (
                       <div className="absolute bottom-0 right-0 bg-secondary-600 p-1 rounded-full shadow-lg border-2 border-dark-900">
@@ -318,7 +315,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-secondary-500 uppercase tracking-widest mb-1.5 ml-1">Nombre *</label>
                     <div className="relative group">
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500" size={16} />
-                      <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} required placeholder="Nombre" 
+                      <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre"
                         className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/30 outline-none text-sm font-medium transition-all ${getErrorClass('nombre')}`} />
                     </div>
                   </div>
@@ -326,14 +323,14 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-secondary-500 uppercase tracking-widest mb-1.5 ml-1">Apellido *</label>
                     <div className="relative group">
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-secondary-500" size={16} />
-                      <input type="text" name="apellido" value={formData.apellido} onChange={handleChange} required placeholder="Apellido" 
+                      <input type="text" name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido"
                         className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-secondary-500/30 outline-none text-sm font-medium transition-all ${getErrorClass('apellido')}`} />
                     </div>
                   </div>
                   <div className="md:col-span-2 grid grid-cols-3 gap-4">
                     <div className="col-span-1">
                       <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Tipo *</label>
-                      <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange} required
+                      <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange}
                         className="w-full px-3 py-2.5 bg-dark-800/40 border border-white/5 rounded-xl text-white outline-none appearance-none cursor-pointer text-sm font-medium">
                         <option value="CC" className="bg-dark-900">CC</option>
                         <option value="CE" className="bg-dark-900">CE</option>
@@ -342,7 +339,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     </div>
                     <div className="col-span-2">
                       <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Número Documento *</label>
-                      <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleChange} required placeholder="123456789" 
+                      <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleChange} placeholder="123456789"
                         className={`w-full px-4 py-2.5 bg-dark-800/40 border rounded-xl text-white placeholder-gray-600 outline-none text-sm font-medium transition-all ${getErrorClass('numeroDocumento')}`} />
                     </div>
                   </div>
@@ -350,9 +347,14 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Fecha Nacimiento *</label>
                     <div className="relative">
                       <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                      <input type="date" name="fechaNacimiento" value={formData.fechaNacimiento} onChange={handleChange} required
+                      <input 
+                        type="date" 
+                        name="fechaNacimiento" 
+                        value={formData.fechaNacimiento} 
+                        onChange={handleChange}
                         max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-                        className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium [color-scheme:dark] transition-all ${getErrorClass('fechaNacimiento')}`} />
+                        className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium [color-scheme:dark] transition-all ${getErrorClass('fechaNacimiento')}`} 
+                      />
                     </div>
                   </div>
                 </div>
@@ -366,29 +368,29 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-secondary-500 uppercase tracking-widest mb-1.5 ml-1">Correo Electrónico *</label>
                     <div className="relative group">
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                      <input type="email" name="email" value={formData.email} onChange={handleChange} required readOnly={!!emailFromUrl}
+                      <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!!emailFromUrl}
                         className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white text-sm font-medium transition-all ${getErrorClass('email')} ${emailFromUrl ? 'opacity-80' : ''}`} />
                     </div>
                   </div>
                   <div>
                     <label className="block text-[9px] font-black text-secondary-500 uppercase tracking-widest mb-1.5 ml-1">Teléfono Principal *</label>
-                    <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} required placeholder="3001234567" 
+                    <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="3001234567"
                       className={`w-full px-4 py-2.5 bg-dark-800/40 border rounded-xl text-white placeholder-gray-600 outline-none text-sm font-medium transition-all ${getErrorClass('telefono')}`} />
                   </div>
                   <div>
                     <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Teléfono Alternativo</label>
-                    <input type="tel" name="telefonoAlternativo" value={formData.telefonoAlternativo} onChange={handleChange} placeholder="Opcional" 
+                    <input type="tel" name="telefonoAlternativo" value={formData.telefonoAlternativo} onChange={handleChange} placeholder="Opcional"
                       className="w-full px-4 py-2.5 bg-dark-800/40 border border-white/5 rounded-xl text-white placeholder-gray-600 outline-none text-sm font-medium" />
                   </div>
                   <div className="grid grid-cols-2 gap-4 md:col-span-2">
                     <div>
                       <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Ciudad *</label>
-                      <input type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} required
+                      <input type="text" name="ciudad" value={formData.ciudad} onChange={handleChange}
                         className={`w-full px-4 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium transition-all ${getErrorClass('ciudad')}`} />
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Barrio *</label>
-                      <input type="text" name="barrio" value={formData.barrio} onChange={handleChange} required placeholder="Barrio" 
+                      <input type="text" name="barrio" value={formData.barrio} onChange={handleChange} placeholder="Barrio"
                         className={`w-full px-4 py-2.5 bg-dark-800/40 border rounded-xl text-white placeholder-gray-600 outline-none text-sm font-medium transition-all ${getErrorClass('barrio')}`} />
                     </div>
                   </div>
@@ -396,7 +398,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Dirección Exacta *</label>
                     <div className="relative">
                       <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                      <input type="text" name="direccion" value={formData.direccion} onChange={handleChange} required placeholder="Calle 123 # 45 - 67" 
+                      <input type="text" name="direccion" value={formData.direccion} onChange={handleChange} placeholder="Calle 123 # 45 - 67"
                         className={`w-full pl-10 pr-4 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium transition-all ${getErrorClass('direccion')}`} />
                     </div>
                   </div>
@@ -415,7 +417,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-primary-500 uppercase tracking-widest mb-1.5 ml-1">Contraseña *</label>
                     <div className="relative group">
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                      <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} required minLength={6} 
+                      <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange}
                         className={`w-full pl-10 pr-10 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium transition-all ${getErrorClass('password')}`} />
                       <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -426,7 +428,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
                     <label className="block text-[9px] font-black text-primary-500 uppercase tracking-widest mb-1.5 ml-1">Confirmar Contraseña *</label>
                     <div className="relative group">
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                      <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={6} 
+                      <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
                         className={`w-full pl-10 pr-10 py-2.5 bg-dark-800/40 border rounded-xl text-white outline-none text-sm font-medium transition-all ${getErrorClass('confirmPassword')}`} />
                       <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}

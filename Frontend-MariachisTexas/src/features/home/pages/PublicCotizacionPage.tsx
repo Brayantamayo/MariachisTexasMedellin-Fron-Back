@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Star } from 'lucide-react';
+import { CheckCircle, Star} from 'lucide-react';
 import { Song, Service } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { servicesService } from '../../servicio/services/servicesService';
@@ -9,6 +9,7 @@ import { cotizacionService } from '../../cotizaciones/services/cotizacionService
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { CotizacionForm, CotizacionFormErrors } from '../../cotizaciones/components/CotizacionForm';
 import toast from 'react-hot-toast';
+
 
 interface Props {
   onNavigate?: (path: string) => void;
@@ -64,6 +65,7 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
         setServices(servicesData)
 
         let baseData = { ...initialFormState }
+
 
         // ✅ Pre-rellenar si el usuario está logueado — campos en inglés según User
         if (isAuthenticated && user) {
@@ -276,6 +278,8 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16">
+          
+          
           <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6">
             <Star size={12} className="text-orange-400 fill-orange-400" />
             <span className="text-orange-200 font-bold tracking-[0.2em] text-[10px] uppercase">Planea tu Evento Perfecto</span>

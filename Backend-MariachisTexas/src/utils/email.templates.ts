@@ -157,7 +157,7 @@ const button = (text: string, url: string) => `
     </tr>
   </table>
 `
-
+///Email de bienvenida
 export const emailBienvenida = (p: EmailBienvenidaParams) => ({
   subject: 'Bienvenido a Mariachis Texas',
   html: wrapper(`
@@ -207,6 +207,7 @@ export const emailBienvenida = (p: EmailBienvenidaParams) => ({
   `),
 })
 
+////Email de recuperar contraseña
 export const emailOtp = (p: EmailOtpParams) => ({
   subject: 'Codigo de recuperacion - Mariachis Texas',
   html: wrapper(`
@@ -236,6 +237,7 @@ export const emailOtp = (p: EmailOtpParams) => ({
   `),
 })
 
+///Email de cotizacion cuando se aprueba 
 export const emailCotizacionAprobada = (p: EmailCotizacionAprobadaParams) => ({
   subject: 'Cotizacion aprobada - Mariachis Texas',
   html: wrapper(`
@@ -261,13 +263,25 @@ export const emailCotizacionAprobada = (p: EmailCotizacionAprobadaParams) => ({
 
     ${button('Crear cuenta', p.registerUrl)}
 
-    <p style="margin:8px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;text-align:center;">
+    ${panel(`
+      <p style="margin:0 0 10px;color:${colors.heading};font-size:15px;font-weight:800;">
+        Pasos para confirmar tu reserva:
+      </p>
+      <ol style="margin:0;padding-left:20px;color:${colors.text};font-size:14px;line-height:1.8;">
+        <li style="margin-bottom:8px;">Dale clic al boton <b>Crear cuenta</b> de arriba. Seras redirigido a la pagina de registro.</li>
+        <li style="margin-bottom:8px;">Llena tus datos personales, pero <b>no modifiques el correo prellenado</b>, ya que este esta vinculado a tu reserva.</li>
+        <li style="margin-bottom:8px;">Una vez registrado e iniciada la sesion, dirigete a la seccion de <b>Reservas</b> donde podras ver todos los detalles.</li>
+        <li style="margin-bottom:8px;">Recuerda que para confirmar tu reserva, debes realizar el abono del 50%. Comunicate al <b>314 757 4707</b> para gestionarlo y envianos el comprobante a nombre de quien esta la reserva. ¡Muchas gracias!</li>
+      </ol>
+    `, 'warning')}
+
+    <p style="margin:16px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;text-align:center;">
       Si ya tienes una cuenta registrada, puedes ingresar directamente desde el siguiente enlace:
       <a href="${p.loginUrl}" style="color:${colors.accent};font-weight:700;text-decoration:none;"> iniciar sesion</a>.
     </p>
   `),
 })
-
+///Email de reserva creada 
 export const emailReservaCreada = (p: EmailReservaCreadaParams) => ({
   subject: 'Reserva creada exitosamente - Mariachis Texas',
   html: wrapper(`

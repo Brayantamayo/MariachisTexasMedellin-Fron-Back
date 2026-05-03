@@ -221,33 +221,43 @@ export const EnsayosPage: React.FC = () => {
               <div
                 key={r.id}
                 onClick={(e) => { e.stopPropagation(); setSelectedRehearsal(r); setIsDetailOpen(true); }}
-                className="text-[9px] border border-purple-200 bg-purple-50 text-purple-800 px-1 py-0.5 rounded font-bold flex items-center gap-1 cursor-pointer hover:bg-purple-100 transition-colors"
+                className={`text-[9px] border px-1 py-0.5 rounded font-bold flex items-center gap-1 cursor-pointer transition-colors
+                  ${isPast 
+                    ? 'bg-slate-50 border-slate-100 text-slate-400 opacity-70' 
+                    : 'border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100'}`}
               >
-                <Music size={8} />
-                <span className="font-bold shrink-0">{r.time}</span>
+                <Music size={8} className={isPast ? 'text-slate-300' : 'text-purple-400'} />
+                <span className={`font-bold shrink-0 ${isPast ? 'text-slate-400' : 'text-purple-600'}`}>{r.time}</span>
                 <span className="truncate">{r.title}</span>
               </div>
             ))}
 
             {/* Reservas — color según estado */}
             {dayEvents
-  .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
-  .map(ev => {
-    const s = (ev.status ?? '').toUpperCase();
-    let style    = 'bg-amber-50 border-amber-200 text-amber-800';
-    let timeStyle = 'text-amber-600';
-    if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-200 text-emerald-800'; timeStyle = 'text-emerald-600'; }
-    if (s === 'REPROGRAMADA') { style = 'bg-[#e1f8ff] border-[#0c808b]/30 text-[#0c808b]'; timeStyle = 'text-[#0c808b]'; }
-    if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-200 text-blue-800'; timeStyle = 'text-blue-500'; }
-    return (
-      <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${style}`}>
-        <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-        <span className="truncate font-medium">
-          {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
-        </span>
-      </div>
-    );
-  })}
+              .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
+              .map(ev => {
+                const s = (ev.status ?? '').toUpperCase();
+                let style    = 'bg-amber-50 border-amber-200 text-amber-800';
+                let timeStyle = 'text-amber-600';
+                
+                if (isPast) {
+                  style = 'bg-slate-50 border-slate-100 text-slate-400 opacity-70';
+                  timeStyle = 'text-slate-400';
+                } else {
+                  if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-200 text-emerald-800'; timeStyle = 'text-emerald-600'; }
+                  if (s === 'REPROGRAMADA') { style = 'bg-[#e1f8ff] border-[#0c808b]/30 text-[#0c808b]'; timeStyle = 'text-[#0c808b]'; }
+                  if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-200 text-blue-800'; timeStyle = 'text-blue-500'; }
+                }
+
+                return (
+                  <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${style}`}>
+                    <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+                    <span className="truncate font-medium">
+                      {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
+                    </span>
+                  </div>
+                );
+              })}
           </div>
 
           {/* Fondo bloqueo total */}

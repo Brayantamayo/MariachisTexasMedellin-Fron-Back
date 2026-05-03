@@ -24,32 +24,32 @@ const limpiarNotas = (notas: string | null | undefined): string => {
 // Estados del backend en mayúsculas → label y estilo
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case 'PENDIENTE':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'PENDIENTE': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'CONFIRMADA': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
-    case 'ANULADA':    return 'bg-red-50 text-red-600 border-red-100'
+    case 'ANULADA': return 'bg-red-50 text-red-600 border-red-100'
     case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30'
     // Legacy por si acaso
-    case 'Pendiente':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'Pendiente': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'Confirmado': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
     case 'Finalizado': return 'bg-blue-50 text-blue-600 border-blue-100'
-    case 'Anulado':    return 'bg-red-50 text-red-600 border-red-100'
-    default:           return 'bg-slate-50 text-slate-600'
+    case 'Anulado': return 'bg-red-50 text-red-600 border-red-100'
+    default: return 'bg-slate-50 text-slate-600'
   }
 }
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'PENDIENTE':  return 'Pendiente'
+    case 'PENDIENTE': return 'Pendiente'
     case 'CONFIRMADA': return 'Confirmada'
-    case 'ANULADA':    return 'Anulada'
+    case 'ANULADA': return 'Anulada'
     case 'REPROGRAMADA': return 'Reprogramada'
-    default:           return status
+    default: return status
   }
 }
 
 export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservation, onFinalize, onCancel, onReschedule }) => {
   const { user } = useAuth();
-  const [allSongs,    setAllSongs]    = useState<Song[]>([]);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelMotivo, setCancelMotivo] = useState('');
@@ -65,13 +65,13 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
 
   if (!isOpen || !reservation) return null;
 
-  const totalAmount    = reservation.totalAmount    || 0
-  const paidAmount     = reservation.paidAmount     || 0
+  const totalAmount = reservation.totalAmount || 0
+  const paidAmount = reservation.paidAmount || 0
   const remainingBalance = totalAmount - paidAmount
-  const progressPercent  = totalAmount > 0 ? Math.min((paidAmount / totalAmount) * 100, 100) : 0
+  const progressPercent = totalAmount > 0 ? Math.min((paidAmount / totalAmount) * 100, 100) : 0
   const isActive = !['ANULADA', 'Anulado', 'Finalizado'].includes(reservation.status)
   const isClient = user?.role === UserRole.CLIENTE
-  const isAdmin  = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO
   const canActOnReservation = isActive && isAdmin;
 
   const selectedSongs = allSongs.filter(s => reservation.repertoireIds?.includes(s.id))
