@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
 
+import { AIAdvisorWidget } from './Aiadvisorwidget'
+
 
 interface Props {
   onNavigate: (path: string) => void;
@@ -23,7 +25,6 @@ const galleryImages = [
 ];
 
 // --- COMPONENTS ---
-
 const RetroGrid = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none [perspective:200px]">
@@ -51,6 +52,8 @@ const InfiniteMarquee: React.FC<{ items: string[] }> = ({ items }) => {
 
 export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  
 
   // Gallery Autoplay Effect
   useEffect(() => {
@@ -597,7 +600,9 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
             0%, 100% { opacity: 1; }
             50% { opacity: .8; }
         }
+            
       `}</style>
+    <AIAdvisorWidget />
 
     </div>
   );

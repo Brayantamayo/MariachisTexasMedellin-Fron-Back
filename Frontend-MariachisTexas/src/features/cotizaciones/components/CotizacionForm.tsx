@@ -101,7 +101,7 @@ export const CotizacionForm: React.FC<Props> = ({
     }
   }, [formData.startTime, extraHoursQuantity])
 
-  const maxSongs = 7 + extraSongsQuantity
+  const maxSongs = (7 * (1 + extraHoursQuantity)) + extraSongsQuantity
   const currentSongCount = formData.repertoireIds?.length || 0
   const today = new Date().toISOString().split('T')[0]
 
@@ -118,8 +118,8 @@ export const CotizacionForm: React.FC<Props> = ({
     const currentExtraSongs = extraSongsService
       ? (formData.selectedServices?.find((s: any) => s.serviceId === String(extraSongsService.id))?.quantity || 0)
       : 0
-    if (!isSelected && currentSongCount >= 7 + currentExtraSongs) {
-      alert(`Has alcanzado el límite de ${7 + currentExtraSongs} canciones.`)
+    if (!isSelected && currentSongCount >= maxSongs) {
+      alert(`Has alcanzado el límite de ${maxSongs} canciones.`)
       return
     }
     onToggleSong(id)

@@ -1,6 +1,12 @@
 import { Request, Response } from 'express'
-import { registrarCliente, login, recuperarPassword, verificarOtp, resetearPassword, getRegistroToken as getRegistroTokenService, marcarTokenUsado } from './auth.services'
+import { registrarCliente, login, recuperarPassword, verificarOtp, resetearPassword, getRegistroToken as getRegistroTokenService, marcarTokenUsado, checkDisponibilidad } from './auth.services'
 import { asyncHandler } from '../../middlewares/Asynchandler'
+
+export const verificarDisponibilidad = asyncHandler(async (req: Request, res: Response) => {
+  const { tipo, valor } = req.query
+  if (!tipo || !valor) return res.status(400).json({ message: 'Tipo y valor son requeridos' })
+  res.json(await checkDisponibilidad(tipo as 'email' | 'documento', valor as string))
+})
 
 // POST /api/auth/registro
 export const registro = asyncHandler(async (req: Request, res: Response) => {

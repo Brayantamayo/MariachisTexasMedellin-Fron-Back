@@ -308,3 +308,17 @@ export const marcarTokenUsado = async (token: string) => {
 
   return { message: 'Token marcado como utilizado' }
 }
+
+// ─── VERIFICAR DISPONIBILIDAD ───────────────────────────────────────────────
+/**
+ * Verifica si un email o documento ya existen en la base de datos
+ */
+export const checkDisponibilidad = async (tipo: 'email' | 'documento', valor: string) => {
+  if (tipo === 'email') {
+    const existe = await prisma.usuario.findUnique({ where: { email: valor } })
+    return { disponible: !existe }
+  } else {
+    const existe = await prisma.cliente.findUnique({ where: { numeroDocumento: valor } })
+    return { disponible: !existe }
+  }
+}

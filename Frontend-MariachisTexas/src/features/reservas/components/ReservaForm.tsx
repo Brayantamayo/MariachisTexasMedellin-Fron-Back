@@ -112,7 +112,7 @@ export const ReservaForm: React.FC<Props> = ({
     ? (formData.selectedServices?.find(s => String(s.serviceId) === String(extraSongsService.id))?.quantity || 0)
     : 0;
 
-  const maxSongs         = 7 + extraSongsQuantity;
+  const maxSongs         = (7 * (1 + extraHoursQuantity)) + extraSongsQuantity;
   const currentSongCount = formData.repertoireIds?.length || 0;
 
   const handleToggleSong = (id: string) => {

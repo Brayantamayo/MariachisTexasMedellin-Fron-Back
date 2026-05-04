@@ -19,6 +19,7 @@ import ventasRoutes     from './modules/ventas/ventas.routes'
 import rolesRoutes      from './modules/roles/roles.routes'
 import usuarioRoutes    from './modules/usuarios/usuario.routes'
 import empleadoRoutes   from './modules/empleados/empleado.routes'
+import aiRoutes          from './modules/IA/Ai.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -110,6 +111,7 @@ app.use('/api/ventas',       ventasRoutes)
 app.use('/api/roles',        rolesRoutes)
 app.use('/api/usuarios',     usuarioRoutes)
 app.use('/api/empleados',    empleadoRoutes)
+app.use('/api/ai', aiRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)   // atrapa rutas inexistentes

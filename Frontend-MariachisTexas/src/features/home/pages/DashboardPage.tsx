@@ -139,6 +139,7 @@ interface CalendarDayCell {
   date: Date;
   inMonth: boolean;
   isToday: boolean;
+  isPast: boolean;
   items: CalendarEventChip[];
 }
 
@@ -641,7 +642,9 @@ const MonthlyCalendarBoard: React.FC<{
                 <div
                   key={item.id}
                   className={`truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                    item.tone === 'reservation'
+                    cell.isPast
+                      ? 'bg-slate-100 text-slate-400'
+                      : item.tone === 'reservation'
                       ? 'bg-red-50 text-red-700'
                       : item.tone === 'quotation'
                       ? 'bg-amber-50 text-amber-700'
@@ -1183,6 +1186,7 @@ export const DashboardPage: React.FC = () => {
       date,
       inMonth: date.getMonth() === currentMonthStart.getMonth(),
       isToday: date.toDateString() === today.toDateString(),
+      isPast: date < today && date.toDateString() !== today.toDateString(),
       items: calendarSourceItems.filter(s => s.date.toDateString() === date.toDateString()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(s => s.item),
     };
   });
@@ -1285,7 +1289,7 @@ export const DashboardPage: React.FC = () => {
                 </h1>
 
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-400 md:text-[0.9375rem]">
-                  Ingresos, reservas, cotizaciones, ensayos y alertas en una sola vista. Diseñado para decidir, no solo para ver.
+                  Centraliza toda tu operación en una sola vista: ingresos, reservas, cotizaciones, ensayos y alertas, diseñada para convertir datos en decisiones.
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center gap-2.5">
@@ -1335,7 +1339,7 @@ export const DashboardPage: React.FC = () => {
             <section className="space-y-4">
               <DashboardSectionHeader
                 eyebrow="Resumen"
-                title="Vista ejecutiva"
+                title="Vista Administrativa"
                 subtitle="Ingresos del mes, reservas activas, saldo por cobrar y canciones más pedidas."
               />
 
@@ -1497,7 +1501,7 @@ export const DashboardPage: React.FC = () => {
                 </DashboardCard>
 
                 <DashboardCard
-                  title="Mix de reservas por estado"
+                  title="Estado de reservas activas"
                   subtitle="Cómo están distribuidas las reservas ahora mismo."
                 >
                   <div className="space-y-4">
@@ -1760,7 +1764,7 @@ export const DashboardPage: React.FC = () => {
                 ))}
               </div>
 
-              <DashboardCard title="Clientes con mayor valor" subtitle="Ranking por reservas registradas y monto acumulado." accent>
+              <DashboardCard title="Clientes con mayor Gasto" subtitle="Ranking por reservas registradas y monto acumulado." accent>
                 <div className="space-y-3">
                   {topClients.length === 0 ? (
                     <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">

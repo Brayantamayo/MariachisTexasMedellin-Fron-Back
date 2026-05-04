@@ -146,10 +146,10 @@ export const validarServiciosReserva = async (
   startTime:        string,
   endTime:          string,
 ): Promise<void> => {
-  const CANCIONES_INCLUIDAS  = 7
-  const PRECIO_CANCION_EXTRA = 10000
-  const SERENATA_KEYWORDS    = ['serenata urbana', 'serenata rural']
-  const HORA_EXTRA_KEYWORD   = 'hora extra'
+  const PRECIO_CANCION_EXTRA  = 10000
+  const SERENATA_KEYWORDS     = ['serenata urbana', 'serenata rural']
+  const HORA_EXTRA_KEYWORD    = 'hora extra'
+  const CANCION_EXTRA_KEYWORD = 'cancion extra'
 
   const normalize = (str: string) =>
     str.trim()
@@ -177,6 +177,11 @@ export const validarServiciosReserva = async (
     ? (selectedServices.find(s => Number(s.serviceId) === horaExtraService.id)?.quantity ?? 0)
     : 0
 
+  const cancionExtraService = serviciosDB.find(s => normalize(s.nombre).includes(CANCION_EXTRA_KEYWORD))
+  const cancionesExtraQty   = cancionExtraService
+    ? (selectedServices.find(s => Number(s.serviceId) === cancionExtraService.id)?.quantity ?? 0)
+    : 0
+
   const duracionEsperadaMin = (1 + horasExtra) * 60
 
   const [startH, startM] = startTime.split(':').map(Number)
@@ -201,11 +206,19 @@ export const validarServiciosReserva = async (
     return total + (Number(srv!.precio) * item.quantity)
   }, 0)
 
-  const cancionesExtra = (repertoireIds?.length ?? 0) > CANCIONES_INCLUIDAS
-    ? ((repertoireIds?.length ?? 0) - CANCIONES_INCLUIDAS) * PRECIO_CANCION_EXTRA
+  // Canciones incluidas: 7 por cada hora de servicio
+  const cancionesIncluidasTotal = (1 + horasExtra) * 7
+  
+  // Total permitido = incluidas + compradas como servicio adicional
+  const totalCancionesPermitidas = cancionesIncluidasTotal + cancionesExtraQty
+  const cancionesSeleccionadas   = repertoireIds?.length ?? 0
+
+  // Si se excede el total permitido, se cobra cada una al precio de canción extra
+  const cancionesExceso = cancionesSeleccionadas > totalCancionesPermitidas
+    ? (cancionesSeleccionadas - totalCancionesPermitidas) * PRECIO_CANCION_EXTRA
     : 0
 
-  const totalCalculado = costoServicios + cancionesExtra
+  const totalCalculado = costoServicios + cancionesExceso
 
   if (totalCalculado === 0)
     throw new AppError('El total debe ser mayor a cero. Selecciona un tipo de serenata.', 400)

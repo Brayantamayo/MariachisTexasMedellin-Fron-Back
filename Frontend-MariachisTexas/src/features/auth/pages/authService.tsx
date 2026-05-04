@@ -66,4 +66,9 @@ export const authService = {
     const { data } = await api.patch(`/auth/registro-token/${token}/usar`)
     return data
   },
+
+  checkDisponibilidad: async (tipo: 'email' | 'documento', valor: string): Promise<{ disponible: boolean }> => {
+    const { data } = await api.get(`/auth/verificar-disponibilidad`, { params: { tipo, valor } })
+    return data
+  },
 }
