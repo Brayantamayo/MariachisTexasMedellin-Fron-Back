@@ -192,7 +192,7 @@ async function main() {
     where: { usuarioId: directaUser.id },
     update: {},
     create: {
-      usuarioId:           directaUser.id,
+      usuario:             { connect: { id: directaUser.id } },
       email:               'directa@mariachistexas.com',
       apellido:            'Directa',
       tipoDocumento:       'CC',
@@ -205,7 +205,7 @@ async function main() {
       direccion:           'Venta Directa',
       zonaServicio:        'URBANA',
       activo:              true
-    } as any
+    }
   })
 
   // ─── CLIENTE DE PRUEBA ────────────────────────────────────
@@ -224,6 +224,7 @@ async function main() {
     where: { usuarioId: clientePruebaUser.id },
     update: {},
     create: {
+      usuario:             { connect: { id: clientePruebaUser.id } },
       email:               'cliente@mariachistexas.com',
       apellido:            'Prueba',
       tipoDocumento:       'CC',
@@ -236,7 +237,7 @@ async function main() {
       direccion:           'Calle 123',
       zonaServicio:        'URBANA',
       activo:              true
-    } as any
+    }
   })
 
   console.log('✅ Cliente para ventas directas creado')
