@@ -529,40 +529,68 @@ const RankedListCard: React.FC<{
 };
 
 /* ─── Heatmap ─── */
-const Heatmap: React.FC<{ matrix: number[][] }> = ({ matrix }) => {
-  const max = Math.max(1, ...matrix.flat());
-
-  const getCellStyle = (value: number): string => {
-    const ratio = value / max;
-    if (value === 0) return 'bg-slate-50 text-slate-300 border border-slate-100';
-    if (ratio < 0.35) return 'bg-red-50 text-red-400 border border-red-100';
-    if (ratio < 0.7) return 'bg-red-200 text-red-700 border border-red-200';
-    return 'bg-red-600 text-white border border-red-600 shadow-sm';
+const Heatmap = React.memo(({ matrix }: { matrix: any[][][] }) => {
+  const getCellBg = (items: any[]): string => {
+    if (items.length === 0) return 'bg-slate-50/40 border-slate-100/50';
+    return 'bg-white/80 border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] backdrop-blur-sm';
   };
 
   return (
-    <div className="overflow-x-auto">
-      <div className="grid min-w-[580px] grid-cols-[76px_repeat(7,minmax(0,1fr))] gap-1.5">
+    <div className="overflow-x-auto pb-4 -mx-1 px-1 custom-scrollbar">
+      <div className="grid min-w-[900px] grid-cols-[100px_repeat(7,minmax(0,1fr))] gap-3 p-1">
         <div />
         {WEEK_DAYS.map(day => (
-          <div key={day} className="pb-1 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-            {day}
+          <div key={day} className="flex flex-col items-center pb-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{day}</span>
+            <div className="mt-1 h-1 w-1 rounded-full bg-slate-200" />
           </div>
         ))}
         {SLOT_LABELS.map((slot, rowIndex) => (
           <React.Fragment key={slot}>
-            <div className="flex items-center text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
-              {slot}
+            <div className="flex flex-col justify-center py-2 pr-4 border-r border-slate-100/50">
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-900 leading-tight">{slot}</span>
+              <span className="mt-0.5 text-[7px] font-bold uppercase tracking-wider text-slate-400">Bloque</span>
             </div>
             {WEEK_DAYS.map((_, colIndex) => {
-              const value = matrix[rowIndex]?.[colIndex] ?? 0;
+              const items = matrix[rowIndex]?.[colIndex] ?? [];
+              const count = items.length;
+              
               return (
                 <div
                   key={`${slot}-${colIndex}`}
-                  className={`flex h-12 items-center justify-center rounded-xl text-sm font-black transition-transform hover:scale-105 ${getCellStyle(value)}`}
-                  title={`${slot} ${WEEK_DAYS[colIndex]}: ${value} registro(s)`}
+                  className={`group relative flex flex-col min-h-[100px] rounded-[1.2rem] border p-2.5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${getCellBg(items)}`}
                 >
-                  {value || ''}
+                  {count > 0 ? (
+                    <div className="flex flex-col h-full">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className={`flex h-4 w-4 items-center justify-center rounded-lg ${count > 2 ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500'}`}>
+                          <Zap size={9} strokeWidth={3} />
+                        </div>
+                        <span className="text-[8px] font-black text-slate-400 tracking-wider">{count} E</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        {items.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 rounded-xl bg-slate-50/60 px-2 py-1 border border-slate-100 hover:border-red-200 transition-all">
+                            <div className={`h-1 w-1 rounded-full shrink-0 ${item.type === 'reserva' ? 'bg-red-500' : item.type === 'cotizacion' ? 'bg-amber-500' : 'bg-teal-500'}`} />
+                            <span className="truncate text-[9px] font-black text-slate-700 tracking-tight">
+                              {item.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {count > 3 && (
+                        <div className="mt-auto pt-1 flex items-center justify-center border-t border-slate-50">
+                          <span className="text-[8px] font-black text-slate-400 tracking-[0.1em]">+ {count - 3}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center opacity-30">
+                      <div className="h-1 w-1 rounded-full bg-slate-100" />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -571,37 +599,34 @@ const Heatmap: React.FC<{ matrix: number[][] }> = ({ matrix }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─── Monthly Calendar ─── */
-const MonthlyCalendarBoard: React.FC<{
-  monthDate: Date;
-  cells: CalendarDayCell[];
-}> = ({ monthDate, cells }) => (
-  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white">
-    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5">
+const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date; cells: CalendarDayCell[] }) => (
+  <div className="overflow-hidden rounded-[2rem] border border-slate-200/60 bg-white shadow-xl shadow-slate-200/30">
+    <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/30 px-6 py-5">
       <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Vista mensual</p>
-        <p className="mt-0.5 text-base font-black text-slate-900">
-          {monthDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Calendario Operativo</p>
+        <p className="mt-1 text-xl font-black tracking-tight text-slate-900">
+          {monthDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}
         </p>
       </div>
-      <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-red-500" />Reservas
+      <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />Reserva
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-amber-400" />Cotizaciones
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />Cotización
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-teal-500" />Ensayos
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]" />Ensayo
         </span>
       </div>
     </div>
 
-    <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
+    <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/80">
       {WEEK_DAYS.map(day => (
-        <div key={day} className="px-2 py-2 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+        <div key={day} className="px-2 py-3 text-center text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
           {day}
         </div>
       ))}
@@ -615,24 +640,24 @@ const MonthlyCalendarBoard: React.FC<{
         return (
           <div
             key={cell.date.toISOString()}
-            className={`min-h-[120px] border-b border-r border-slate-100 p-2 ${
-              cell.inMonth ? 'bg-white' : 'bg-slate-50/50'
+            className={`min-h-[140px] border-b border-r border-slate-100 p-3 transition-colors hover:bg-slate-50/30 ${
+              cell.inMonth ? 'bg-white' : 'bg-slate-50/40 opacity-40'
             }`}
           >
-            <div className="mb-1.5 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between">
               <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-black ${
+                className={`flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black transition-all ${
                   cell.isToday
-                    ? 'bg-slate-950 text-white'
+                    ? 'bg-slate-950 text-white shadow-lg shadow-slate-900/20 scale-110'
                     : cell.inMonth
                     ? 'text-slate-800'
-                    : 'text-slate-300'
+                    : 'text-slate-400'
                 }`}
               >
                 {cell.date.getDate()}
               </span>
               {cell.items.length > 0 && (
-                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 border border-slate-200">
                   {cell.items.length}
                 </span>
               )}
@@ -664,7 +689,7 @@ const MonthlyCalendarBoard: React.FC<{
       })}
     </div>
   </div>
-);
+));
 
 /* ─── Status Pill ─── */
 const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' | 'agenda' }> = ({
@@ -1134,13 +1159,13 @@ export const DashboardPage: React.FC = () => {
     Number(item.Ventas || 0) > 0
   );
 
-  const weeklyAgendaLoadData = WEEK_DAYS.map((day, i) => ({
+  const weeklyAgendaLoadData = useMemo(() => WEEK_DAYS.map((day, i) => ({
     day,
     Reservas: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
     Ensayos: pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
     Total: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length +
            pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
-  }));
+  })), [futureReservations, pendingRehearsals]);
 
   const hasWeeklyAgendaData = weeklyAgendaLoadData.some(item =>
     Number(item.Reservas || 0) > 0 || Number(item.Ensayos || 0) > 0
@@ -1152,47 +1177,65 @@ export const DashboardPage: React.FC = () => {
   const weeklyAgendaRadiusMax = Math.max(4, weeklyAgendaPeak);
   const weeklyAgendaTickCount = Math.min(6, weeklyAgendaRadiusMax + 1);
 
-  const occupancyMatrix = (() => {
-    const matrix = Array.from({ length: SLOT_LABELS.length }, () => Array(7).fill(0));
+  const occupancyMatrix = useMemo(() => {
+    const matrix = Array.from({ length: SLOT_LABELS.length }, () => Array(7).fill(0).map(() => [] as any[]));
+    
     futureReservations.filter(r => r.eventDateTime <= next60Days).forEach(r => {
-      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)] += 1;
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.clientName || 'Sin nombre', 
+        type: 'reserva',
+        id: r.id 
+      });
     });
+    
     pendingQuotes.filter(q => q.eventDateTime >= today && q.eventDateTime <= next60Days).forEach(q => {
-      matrix[getSlotIndex(q.eventDateTime.getHours())][getWeekdayIndex(q.eventDateTime)] += 1;
+      matrix[getSlotIndex(q.eventDateTime.getHours())][getWeekdayIndex(q.eventDateTime)].push({ 
+        name: q.clientName || 'Cotización', 
+        type: 'cotizacion',
+        id: q.id 
+      });
     });
+    
     pendingRehearsals.filter(r => r.eventDateTime <= next60Days).forEach(r => {
-      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)] += 1;
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.title || 'Ensayo', 
+        type: 'ensayo',
+        id: r.id 
+      });
     });
+    
     return matrix;
-  })();
+  }, [futureReservations, pendingQuotes, pendingRehearsals, today, next60Days]);
 
   /* Calendar */
-  const calendarGridStart = startOfWeek(currentMonthStart);
-  const calendarGridEnd = endOfWeekGrid(currentMonthStart);
-  const calendarSourceItems = [
-    ...futureReservations.filter(r => r.eventDateTime >= calendarGridStart && r.eventDateTime <= calendarGridEnd)
-      .map(r => ({ date: r.eventDateTime, item: { id: `res-${r.id}`, label: `${r.startTime || r.eventTime || '00:00'} ${r.clientName}`, tone: 'reservation' as const } })),
-    ...pendingQuotes.filter(q => q.eventDateTime >= calendarGridStart && q.eventDateTime <= calendarGridEnd)
-      .map(q => ({ date: q.eventDateTime, item: { id: `quote-${q.id}`, label: `${q.startTime || '00:00'} ${q.clientName}`, tone: 'quotation' as const } })),
-    ...pendingRehearsals.filter(r => r.eventDateTime >= calendarGridStart && r.eventDateTime <= calendarGridEnd)
-      .map(r => ({ date: r.eventDateTime, item: { id: `reh-${r.id}`, label: `${r.time || r.hora || '00:00'} ${r.title}`, tone: 'rehearsal' as const } })),
-  ];
+  const calendarMonthCells: CalendarDayCell[] = useMemo(() => {
+    const gridStart = startOfWeek(currentMonthStart);
+    const gridEnd = endOfWeekGrid(currentMonthStart);
+    const sourceItems = [
+      ...futureReservations.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `res-${r.id}`, label: `${r.startTime || r.eventTime || '00:00'} ${r.clientName}`, tone: 'reservation' as const } })),
+      ...pendingQuotes.filter(q => q.eventDateTime >= gridStart && q.eventDateTime <= gridEnd)
+        .map(q => ({ date: q.eventDateTime, item: { id: `quote-${q.id}`, label: `${q.startTime || '00:00'} ${q.clientName}`, tone: 'quotation' as const } })),
+      ...pendingRehearsals.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `reh-${r.id}`, label: `${r.time || r.hora || '00:00'} ${r.title}`, tone: 'rehearsal' as const } })),
+    ];
 
-  const calendarMonthCells: CalendarDayCell[] = Array.from({ length: 42 }, (_, i) => {
-    const date = new Date(calendarGridStart);
-    date.setDate(calendarGridStart.getDate() + i);
-    date.setHours(0, 0, 0, 0);
-    return {
-      date,
-      inMonth: date.getMonth() === currentMonthStart.getMonth(),
-      isToday: date.toDateString() === today.toDateString(),
-      isPast: date < today && date.toDateString() !== today.toDateString(),
-      items: calendarSourceItems.filter(s => s.date.toDateString() === date.toDateString()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(s => s.item),
-    };
-  });
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      return {
+        date,
+        inMonth: date.getMonth() === currentMonthStart.getMonth(),
+        isToday: date.toDateString() === today.toDateString(),
+        isPast: date < today && date.toDateString() !== today.toDateString(),
+        items: sourceItems.filter(s => s.date.toDateString() === date.toDateString()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(s => s.item),
+      };
+    });
+  }, [currentMonthStart, futureReservations, pendingQuotes, pendingRehearsals, today]);
 
   /* Agenda */
-  const agendaItems: AgendaItem[] = [
+  const agendaItems: AgendaItem[] = useMemo(() => [
     ...futureReservations.slice(0, 6).map(r => ({
       id: `res-${r.id}`, title: `${r.eventType} · ${r.clientName}`,
       subtitle: `Reserva #${r.id} · ${fullCurrency(r.totalAmount)}`,
@@ -1202,24 +1245,24 @@ export const DashboardPage: React.FC = () => {
       id: `ens-${r.id}`, title: r.title, subtitle: r.location,
       date: r.eventDateTime, kind: 'ensayo' as const, status: r.normalizedStatus,
     })),
-  ].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 8);
+  ].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 8), [futureReservations, pendingRehearsals]);
 
   /* Activity feed */
-  const activityFeed: ActivityItem[] = [
+  const activityFeed: ActivityItem[] = useMemo(() => [
     ...reservations.map(r => ({ id: `res-${r.id}`, title: `${r.eventType} · ${r.clientName}`, subtitle: `Reserva · ${normalizeReservationStatus(r.status)}`, date: new Date(r.createdAt), amount: Number(r.totalAmount || 0), kind: 'reserva' as const })),
     ...quotations.map(q => ({ id: `q-${q.id}`, title: `${q.eventType} · ${q.clientName}`, subtitle: `Cotizacion · ${normalizeQuotationStatus(q.status)}`, date: new Date(q.createdAt), amount: Number(q.totalAmount || 0), kind: 'cotizacion' as const })),
     ...dashboard.sales.map(s => ({ id: `sale-${s.id}`, title: s.concept || s.eventType || 'Venta registrada', subtitle: `${s.clientName} · ${s.method}`, date: new Date(s.date), amount: Number(s.amount || 0), kind: 'venta' as const })),
-  ].filter(i => !Number.isNaN(i.date.getTime())).sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+  ].filter(i => !Number.isNaN(i.date.getTime())).sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10), [reservations, quotations, dashboard.sales]);
 
   /* Alerts */
-  const alerts: AlertItem[] = [
+  const alerts: AlertItem[] = useMemo(() => [
     ...futureReservations.filter(r => r.pendingValue > 0.01 && r.eventDateTime <= next14Days).slice(0, 3)
       .map(r => ({ id: `alert-res-${r.id}`, title: `Cobro pendiente · Reserva #${r.id}`, description: `${r.clientName} tiene ${fullCurrency(r.pendingValue)} por pagar. Evento el ${formatCompactDate(r.eventDateTime)}.`, tone: 'danger' as const })),
     ...pendingQuotes.filter(q => { const days = Math.floor((today.getTime() - new Date(q.createdAt).getTime()) / 86400000); return days >= 7; }).slice(0, 2)
       .map(q => ({ id: `alert-q-${q.id}`, title: 'Cotizacion sin respuesta', description: `${q.clientName} lleva días esperando respuesta. Propuesta de ${fullCurrency(q.totalAmount)}.`, tone: 'warning' as const })),
     ...pendingRehearsals.filter(r => r.eventDateTime <= next14Days).slice(0, 2)
       .map(r => ({ id: `alert-ens-${r.id}`, title: 'Ensayo próximo', description: `${r.title} programado para el ${formatCompactDate(r.eventDateTime)}.`, tone: 'success' as const })),
-  ].slice(0, 6);
+  ].slice(0, 6), [futureReservations, pendingQuotes, pendingRehearsals, today, next14Days]);
 
   const next7DaysAgenda = agendaItems.filter(i => i.date <= next30Days).length;
 
@@ -1619,13 +1662,9 @@ export const DashboardPage: React.FC = () => {
                 </DashboardCard>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-                <DashboardCard title="Mapa de ocupación" subtitle="Reservas, ensayos y cotizaciones por franja y día (próximos 60 días).">
-                  <Heatmap matrix={occupancyMatrix} />
-                </DashboardCard>
-
-                <DashboardCard title="Agenda inmediata" subtitle="Próximos eventos y ensayos en orden cronológico.">
-                  <div className="space-y-2.5">
+              <div className="grid gap-4 xl:grid-cols-1">
+                <DashboardCard title="Agenda inmediata" subtitle="Próximos eventos.">
+                  <div className="space-y-2">
                     {agendaItems.length === 0 ? (
                       <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
                         No hay eventos próximos cargados.
@@ -1651,6 +1690,11 @@ export const DashboardPage: React.FC = () => {
                 </DashboardCard>
               </div>
 
+              <div className="w-full">
+                <DashboardCard title="Mapa de ocupación" subtitle="Próximos 60 días.">
+                  <Heatmap matrix={occupancyMatrix} />
+                </DashboardCard>
+              </div>
             </section>
           )}
 
