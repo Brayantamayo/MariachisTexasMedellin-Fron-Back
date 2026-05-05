@@ -217,7 +217,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                           <CheckCircle size={14} className="text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-blue-800">{res.clientName}</p>
+                          <p className="text-sm font-bold text-blue-800">{isClient ? `Tu reserva - ${res.clientName}` : res.clientName}</p>
                           <p className="text-[10px] text-blue-600 uppercase tracking-wide mt-0.5">{res.eventType}</p>
                           <p className="text-[10px] font-mono text-blue-500 mt-0.5">{range}</p>
                           <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-blue-600 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
@@ -247,7 +247,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                         </div>
                         <div>
                           {/* CLIENT NAME — prominent */}
-                          <p className={`text-sm font-bold ${clrs.text}`}>{res.clientName} </p>
+                          <p className={`text-sm font-bold ${clrs.text}`}>{isClient ? `Tu reserva - ${res.clientName}` : res.clientName} </p>
                           <p className={`text-[10px] font-mono mt-0.5 ${clrs.sub}`}>{range}</p>
                           {/* Status badge */}
                           <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${clrs.badge}`}>
@@ -280,7 +280,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   content = (
                     <div className="flex items-center gap-3 w-full opacity-70" onClick={() => onViewReservation(res)}>
                       <div className="h-full w-0.5 bg-blue-300 rounded-full" />
-                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ {res.clientName} — En curso</span>
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ {isClient ? 'Tu reserva' : res.clientName} — Finalizado</span>
                     </div>
                   );
                 } else if (isMyReservation) {
@@ -289,7 +289,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                     <div className="flex items-center gap-3 w-full opacity-80" onClick={() => onViewReservation(res)}>
                       <div className={`h-full w-0.5 rounded-full ${clrs.dot}`} />
                       <span className={`text-[10px] font-bold uppercase tracking-widest ${clrs.sub}`}>
-                        ↳ {res.clientName} — En curso
+                        ↳ {isClient ? 'Tu reserva' : res.clientName} — En curso
                       </span>
                     </div>
                   );

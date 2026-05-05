@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Search, CheckCircle, AlertCircle, X, List, Calendar as CalendarIcon, 
-         ChevronLeft, ChevronRight, Music, ShieldAlert, FileText, Lock } from 'lucide-react';
+         ChevronLeft, ChevronRight, Music, ShieldAlert, FileText, Lock, Zap } from 'lucide-react';
 import { Rehearsal, UserRole } from '@/types';
 import { rehearsalService } from '../services/rehearsalService';
 import { useReservasManager } from '@/src/features/reservas/hooks/useReservasManager';
@@ -139,7 +139,7 @@ export const EnsayosPage: React.FC = () => {
     const days: React.ReactNode[] = [];
 
     for (let i = 0; i < startDay; i++) {
-      days.push(<div key={`e-${i}`} className="h-32 bg-slate-50/50 border border-slate-100" />);
+      days.push(<div key={`e-${i}`} className="h-36 bg-slate-50/50 border border-slate-100" />);
     }
 
     for (let day = 1; day <= totalDays; day++) {
@@ -155,64 +155,61 @@ export const EnsayosPage: React.FC = () => {
       const isFullDayBlock = dayBlocks.some(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE');
       const totalItems     = dayRehearsals.length + dayEvents.length + dayQuotes.length;
 
-      // Dot de color según prioridad
-      let dotColorClass = 'bg-slate-300';
-      if (totalItems > 0)                                               dotColorClass = 'bg-purple-400';
-      if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400';
-      if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]';
-      if (dayEvents.some(e => (e.status ?? '').toUpperCase() === 'FINALIZADO')) dotColorClass = 'bg-blue-500';
+      const s = (ev: any) => (ev.status ?? '').toUpperCase()
+      let dotColorClass = 'bg-slate-300'
+      if (totalItems > 0) dotColorClass = 'bg-purple-400'
+      if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
+      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
+      if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
         <div
-        key={day}
-        onClick={() => {
+          key={day}
+          onClick={() => {
             if (!isFullDayBlock && !isPast) {
-            setSelectedDateForDetails(dateStr);
-            setIsDateDetailsOpen(true);
+              setSelectedDateForDetails(dateStr);
+              setIsDateDetailsOpen(true);
             }
-            }}
-          style={{
-            ...(isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fef2f2 0,#fef2f2 10px,#fee2e2 10px,#fee2e2 20px)' } : {}),
-            ...(isPast ? { backgroundColor: '#f8fafc', opacity: 0.6, cursor: 'not-allowed' } : {}),
           }}
-          className={`h-32 border border-slate-100 p-2 transition-all relative group overflow-hidden
-            ${isToday ? 'bg-purple-50/30 ring-1 ring-purple-200' : 'bg-white'}
-            ${!isFullDayBlock && !isPast ? 'hover:bg-slate-50 hover:shadow-md cursor-pointer' : ''}
+          className={`h-36 border border-slate-100 p-3 transition-all relative group overflow-hidden
+            ${isToday ? 'bg-purple-50/20 ring-1 ring-purple-100' : 'bg-white'}
+            ${!isFullDayBlock && !isPast ? 'hover:bg-slate-50/50 hover:shadow-[inset_0_0_20px_rgba(0,0,0,0.01)] cursor-pointer' : ''}
+            ${isPast ? 'bg-slate-50/60 grayscale opacity-40' : ''}
           `}
+          style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
         >
           {/* Número del día */}
-          <div className="flex justify-between items-start mb-1 relative z-10">
-            <div className="flex items-center gap-1">
-              <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full
-                ${isToday ? 'bg-purple-600 text-white' : ''}
-                ${isFullDayBlock ? 'bg-red-100 text-red-600' : 'text-slate-700'}
-                ${isPast ? 'text-slate-400' : ''}
+          <div className="flex justify-between items-start mb-3 relative z-10 pointer-events-none">
+            <div className="flex items-center gap-2">
+              <span className={`text-[13px] font-black w-8 h-8 flex items-center justify-center rounded-xl transition-all
+                ${isToday ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 scale-105' : 'text-slate-800'}
+                ${isFullDayBlock ? 'bg-red-500 text-white' : ''}
+                ${isPast && !isToday ? 'text-slate-400' : ''}
               `}>{day}</span>
               {!isFullDayBlock && !isPast && totalItems > 0 && (
-                <div className={`w-2 h-2 rounded-full ${dotColorClass}`} />
+                <div className={`w-1.5 h-1.5 rounded-full shadow-sm ${dotColorClass}`} />
               )}
-              {isFullDayBlock && <Lock size={11} className="text-red-400" />}
             </div>
-            {totalItems > 0 && <span className="text-[9px] font-bold text-slate-400">{totalItems}</span>}
+            {totalItems > 0 && <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{totalItems}</span>}
           </div>
 
           {/* Eventos del día */}
-          <div className="space-y-0.5 overflow-y-auto max-h-[72px] custom-scrollbar relative z-10">
+          <div className="space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar relative z-10 pointer-events-none">
 
             {/* Bloqueos de hora */}
             {dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
-              <div key={b.id} className="text-[9px] border border-red-200 bg-red-50 text-red-700 px-1 py-0.5 rounded font-bold flex items-center gap-1">
-                <ShieldAlert size={9} />
-                <span className="truncate">{b.startTime} Bloqueo</span>
+              <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
+                <ShieldAlert size={11} />
+                <span className="truncate">{b.startTime} BLOQUEO</span>
               </div>
             ))}
 
             {/* Cotizaciones */}
             {dayQuotes.map((quote, i) => (
-              <div key={quote.id || `cot-${dateStr}-${i}`} className="text-[9px] border border-red-200 bg-red-50 text-red-700 px-1 py-0.5 rounded font-bold truncate flex items-center gap-1">
-                <FileText size={9} />
+              <div key={quote.id || `cot-${dateStr}-${i}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${isPast ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
+                <FileText size={11} />
                 <span className="font-bold">{quote.startTime}</span>
-                <span className="truncate">Cotización</span>
+                <span className="truncate">COTIZACIÓN</span>
               </div>
             ))}
 
@@ -220,15 +217,14 @@ export const EnsayosPage: React.FC = () => {
             {dayRehearsals.map(r => (
               <div
                 key={r.id}
-                onClick={(e) => { e.stopPropagation(); setSelectedRehearsal(r); setIsDetailOpen(true); }}
-                className={`text-[9px] border px-1 py-0.5 rounded font-bold flex items-center gap-1 cursor-pointer transition-colors
+                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors
                   ${isPast 
-                    ? 'bg-slate-50 border-slate-100 text-slate-400 opacity-70' 
-                    : 'border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100'}`}
+                    ? 'border-slate-300 bg-slate-50 text-slate-400' 
+                    : 'border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
               >
-                <Music size={8} className={isPast ? 'text-slate-300' : 'text-purple-400'} />
-                <span className={`font-bold shrink-0 ${isPast ? 'text-slate-400' : 'text-purple-600'}`}>{r.time}</span>
-                <span className="truncate">{r.title}</span>
+                <Zap size={11} className={isPast ? 'text-slate-300' : 'text-purple-500'} />
+                <span className={`font-black shrink-0 ${isPast ? 'text-slate-400' : 'text-purple-600'}`}>{r.time}</span>
+                <span className="truncate font-black uppercase tracking-tight flex-1">{r.title}</span>
               </div>
             ))}
 
@@ -237,22 +233,22 @@ export const EnsayosPage: React.FC = () => {
               .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
               .map(ev => {
                 const s = (ev.status ?? '').toUpperCase();
-                let style    = 'bg-amber-50 border-amber-200 text-amber-800';
+                let style    = 'bg-amber-50 border-amber-500 text-amber-800 border-l-4';
                 let timeStyle = 'text-amber-600';
                 
                 if (isPast) {
-                  style = 'bg-slate-50 border-slate-100 text-slate-400 opacity-70';
+                  style = 'bg-slate-50 border-slate-300 text-slate-400 border-l-4';
                   timeStyle = 'text-slate-400';
                 } else {
-                  if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-200 text-emerald-800'; timeStyle = 'text-emerald-600'; }
-                  if (s === 'REPROGRAMADA') { style = 'bg-[#e1f8ff] border-[#0c808b]/30 text-[#0c808b]'; timeStyle = 'text-[#0c808b]'; }
-                  if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-200 text-blue-800'; timeStyle = 'text-blue-500'; }
+                  if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-500 text-emerald-800 border-l-4'; timeStyle = 'text-emerald-600'; }
+                  if (s === 'REPROGRAMADA') { style = 'bg-teal-50 border-teal-500 text-teal-800 border-l-4'; timeStyle = 'text-teal-600'; }
+                  if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-500 text-blue-800 border-l-4'; timeStyle = 'text-blue-600'; }
                 }
 
                 return (
-                  <div key={ev.id} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${style}`}>
-                    <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-                    <span className="truncate font-medium">
+                  <div key={ev.id} className={`text-[10px] px-2 py-1.5 rounded-r-md truncate flex items-center gap-2 shadow-sm ${style}`}>
+                    <span className={`font-black shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+                    <span className="truncate font-black uppercase tracking-tight flex-1">
                       {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
                     </span>
                   </div>
@@ -418,23 +414,23 @@ export const EnsayosPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-4 px-6 pt-4 pb-2">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-purple-400" />
-                <span className="text-xs text-slate-500 font-medium">Ensayo</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ensayo</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <span className="text-xs text-slate-500 font-medium">Reserva pendiente</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reserva pendiente</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span className="text-xs text-slate-500 font-medium">Reserva confirmada</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reserva confirmada</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#0c808b]" />
-                <span className="text-xs text-slate-500 font-medium">Reprogramada</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reprogramada</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                <span className="text-xs text-slate-500 font-medium">Cotización</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cotización</span>
               </div>
             </div>
 
