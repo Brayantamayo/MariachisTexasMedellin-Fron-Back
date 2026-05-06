@@ -5,8 +5,7 @@ FROM node:20-slim AS deps
 WORKDIR /app
 
 COPY package*.json ./
-# npm ci instala exactamente lo del lock file (reproducible)
-RUN npm ci --ignore-scripts
+RUN npm ci
 
 # ════════════════════════════════════════════════════════════════
 # Etapa 2: build TypeScript
@@ -17,17 +16,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Genera el cliente Prisma y compila TS
 RUN npx prisma generate
 RUN npm run build
-# dist/ queda generado aquí
 
 # ════════════════════════════════════════════════════════════════
 # Etapa 3: producción mínima CON Chrome para Puppeteer
 # ════════════════════════════════════════════════════════════════
 FROM node:20-slim AS production
 
-# Chrome y sus dependencias
 RUN apt-get update && apt-get install -y \
     chromium \
     libatk-bridge2.0-0 \
@@ -49,16 +45,13 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-# Solo dependencias de producción
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev
 
-# Artefactos del build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Esquema de Prisma (necesario para migrate deploy)
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
