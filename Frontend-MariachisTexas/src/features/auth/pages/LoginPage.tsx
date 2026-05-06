@@ -305,7 +305,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
         ref={bgRef}
         className="absolute inset-0 bg-3d-layer"
         style={{
-          backgroundImage: 'url(shared/assets/images/login-bg.png)',
+          backgroundImage: 'url(/images/login-bg.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
@@ -394,7 +394,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
           <div className="text-center mb-4">
             <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center hover:scale-105 transition-transform duration-500">
               <img
-                src="shared/assets/images/Logo.png"
+                src="/images/Logo.png"
                 alt="Logo Mariachis Texas"
                 className="w-full h-full object-contain drop-shadow-2xl"
                 referrerPolicy="no-referrer"
