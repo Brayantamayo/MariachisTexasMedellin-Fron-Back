@@ -74,7 +74,13 @@ export const UserEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, user }
   }, [user, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Prevent non-numeric characters for document and phone
+    if (name === 'documentNumber' || name === 'phone') {
+      value = value.replace(/\D/g, '');
+    }
+
     setFormData((prev: any) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: undefined }));
     if (error)        setError(null);

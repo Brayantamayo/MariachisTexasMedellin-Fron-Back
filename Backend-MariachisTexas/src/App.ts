@@ -42,6 +42,7 @@ app.use(cors({
     const allowed = [
       'http://localhost:3001',
       'http://localhost:3002',
+      'http://localhost:5173',
     ]
 
     // Sin origin = app móvil nativa o Postman ✅
