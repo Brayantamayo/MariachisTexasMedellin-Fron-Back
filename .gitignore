@@ -1,0 +1,5 @@
+.env
+.env.production
+.env.producción
+.env.local
+.env.*
