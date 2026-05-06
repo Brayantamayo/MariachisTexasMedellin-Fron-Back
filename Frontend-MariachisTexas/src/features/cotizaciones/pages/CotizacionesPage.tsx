@@ -156,7 +156,7 @@ export const CotizacionesPage: React.FC = () => {
           </h1>
           <p className="text-slate-500 mt-2 text-sm">Gestiona propuestas comerciales y conviértelas en reservas.</p>
         </div>
-        {user?.role === UserRole.ADMIN && (
+        {(user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO) && (
           <button onClick={() => setIsCreateOpen(true)}
             className="bg-[#ce1126] hover:bg-red-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-xs tracking-widest uppercase">
             <Plus size={18} strokeWidth={3} /> Nueva Cotización
@@ -193,7 +193,7 @@ export const CotizacionesPage: React.FC = () => {
       <CotizacionEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdate} quotation={selectedQuotation} />
       <CotizacionDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} quotation={selectedQuotation} />
 
-      <ConfirmationModal isOpen={confirmConvert.isOpen} onClose={() => setConfirmConvert({ ...confirmConvert, isOpen: false })} onConfirm={processConversion} title="¿Confirmar Cotización?" message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`} confirmText="Sí, Convertir" />
+      <ConfirmationModal isOpen={confirmConvert.isOpen} onClose={() => setConfirmConvert({ ...confirmConvert, isOpen: false })} onConfirm={processConversion} title="¿Aceptar Cotización?" message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`} confirmText="Sí, Aceptar" />
       <ConfirmationModal isOpen={cancelModal.isOpen}    onClose={() => setCancelModal({ ...cancelModal, isOpen: false })}       onConfirm={processCancellation} title="¿Anular Cotización?"   message="Estás a punto de anular esta cotización."                                                                                                                      confirmText="Sí, Anular"   />
       <ConfirmationModal isOpen={deleteModal.isOpen}    onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}       onConfirm={handleDelete}        title="¿Eliminar Cotización?" message="Estás a punto de eliminar esta cotización permanentemente. Esta acción no se puede deshacer."                                                                confirmText="Sí, eliminar" />
     </div>

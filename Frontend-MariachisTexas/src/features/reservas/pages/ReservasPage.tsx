@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, X, Lock, ShieldAlert, FileText, Clock, Phone } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, X, Lock, ShieldAlert, FileText, Clock, Phone, Zap } from 'lucide-react';
 import { UserRole } from '@/types';
 import { useReservasManager } from '../hooks/useReservasManager';
 
@@ -12,6 +12,7 @@ import { DateDetailsModal } from '@/src/features/reservas/components/DateDetails
 import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { ReprogramarReservaModal } from '../components/Reprogramarreservamodal .tsx';
 
 const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
   const [now, setNow] = useState(new Date())
@@ -107,6 +108,10 @@ export const ReservasPage: React.FC = () => {
     handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization, processCancel, handleTimeSlotBlock, handleViewReserva,
+    // ─── NUEVO ────────────────────────────────────────────────────────────────
+    isReprogramarOpen, setIsReprogramarOpen,
+    reprogramarReserva, setReprogramarReserva,
+    handleOpenReprogramar, handleReprogramar,
   } = useReservasManager();
 
   const handleDateMouseDown = (dateStr: string) => {
@@ -174,7 +179,17 @@ export const ReservasPage: React.FC = () => {
   const filteredReservations = reservations.filter(r => {
     const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || r.id.includes(searchTerm);
     if (isClient) return matchesSearch;
-    return matchesSearch && ['PENDIENTE', 'CONFIRMADA', 'ANULADA'].includes(r.status);
+    const visibleStatuses = ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'];
+    const pendingBalance = Math.max(
+      0,
+      Number(r.pendingBalance ?? Number(r.totalAmount ?? 0) - Number(r.paidAmount ?? 0))
+    );
+    const shouldHidePaidReservation =
+      r.status !== 'ANULADA' &&
+      visibleStatuses.includes(r.status) &&
+      pendingBalance <= 0.01;
+
+    return matchesSearch && visibleStatuses.includes(r.status) && !shouldHidePaidReservation;
   });
 
   const renderCalendar = () => {
@@ -203,12 +218,11 @@ export const ReservasPage: React.FC = () => {
 
       const totalItems = dayEvents.length + dayRehearsals.length + dayQuotes.length;
 
-      // Color del indicador según prioridad: Azul (FINALIZADO) > Verde (CONFIRMADA) > Naranja (PENDIENTE)
-      // Prioridad: PENDIENTE (naranja) → CONFIRMADA (verde) → FINALIZADO (azul)
       const s = (ev: any) => (ev.status ?? '').toUpperCase()
       let dotColorClass = 'bg-slate-300'
       if (totalItems > 0) dotColorClass = 'bg-orange-400'
       if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
+      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
       if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
@@ -217,90 +231,93 @@ export const ReservasPage: React.FC = () => {
           onMouseDown={() => !isPast && handleDateMouseDown(dateStr)}
           onMouseEnter={() => !isPast && handleDateMouseEnter(dateStr)}
           onMouseUp={() => !isPast && handleDateMouseUp()}
-          style={{
-            ...(isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fef2f2 0,#fef2f2 10px,#fee2e2 10px,#fee2e2 20px)' } : {}),
-            ...(isSelected ? { backgroundColor: canManage ? 'rgba(239,68,68,.1)' : 'rgba(16,185,129,.1)', borderColor: canManage ? '#fca5a5' : '#6ee7b7' } : {}),
-            ...(isPast ? { backgroundColor: '#f8fafc', opacity: 0.6, cursor: 'not-allowed' } : {}),
-          }}
-          className={`h-32 border border-slate-100 p-2 transition-all relative group overflow-hidden select-none
-            ${isToday ? 'bg-blue-50/30 ring-1 ring-blue-200' : 'bg-white'}
-            ${!isFullDayBlock && !isSelected && !isPast ? 'hover:bg-slate-50 hover:shadow-md cursor-pointer' : ''}
+          className={`h-36 border border-slate-100 p-3 transition-all relative group overflow-hidden select-none
+            ${isToday ? 'bg-blue-50/20 ring-1 ring-blue-100' : 'bg-white'}
+            ${!isFullDayBlock && !isSelected && !isPast ? 'hover:bg-slate-50/50 hover:shadow-[inset_0_0_20px_rgba(0,0,0,0.01)] cursor-pointer' : ''}
+            ${isPast ? 'bg-slate-50/60 grayscale opacity-40' : ''}
+            ${isSelected ? (canManage ? 'bg-red-50/30 border-red-200' : 'bg-emerald-50/30 border-emerald-200') : ''}
           `}
+          style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
         >
-          <div className="flex justify-between items-start mb-1 pointer-events-none relative z-10">
-            <div className="flex items-center gap-1">
-              <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full
-                ${isToday ? 'bg-primary-600 text-white' : ''}
-                ${isFullDayBlock ? 'bg-red-100 text-red-600' : 'text-slate-700'}
-                ${isPast ? 'text-slate-400' : ''}
+          <div className="flex justify-between items-start mb-3 pointer-events-none relative z-10">
+            <div className="flex items-center gap-2">
+              <span className={`text-[13px] font-black w-8 h-8 flex items-center justify-center rounded-xl transition-all
+                ${isToday ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 scale-105' : 'text-slate-800'}
+                ${isFullDayBlock ? 'bg-red-500 text-white' : ''}
+                ${isPast && !isToday ? 'text-slate-400' : ''}
               `}>{day}</span>
-              {!isFullDayBlock && !isPast && <div className={`w-2 h-2 rounded-full ${dotColorClass}`} />}
-              {isFullDayBlock && <Lock size={11} className="text-red-400" />}
+              {!isFullDayBlock && !isPast && totalItems > 0 && (
+                <div className={`w-1.5 h-1.5 rounded-full shadow-sm ${dotColorClass}`} />
+              )}
             </div>
-            {totalItems > 0 && <span className="text-[9px] font-bold text-slate-400">{totalItems}</span>}
+            {totalItems > 0 && (
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{totalItems}</span>
+            )}
           </div>
 
-          <div className="space-y-0.5 overflow-y-auto max-h-[72px] custom-scrollbar relative z-10 pointer-events-none">
+          <div className="space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar relative z-10 pointer-events-none">
             {dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
-              <div key={b.id} className="text-[9px] border border-red-200 bg-red-50 text-red-700 px-1 py-0.5 rounded font-bold flex items-center gap-1">
-                <ShieldAlert size={9} />
-                <span className="truncate">{b.startTime} Bloqueo</span>
+              <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
+                <ShieldAlert size={11} />
+                <span className="truncate">{b.startTime} BLOQUEO</span>
               </div>
             ))}
 
             {dayQuotes.map((quote, index) => (
-              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${isClient ? 'border-slate-100 bg-slate-100 text-slate-400' : 'border-red-200 bg-red-50 text-red-700'}`}>
-                {isClient ? <Lock size={9} /> : <FileText size={9} />}
-                <span className="font-bold">{quote.startTime}</span>
-                {isClient ? ' Reservado' : ' Cotización'}
+              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
+                {isClient ? <Lock size={11} /> : <FileText size={11} />}
+                <span>{quote.startTime}</span>
+                <span className="opacity-70">{isClient ? 'RESERVADO' : 'COTIZACIÓN'}</span>
               </div>
             ))}
 
             {dayRehearsals.map((reh, index) => (
-              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[9px] border px-1 py-0.5 rounded font-bold truncate flex items-center gap-1 ${!isClient ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-slate-100 bg-slate-100 text-slate-400'}`}>
-                {isClient ? <Lock size={9} /> : null}
-                <span className="font-bold">{reh.time}</span> {isClient ? 'Reservado' : 'Ensayo'}
+              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-purple-500 bg-purple-50 text-purple-700'}`}>
+                {isClient ? <Lock size={11} /> : <Zap size={11} />}
+                <span>{reh.time}</span> 
+                <span className="opacity-70">{isClient ? 'RESERVADO' : 'ENSAYO'}</span>
               </div>
             ))}
 
             {dayEvents
               .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
               .map(ev => {
-                const s = (ev.status ?? '').toUpperCase()
-                const isMine = reservations.some(r => r.id === ev.id)
+                const st = (ev.status ?? '').toUpperCase()
+                const isMine = user?.email === ev.clientEmail || reservations.some(r => r.id === ev.id)
 
-                let statusStyle = 'bg-amber-50 border-amber-200 text-amber-800'
+                let statusStyle = 'bg-amber-50 border-amber-500 text-amber-800'
                 let timeStyle = 'text-amber-600'
 
-                if (s === 'CONFIRMADA') {
-                  statusStyle = 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                if (st === 'CONFIRMADA') {
+                  statusStyle = 'bg-emerald-50 border-emerald-500 text-emerald-800'
                   timeStyle = 'text-emerald-600'
                 }
-                if (s === 'FINALIZADO') {
-                  statusStyle = 'bg-blue-50 border-blue-200 text-blue-800'
-                  timeStyle = 'text-blue-500'
+                if (st === 'REPROGRAMADA') {
+                  statusStyle = 'bg-teal-50 border-teal-500 text-teal-800'
+                  timeStyle = 'text-teal-600'
+                }
+                if (st === 'FINALIZADO') {
+                  statusStyle = 'bg-blue-50 border-blue-500 text-blue-800'
+                  timeStyle = 'text-blue-600'
                 }
 
-                // Si es cliente y no es su reserva, mostrar en gris y como "Reservado"
-                if (isClient && !isMine) {
-                  statusStyle = 'bg-slate-100 border-slate-100 text-slate-400'
+                if (isPast || (isClient && !isMine)) {
+                  statusStyle = 'bg-slate-50 border-slate-300 text-slate-400'
                   timeStyle = 'text-slate-400'
                 }
 
                 const label = isClient
-                  ? (isMine ? 'Tu reserva' : 'Reservado')
+                  ? (isMine ? `TU RESERVA - ${ev.clientName || ''}` : 'RESERVADO')
                   : (canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType)
 
                 return (
-                  <div key={ev.id} title={label} className={`text-[9px] border px-1 py-0.5 rounded truncate flex items-center gap-1 ${statusStyle}`}>
-                    <span className={`font-bold shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-                    <span className="font-medium truncate flex-1">
-                      {label}
-                    </span>
+                  <div key={ev.id} title={label} 
+                    className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md truncate flex items-center gap-2 mb-1 shadow-sm transition-all hover:brightness-95 hover:shadow-md cursor-pointer ${statusStyle}`}>
+                    <span className={`font-black shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+                    <span className="font-black uppercase tracking-tight truncate flex-1">{label}</span>
                   </div>
                 )
               })}
-
           </div>
 
           {isFullDayBlock && (
@@ -341,7 +358,6 @@ export const ReservasPage: React.FC = () => {
         document.body
       )}
 
-      {/*Boton de reserva */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#1e293b] tracking-wide uppercase">Gestión de Reservas</h1>
@@ -367,10 +383,6 @@ export const ReservasPage: React.FC = () => {
         </div>
       </div>
 
-
-
-
-
       {isClient && <PendingPaymentBanner reservations={reservations} />}
 
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
@@ -394,6 +406,8 @@ export const ReservasPage: React.FC = () => {
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
               onCancel={processCancel}
               onDelete={(id) => setDeleteReservaModal({ isOpen: true, id })}
+              // ─── NUEVO ──────────────────────────────────────────────────
+              onReprogramar={handleOpenReprogramar}
             />
           </div>
         ) : (
@@ -426,7 +440,6 @@ export const ReservasPage: React.FC = () => {
         onFinalize={processFinalization}
         onCancel={(id, motivo) => processCancel(id, motivo)}
         onReschedule={(res) => {
-          // Buscar la reserva real con ID numérico en la lista de reservas
           const realRes = reservations.find(r => r.id === res.id) ?? res;
           setEditingReserva(realRes);
           setIsDetailOpen(false);
@@ -453,6 +466,14 @@ export const ReservasPage: React.FC = () => {
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
       <ConfirmationModal isOpen={deleteTimeBlocksModal.isOpen} onClose={() => setDeleteTimeBlocksModal({ ...deleteTimeBlocksModal, isOpen: false })} onConfirm={handleConfirmDeleteTimeBlocks} title="¿Liberar Horarios?" message="Se eliminarán todos los bloqueos de horas en este día." confirmText="Liberar Todo" />
       <ConfirmationModal isOpen={deleteReservaModal.isOpen} onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })} onConfirm={handleDeleteReserva} title="¿Eliminar Reserva?" message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado." confirmText="Sí, eliminar" />
+
+      {/* ─── NUEVO: Modal de Reprogramación ─────────────────────────────────── */}
+      <ReprogramarReservaModal
+        isOpen={isReprogramarOpen}
+        onClose={() => { setIsReprogramarOpen(false); setReprogramarReserva(null); }}
+        reservation={reprogramarReserva}
+        onSave={handleReprogramar}
+      />
     </div>
   );
 };

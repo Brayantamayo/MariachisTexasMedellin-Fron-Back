@@ -34,6 +34,11 @@ router.put('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.update)
 // Anular — Admin y Empleado
 router.patch('/:id/anular', requireRole(['ADMIN', 'EMPLEADO']), reservaController.anular)
 
+/// Reprogramar — Admin y Empleado
+router.patch('/:id/reprogramar',  requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']), reservaController.reprogramar) 
+
+// Finalizar (Llamado 'confirmar' en el frontend)
+router.patch('/:id/confirmar', requireRole(['ADMIN', 'EMPLEADO']), reservaController.finalize)
 
 // Eliminar — Admin y Empleado
 router.delete('/:id', requireRole(['ADMIN', 'EMPLEADO']), reservaController.remove)

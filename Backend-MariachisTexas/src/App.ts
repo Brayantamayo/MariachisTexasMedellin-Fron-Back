@@ -19,6 +19,7 @@ import ventasRoutes     from './modules/ventas/ventas.routes'
 import rolesRoutes      from './modules/roles/roles.routes'
 import usuarioRoutes    from './modules/usuarios/usuario.routes'
 import empleadoRoutes   from './modules/empleados/empleado.routes'
+import aiRoutes          from './modules/IA/Ai.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -41,6 +42,7 @@ app.use(cors({
     const allowed = [
       'http://localhost:3001',
       'http://localhost:3002',
+      'http://localhost:5173',
     ]
 
     // Sin origin = app móvil nativa o Postman ✅
@@ -110,6 +112,7 @@ app.use('/api/ventas',       ventasRoutes)
 app.use('/api/roles',        rolesRoutes)
 app.use('/api/usuarios',     usuarioRoutes)
 app.use('/api/empleados',    empleadoRoutes)
+app.use('/api/ai', aiRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)   // atrapa rutas inexistentes

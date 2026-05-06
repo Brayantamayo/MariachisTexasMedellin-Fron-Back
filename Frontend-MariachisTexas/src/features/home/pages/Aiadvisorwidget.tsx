@@ -1,0 +1,184 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import '/shared/css/Aiadvisorwidget.css';
+import api from '@/shared/api/api';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const QUICK_CHIPS = [
+  'Quiero cotizar una serenata',
+  '¿Cuánto cuesta una serenata?',
+  'Recomiéndame una serenata',
+  'Es para un cumpleaños',
+  '¿Qué incluye la serenata?',
+];
+
+function getTime(): string {
+  return new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+
+export const AIAdvisorWidget: React.FC = () => {
+  const [isOpen,      setIsOpen]      = useState(false);
+  const [messages,    setMessages]    = useState<Message[]>([]);
+  const [input,       setInput]       = useState('');
+  const [isTyping,    setIsTyping]    = useState(false);
+  const [hasNewMsg,   setHasNewMsg]   = useState(false);
+  const [showChips,   setShowChips]   = useState(true);
+  const [chatHistory, setChatHistory] = useState<{ role: string; text: string }[]>([]);
+
+  const bodyRef  = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── Abrir / cerrar panel ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([{ role: 'assistant', content: '¡Hola! Soy tu asesor de Mariachis Texas 🎺 ¿En qué te puedo ayudar hoy?' }]);
+      setHasNewMsg(false);
+    }
+    if (isOpen) {
+      setHasNewMsg(false);
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isOpen]);
+
+  // ── Auto-scroll ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [messages, isTyping]);
+
+  // ── Notificación cuando el panel está cerrado ──────────────────────────────
+  useEffect(() => {
+    if (!isOpen && messages.length > 1) {
+      const last = messages[messages.length - 1];
+      if (last.role === 'assistant') setHasNewMsg(true);
+    }
+  }, [messages]);
+
+  // ── Llamada al backend ─────────────────────────────────────────────────────
+  const callBackend = async (userMessage: string) => {
+    try {
+      const { data } = await api.post('/ai/chat', {
+        message: userMessage,
+        history: chatHistory,
+      });
+
+      const reply = data.reply ?? 'Lo siento, hubo un error. Intenta de nuevo.';
+
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'user',  text: userMessage },
+        { role: 'model', text: reply },
+      ]);
+
+      return reply;
+    } catch (err: any) {
+      return err.message ?? 'Hubo un problema de conexión. Intenta de nuevo.';
+    }
+  };
+
+  // ── Enviar mensaje ─────────────────────────────────────────────────────────
+  const handleSend = async (overrideText?: string) => {
+    const msg = (overrideText ?? input).trim();
+    if (!msg || isTyping) return;
+
+    setInput('');
+    setShowChips(false);
+    setMessages(prev => [...prev, { role: 'user', content: msg }]);
+    setIsTyping(true);
+
+    const reply = await callBackend(msg);
+
+    setIsTyping(false);
+    setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <>
+      <button
+        className={`advisor-fab ${isOpen ? 'advisor-fab--open' : ''}`}
+        onClick={() => setIsOpen(v => !v)}
+        aria-label="Abrir asesor"
+      >
+        {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
+        {hasNewMsg && !isOpen && <span className="advisor-fab__dot" />}
+      </button>
+
+      <div className={`advisor-panel ${isOpen ? 'advisor-panel--open' : ''}`}>
+
+        {/* Header */}
+        <div className="advisor-header">
+          <div className="advisor-header__avatar"><Sparkles size={16} /></div>
+          <div className="advisor-header__info">
+            <p className="advisor-header__name">Asesor Mariachis Texas</p>
+            <span className="advisor-header__status">
+              <span className="advisor-header__dot" /> En línea
+            </span>
+          </div>
+          <button className="advisor-header__close" onClick={() => setIsOpen(false)}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Mensajes */}
+        <div className="advisor-body" ref={bodyRef}>
+          {messages.map((msg, i) => (
+            <div key={i} className={`advisor-msg advisor-msg--${msg.role}`}>
+              <div className="advisor-msg__bubble">{msg.content}</div>
+              <span className="advisor-msg__time">{getTime()}</span>
+            </div>
+          ))}
+
+          {/* Quick chips */}
+          {showChips && messages.length <= 1 && (
+            <div className="advisor-chips">
+              {QUICK_CHIPS.map(chip => (
+                <button key={chip} className="advisor-chip" onClick={() => handleSend(chip)}>
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="advisor-msg advisor-msg--assistant">
+              <div className="advisor-msg__bubble advisor-typing">
+                <span /><span /><span />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="advisor-input-area">
+          <textarea
+            ref={inputRef}
+            className="advisor-input"
+            rows={1}
+            placeholder="Escribe tu consulta..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          <button
+            className="advisor-send"
+            onClick={() => handleSend()}
+            disabled={!input.trim() || isTyping}
+          >
+            <Send size={16} />
+          </button>
+        </div>
+
+      </div>
+    </>
+  );
+};

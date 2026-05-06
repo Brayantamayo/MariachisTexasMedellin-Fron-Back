@@ -166,15 +166,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
                     setIsPanelOpen(true);
                   }
                 }}
-                className={`w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-300 group relative
+                className={`w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-500 group relative
                   ${isActive
                     ? (isPanelOpen ? 'bg-[#ce1126] text-white shadow-lg shadow-[#ce1126]/20 scale-105' : 'bg-white/10 text-white scale-95')
-                    : 'text-zinc-500 hover:bg-white/5 hover:text-white'
+                    : 'text-zinc-500 hover:bg-white/10 hover:text-white'
                   }
                 `}
               >
-                <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-bold tracking-wide">{category.label}</span>
+                <Icon 
+                  size={24} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  className="transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-110"
+                />
+                <span className="text-[10px] font-bold tracking-wide transition-opacity duration-300 group-hover:opacity-100 opacity-80">{category.label}</span>
               </button>
             );
           })}
@@ -185,9 +189,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
           <button
             onClick={logout}
             title="Cerrar Sesión"
-            className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-zinc-600 hover:bg-red-900/30 hover:text-red-400 transition-all duration-300 group"
+            className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-zinc-600 hover:bg-red-900/30 hover:text-red-400 transition-all duration-500 group"
           >
-            <LogOut size={22} strokeWidth={2} />
+            <LogOut size={22} strokeWidth={2} className="transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-110" />
             <span className="text-[10px] font-bold tracking-wide">Salir</span>
           </button>
         </div>
@@ -246,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
                     ${isActive && hasSubItems ? 'text-white bg-white/5' : ''}
                   `}
                 >
-                  <Icon size={18} className={`mr-3 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} />
+                  <Icon size={18} className={`mr-3 transition-all duration-500 ${isActive ? 'scale-110 text-white' : 'group-hover:scale-125 group-hover:-translate-y-0.5 group-hover:text-white'}`} />
                   <span className="font-medium text-sm tracking-wide flex-1 text-left">{item.label}</span>
                   {hasSubItems ? (
                     <ChevronRight size={14} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />

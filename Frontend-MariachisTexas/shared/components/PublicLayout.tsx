@@ -96,7 +96,7 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
                 <button 
                   key={item.name}
                   onClick={() => handleNavClick(item.id)} 
-                  className="px-6 py-2 rounded-full text-xs font-bold tracking-widest transition-all text-slate-300 hover:text-white hover:bg-white/10"
+                  className="px-6 py-2 rounded-full text-xs font-black tracking-[0.2em] transition-all duration-300 text-slate-300 hover:text-white hover:bg-white/10 hover:scale-110 hover:-translate-y-0.5"
                 >
                   {item.name}
                 </button>
@@ -107,14 +107,14 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
             <div className="hidden md:flex items-center gap-4">
               <button 
                 onClick={() => onNavigate('/login')}
-                className="text-xs font-bold tracking-widest transition-colors text-white hover:text-red-400"
+                className="text-xs font-black tracking-[0.2em] transition-all duration-300 text-white hover:text-red-400 hover:scale-110 hover:-translate-y-0.5"
               >
                 INICIAR SESIÓN
               </button>
               
               <button 
                 onClick={() => onNavigate('/register')}
-                className="relative group px-8 py-3 rounded-full font-bold text-xs tracking-[0.2em] transition-all bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white shadow-[0_0_20px_rgba(206,17,38,0.5)] hover:shadow-[0_0_30px_rgba(206,17,38,0.8)] hover:-translate-y-0.5 border border-[#f1bf00]/30 overflow-hidden"
+                className="relative group px-8 py-3 rounded-full font-black text-xs tracking-[0.2em] transition-all duration-300 bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white shadow-[0_0_20px_rgba(206,17,38,0.4)] hover:shadow-[0_0_35px_rgba(206,17,38,0.7)] hover:-translate-y-1 hover:scale-105 border border-[#f1bf00]/30 overflow-hidden"
               >
                 <span className="relative z-10">REGISTRARSE</span>
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent z-0" />

@@ -1,723 +1,1863 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { Reservation } from '@/types';
+import { Quotation, Rehearsal, Reservation, Service, Song } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
-import { clientService } from '../../clientes/services/clientService';
-import api from '@/shared/api/api';
+import { ventaService, Sale } from '../../ventas/services/ventaService';
+import { cotizacionService } from '../../cotizaciones/services/cotizacionService';
+import { rehearsalService } from '../../ensayos/services/rehearsalService';
+import { servicesService } from '../../servicio/services/servicesService';
+import { repertoireService } from '../../repertoire/services/repertoireService';
 import {
-    TrendingUp, Users, Calendar, DollarSign, Music,
-    ArrowRight, CheckCircle, X, BarChart2, PieChart as PieChartIcon,
-    Activity, Target, AlertCircle
+  Activity,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarClock,
+  CalendarDays,
+  CalendarRange,
+  CheckCircle2,
+  FileText,
+  HandCoins,
+  LoaderCircle,
+  Mic2,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+  Zap,
 } from 'lucide-react';
+import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
-// ─── Paleta ───────────────────────────────────────────────────────────────────
-const RED        = '#ce1126';
-const RED_LIGHT  = '#fef2f2';
-const DARK       = '#0f172a';
-const SLATE      = '#64748b';
-const SLATE_100  = '#f1f5f9';
-const SLATE_200  = '#e2e8f0';
-const GREEN      = '#10b981';
-const AMBER      = '#f59e0b';
-const CHART_COLORS = [RED, DARK, SLATE, AMBER, GREEN];
+Chart.register(...registerables);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (v: number) =>
-    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M`
-    : v >= 1_000   ? `$${Math.round(v / 1_000)}k`
-    : `$${v}`;
+const COLORS = {
+  ink: '#0f0f0f',
+  slate: '#64748b',
+  slateSoft: '#cbd5e1',
+  slateLine: '#e2e8f0',
+  white: '#ffffff',
+  red: '#ce1126',
+  redDeep: '#8b0000',
+  redSoft: '#fee2e2',
+  amber: '#f59e0b',
+  amberSoft: '#fef3c7',
+  emerald: '#10b981',
+  emeraldSoft: '#d1fae5',
+  teal: '#0d9488',
+  tealSoft: '#ccfbf1',
+};
 
-const today = new Date().toLocaleDateString('es-CO', {
-    weekday: 'long', day: 'numeric', month: 'long'
-});
+const CHART_COLORS = [COLORS.red, COLORS.ink, COLORS.amber, COLORS.emerald, COLORS.teal];
+const WEEK_DAYS = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+const SLOT_LABELS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
 
-// ─── KpiCard ──────────────────────────────────────────────────────────────────
-interface KpiCardProps {
-    title: string;
-    value: string;
-    icon: React.ElementType;
-    accent: string;
-    bgAccent: string;
-    trend: string;
-    trendUp?: boolean;
-    onClick?: () => void;
+interface DashboardData {
+  reservations: Reservation[];
+  sales: Sale[];
+  quotations: Quotation[];
+  rehearsals: Rehearsal[];
+  services: Service[];
+  songs: Song[];
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({
-    title, value, icon: Icon, accent, bgAccent, trend, trendUp, onClick
-}) => (
-    <div
-        onClick={onClick}
-        style={{
-            background: '#ffffff',
-            border: `1px solid ${SLATE_200}`,
-            borderRadius: 20,
-            padding: '20px 22px',
-            position: 'relative',
-            overflow: 'hidden',
-            cursor: onClick ? 'pointer' : 'default',
-            transition: 'box-shadow 0.15s, transform 0.15s',
-        }}
-        onMouseEnter={e => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 24px rgba(0,0,0,0.08)';
-            (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-        }}
-        onMouseLeave={e => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-            (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-        }}
-    >
-        {/* accent strip */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: '20px 20px 0 0' }} />
+interface ActivityItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: Date;
+  amount?: number;
+  kind: 'reserva' | 'cotizacion' | 'venta';
+}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, marginTop: 4 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: bgAccent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon size={20} color={accent} />
-            </div>
-            <ArrowRight size={14} color={SLATE} style={{ transform: 'rotate(-45deg)', opacity: 0.4 }} />
-        </div>
+interface AgendaItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: Date;
+  kind: 'reserva' | 'ensayo';
+  status: string;
+}
 
-        <p style={{ fontSize: 10, fontWeight: 700, color: SLATE, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-            {title}
-        </p>
-        <h3 style={{ fontSize: 26, fontWeight: 700, color: DARK, fontVariantNumeric: 'tabular-nums' }}>
-            {value}
-        </h3>
-        <p style={{ fontSize: 10, marginTop: 6, color: trendUp === false ? RED : trendUp ? GREEN : SLATE, fontWeight: 500 }}>
-            {trendUp === true ? '▲ ' : trendUp === false ? '▼ ' : ''}{trend}
-        </p>
-    </div>
-);
+interface AlertItem {
+  id: string;
+  title: string;
+  description: string;
+  tone: 'danger' | 'warning' | 'success';
+}
 
-// ─── SectionCard ──────────────────────────────────────────────────────────────
-const SectionCard: React.FC<{
-    title: string;
-    subtitle?: string;
-    icon?: React.ElementType;
-    iconColor?: string;
-    children: React.ReactNode;
-    style?: React.CSSProperties;
-    dark?: boolean;
-}> = ({ title, subtitle, icon: Icon, iconColor, children, style, dark }) => (
-    <div style={{
-        background: dark ? DARK : '#ffffff',
-        border: `1px solid ${dark ? '#1e293b' : SLATE_200}`,
-        borderRadius: 22,
-        padding: 22,
-        ...style,
-    }}>
-        <div style={{ marginBottom: 16 }}>
-            <h3 style={{
-                fontFamily: 'Georgia, serif',
-                fontSize: 15,
-                fontWeight: 700,
-                color: dark ? '#f1f5f9' : DARK,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 2,
-            }}>
-                {Icon && <Icon size={17} color={iconColor || (dark ? '#94a3b8' : RED)} />}
-                {title}
-            </h3>
-            {subtitle && (
-                <p style={{ fontSize: 11, color: dark ? '#64748b' : SLATE, marginLeft: Icon ? 25 : 0 }}>
-                    {subtitle}
-                </p>
-            )}
-        </div>
-        {children}
-    </div>
-);
+interface HeroMousePos {
+  x: number;
+  y: number;
+}
 
-// ─── Custom Tooltip ───────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div style={{
-            background: '#ffffff',
-            border: `1px solid ${SLATE_200}`,
-            borderRadius: 12,
-            padding: '10px 14px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
-            fontSize: 12,
-        }}>
-            <p style={{ fontWeight: 700, color: DARK, marginBottom: 4 }}>{label}</p>
-            {payload.map((p: any, i: number) => (
-                <p key={i} style={{ color: p.color, marginBottom: 2 }}>
-                    {p.name}: {typeof p.value === 'number' && p.name?.toLowerCase().includes('ingreso')
-                        ? fmt(p.value) : p.value}
-                </p>
-            ))}
-        </div>
-    );
+type DashboardSectionId =
+  | 'executive'
+  | 'commercial'
+  | 'operations'
+  | 'alerts'
+  | 'clients';
+
+interface DashboardSectionTabItem {
+  id: DashboardSectionId;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface RankedItem {
+  name: string;
+  value: number;
+  subtitle?: string;
+}
+
+interface CalendarEventChip {
+  id: string;
+  label: string;
+  tone: 'reservation' | 'quotation' | 'rehearsal';
+}
+
+interface CalendarDayCell {
+  date: Date;
+  inMonth: boolean;
+  isToday: boolean;
+  isPast: boolean;
+  items: CalendarEventChip[];
+}
+
+const startOfToday = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-// ─── GoalBar ─────────────────────────────────────────────────────────────────
-const GoalBar: React.FC<{ label: string; pct: number; color: string }> = ({ label, pct, color }) => {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const t = setTimeout(() => {
-            if (ref.current) ref.current.style.width = `${pct}%`;
-        }, 300);
-        return () => clearTimeout(t);
-    }, [pct]);
-
-    return (
-        <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: DARK, marginBottom: 5 }}>
-                <span>{label}</span>
-                <span style={{ color: SLATE }}>{pct}%</span>
-            </div>
-            <div style={{ height: 6, background: SLATE_100, borderRadius: 6, overflow: 'hidden' }}>
-                <div
-                    ref={ref}
-                    style={{ height: '100%', width: '0%', background: color, borderRadius: 6, transition: 'width 1s ease' }}
-                />
-            </div>
-        </div>
-    );
+const startOfMonth = (base = new Date(), offset = 0) => {
+  const date = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
-// ─── RepertoireBar ────────────────────────────────────────────────────────────
-const RepertoireBar: React.FC<{ name: string; author: string; count: number; pct: number; color: string }> = ({
-    name, author, count, pct, color
-}) => {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const t = setTimeout(() => {
-            if (ref.current) ref.current.style.width = `${pct}%`;
-        }, 400);
-        return () => clearTimeout(t);
-    }, [pct]);
-
-    return (
-        <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 5 }}>
-                <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#f1f5f9' }}>{name}</p>
-                    <p style={{ fontSize: 10, color: '#64748b' }}>{author}</p>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color }}>{count}</span>
-            </div>
-            <div style={{ height: 4, background: '#1e293b', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                    ref={ref}
-                    style={{ height: '100%', width: '0%', background: color, borderRadius: 4, transition: 'width 0.9s ease' }}
-                />
-            </div>
-        </div>
-    );
+const endOfMonth = (base = new Date(), offset = 0) => {
+  const date = new Date(base.getFullYear(), base.getMonth() + offset + 1, 0);
+  date.setHours(23, 59, 59, 999);
+  return date;
 };
 
-// ─── EventBadge ───────────────────────────────────────────────────────────────
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-    const isConfirmed = status === 'Confirmado';
-    return (
-        <span style={{
-            fontSize: 9,
-            fontWeight: 700,
-            padding: '3px 8px',
-            borderRadius: 20,
-            background: isConfirmed ? '#ecfdf5' : '#fffbeb',
-            color: isConfirmed ? '#059669' : '#d97706',
-            whiteSpace: 'nowrap',
-            letterSpacing: '0.04em',
-        }}>
-            {status}
-        </span>
-    );
+const endOfWeekGrid = (base: Date) => {
+  const date = startOfWeek(base);
+  date.setDate(date.getDate() + 41);
+  date.setHours(23, 59, 59, 999);
+  return date;
 };
 
-// ─── Heatmap ─────────────────────────────────────────────────────────────────
-const DAYS  = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const SLOTS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
-const OCC   = [
-    [0.1, 0.4, 0.9, 0.7, 0.6, 1.0, 0.8],
-    [0.2, 0.5, 0.7, 0.6, 0.8, 0.9, 0.7],
-    [0.0, 0.2, 0.8, 0.5, 0.9, 1.0, 0.9],
-    [0.0, 0.0, 0.1, 0.0, 0.1, 0.3, 0.2],
-];
-const heatColor = (v: number) =>
-    v === 0 ? '#f8fafc' : v < 0.4 ? '#fef2f2' : v < 0.7 ? '#fecaca' : v < 0.9 ? '#f87171' : RED;
+const startOfWeek = (base: Date) => {
+  const date = new Date(base);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
 
-const Heatmap: React.FC = () => (
-    <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: 5, minWidth: 500 }}>
-            {/* header */}
-            <div />
-            {DAYS.map(d => (
-                <div key={d} style={{ fontSize: 10, fontWeight: 700, color: SLATE, textAlign: 'center', paddingBottom: 4 }}>
-                    {d}
-                </div>
-            ))}
-            {/* rows */}
-            {SLOTS.map((slot, si) => (
-                <React.Fragment key={slot}>
-                    <div style={{ fontSize: 10, color: SLATE, display: 'flex', alignItems: 'center' }}>{slot}</div>
-                    {DAYS.map((_, di) => {
-                        const v = OCC[si][di];
-                        return (
-                            <div
-                                key={di}
-                                title={`${slot} ${DAYS[di]}: ${Math.round(v * 100)}% ocupado`}
-                                style={{
-                                    height: 32,
-                                    borderRadius: 7,
-                                    background: heatColor(v),
-                                    cursor: 'pointer',
-                                    transition: 'opacity 0.15s',
-                                    border: `1px solid ${SLATE_200}`,
-                                }}
-                                onMouseEnter={e => (e.currentTarget.style.opacity = '0.7')}
-                                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                            />
-                        );
-                    })}
-                </React.Fragment>
-            ))}
-        </div>
-        {/* legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 10, color: SLATE }}>
-            <span>Libre</span>
-            {['#fef2f2', '#fecaca', '#f87171', RED].map(c => (
-                <div key={c} style={{ width: 14, height: 14, borderRadius: 3, background: c, border: `1px solid ${SLATE_200}` }} />
-            ))}
-            <span>Lleno</span>
-        </div>
-    </div>
-);
+const endOfWeek = (base: Date) => {
+  const date = startOfWeek(base);
+  date.setDate(date.getDate() + 6);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
 
-// ─── ProjectionSlider ─────────────────────────────────────────────────────────
-const ProjectionSlider: React.FC = () => {
-    const [events,  setEvents]  = useState(20);
-    const [ticket,  setTicket]  = useState(700_000);
-    const [rate,    setRate]    = useState(70);
+const shortCurrency = (value: number) => {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}k`;
+  return `$${Math.round(value).toLocaleString('es-CO')}`;
+};
 
-    const result = Math.round(events * ticket * (rate / 100));
+const fullCurrency = (value: number) =>
+  `$${Math.round(value || 0).toLocaleString('es-CO')}`;
 
-    const SliderRow: React.FC<{
-        label: string;
-        min: number; max: number; step: number;
-        value: number; onChange: (v: number) => void;
-        display: string;
-    }> = ({ label, min, max, step, value, onChange, display }) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-            <span style={{ fontSize: 11, color: SLATE, width: 100, flexShrink: 0 }}>{label}</span>
-            <input
-                type="range" min={min} max={max} step={step} value={value}
-                onChange={e => onChange(+e.target.value)}
-                style={{ flex: 1, accentColor: RED, cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: 11, fontWeight: 700, color: DARK, minWidth: 44, textAlign: 'right' }}>
-                {display}
+const formatPercent = (value: number) => `${Math.round(value)}%`;
+
+const formatCompactDate = (date: Date) =>
+  new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+
+const formatFullDate = (date: Date) =>
+  new Intl.DateTimeFormat('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date);
+
+const formatMonthName = (date: Date) =>
+  new Intl.DateTimeFormat('es-CO', {
+    month: 'long',
+  }).format(date);
+
+const normalizeReservationStatus = (status: string) => {
+  const normalized = (status || '').trim().toUpperCase();
+  if (normalized === 'CONFIRMADO' || normalized === 'FINALIZADO') return 'CONFIRMADA';
+  if (normalized === 'ANULADO') return 'ANULADA';
+  if (normalized === 'REPROGRAMADO') return 'REPROGRAMADA';
+  return normalized || 'PENDIENTE';
+};
+
+const normalizeQuotationStatus = (status: string) => (status || '').trim().toUpperCase();
+
+const toDateTime = (date: string, time?: string) => {
+  if (!date) return new Date();
+  const safeTime = time && time.length >= 5 ? time.slice(0, 5) : '00:00';
+  const dt = new Date(`${date}T${safeTime}:00`);
+  return isNaN(dt.getTime()) ? new Date() : dt;
+};
+
+const reservationDate = (reservation: Reservation) =>
+  toDateTime(reservation.eventDate, reservation.startTime || reservation.eventTime);
+
+const rehearsalDate = (rehearsal: Rehearsal) =>
+  toDateTime(rehearsal.date || rehearsal.fecha || '', rehearsal.time || rehearsal.hora);
+
+const getReservationPending = (reservation: Reservation) =>
+  Math.max(0, Number(reservation.pendingBalance ?? reservation.totalAmount - reservation.paidAmount));
+
+const getWeekdayIndex = (date: Date) => (date.getDay() + 6) % 7;
+
+const getSlotIndex = (hour: number) => {
+  if (hour >= 6 && hour < 12) return 0;
+  if (hour >= 12 && hour < 18) return 1;
+  if (hour >= 18 && hour < 24) return 2;
+  return 3;
+};
+
+const getMetricDelta = (current: number, previous: number) => {
+  if (previous <= 0) {
+    if (current <= 0) return 0;
+    return 100;
+  }
+  return ((current - previous) / previous) * 100;
+};
+
+const normalizeLabel = (value?: string | null, fallback = 'Sin definir') => {
+  const cleaned = (value || '').trim();
+  return cleaned || fallback;
+};
+
+const scaleWeightedEntries = (
+  entries: { name: string; weight: number }[],
+  total: number
+) => {
+  const safeTotal = Number(total || 0);
+  const weightSum = entries.reduce((sum, entry) => sum + Number(entry.weight || 0), 0);
+
+  if (safeTotal <= 0) return [];
+
+  if (weightSum <= 0) {
+    const evenShare = safeTotal / Math.max(entries.length, 1);
+    return entries.map(entry => ({
+      name: normalizeLabel(entry.name, 'Servicio general'),
+      value: evenShare,
+    }));
+  }
+
+  return entries.map(entry => ({
+    name: normalizeLabel(entry.name, 'Servicio general'),
+    value: (safeTotal * Number(entry.weight || 0)) / weightSum,
+  }));
+};
+
+const tooltipFormatter = (value: number, name: string) => {
+  if (name.toLowerCase().includes('ingresos') || name.toLowerCase().includes('ticket')) {
+    return [fullCurrency(value), name];
+  }
+  return [value, name];
+};
+
+/* ─── Custom Tooltip ─── */
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl">
+      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <div className="space-y-1.5">
+        {payload.map((entry: any, index: number) => (
+          <div key={`${entry.name}-${index}`} className="flex items-center justify-between gap-5 text-xs">
+            <span className="flex items-center gap-2 text-slate-500">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              {entry.name}
             </span>
-        </div>
-    );
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <SliderRow label="Eventos / mes" min={5} max={40} step={1} value={events} onChange={setEvents} display={`${events}`} />
-            <SliderRow label="Ticket promedio" min={200_000} max={2_000_000} step={50_000} value={ticket} onChange={setTicket} display={fmt(ticket)} />
-            <SliderRow label="% Confirmación" min={40} max={100} step={1} value={rate} onChange={setRate} display={`${rate}%`} />
-
-            <div style={{
-                marginTop: 18,
-                background: DARK,
-                borderRadius: 14,
-                padding: '18px 20px',
-                textAlign: 'center',
-            }}>
-                <div style={{ fontSize: 28, fontWeight: 700, color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(result)}
-                </div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Proyección mensual estimada</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                    {events} eventos · {rate}% confirmación
-                </div>
-            </div>
-        </div>
-    );
+            <span className="font-black text-slate-800">
+              {tooltipFormatter(Number(entry.value), entry.name)[0]}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
-// ─── DashboardPage ────────────────────────────────────────────────────────────
-export const DashboardPage: React.FC = () => {
-    const { user } = useAuth();
+/* ─── Dashboard Card ─── */
+const DashboardCard: React.FC<{
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  accent?: boolean;
+}> = ({ title, subtitle, children, actions, accent = false }) => (
+  <section className="group relative min-w-0 overflow-hidden rounded-[2rem] border border-slate-200/60 bg-white/80 p-5 shadow-[0_8px_32px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-all duration-300 hover:shadow-[0_16px_48px_rgba(15,23,42,0.10)] hover:-translate-y-0.5 md:p-6">
+    {accent && (
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
+    )}
+    <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-red-100/30 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+    <div className="relative mb-5 flex items-start justify-between gap-4">
+      <div>
+        <h3 className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{title}</h3>
+        {subtitle && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-400">{subtitle}</p>}
+      </div>
+      {actions}
+    </div>
+    <div className="relative">{children}</div>
+  </section>
+);
 
-    const [stats, setStats] = useState({
-        income: 0,
-        activeReservations: 0,
-        pendingBalance: 0,
-        totalClients: 0,
-        upcomingEvents:    [] as Reservation[],
-        recentActivity:    [] as Reservation[],
-        monthlyIncomeData: [] as any[],
-        eventTypeData:     [] as any[],
-        weeklyTrendData:   [] as any[],
-    });
-    const [loading,          setLoading         ] = useState(true);
-    const [showToast,        setShowToast        ] = useState(false);
-    const [eventFilter,      setEventFilter      ] = useState<'all' | 'Confirmado' | 'Pendiente'>('all');
+/* ─── Section Header ─── */
+const DashboardSectionHeader: React.FC<{
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}> = ({ eyebrow, title, subtitle }) => (
+  <div className="flex flex-col gap-2 px-1 pb-2">
+    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-red-200/60 bg-red-50/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+      {eyebrow}
+    </span>
+    <div className="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
+      <h2 className="text-[1.85rem] font-black tracking-[-0.03em] text-slate-900 md:text-[2.1rem]">{title}</h2>
+      <p className="max-w-xl text-sm leading-relaxed text-slate-400 xl:text-right">{subtitle}</p>
+    </div>
+  </div>
+);
 
-    // ── Carga de datos ────────────────────────────────────────────────────────
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const reservations = await reservaService.getReservations();
-                const rawSales     = await api.get('/ventas');
-                const sales        = Array.isArray(rawSales.data) ? rawSales.data : (rawSales.data?.data ?? []);
-                const cr           = await clientService.getClients();
-                const clients      = Array.isArray(cr) ? cr : cr.clients;
+/* ─── Section Tabs ─── */
+const DashboardSectionTabs: React.FC<{
+  items: DashboardSectionTabItem[];
+  activeSection: DashboardSectionId;
+  onSelect: (id: DashboardSectionId) => void;
+}> = ({ items, activeSection, onSelect }) => (
+  <div className="sticky top-3 z-20">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white/90 px-2 py-2 shadow-[0_8px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <div className="flex min-w-max items-center gap-1.5">
+        {items.map(item => {
+          const active = item.id === activeSection;
+          const Icon = item.icon;
 
-                const activeRes   = reservations.filter(r => r.status === 'Confirmado' || r.status === 'Pendiente');
-                const totalIncome = sales.reduce((a: number, s: any) => a + s.amount, 0);
-                const pending     = activeRes.reduce((a, r) => a + (r.totalAmount - r.paidAmount), 0);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] transition-all duration-200 ${
+                active
+                  ? 'bg-slate-950 text-white shadow-[0_4px_16px_rgba(15,23,42,0.25)]'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+              }`}
+            >
+              <Icon size={13} />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
 
-                // Últimos 6 meses
-                const last6 = Array.from({ length: 6 }, (_, i) => {
-                    const d = new Date();
-                    d.setDate(1);
-                    d.setMonth(d.getMonth() - i);
-                    return { label: d.toLocaleString('es-CO', { month: 'short' }), month: d.getMonth(), year: d.getFullYear() };
-                }).reverse();
+/* ─── Chart Canvas ─── */
+const ChartCanvas: React.FC<{
+  config?: ChartConfiguration;
+  height: number;
+  emptyMessage: string;
+}> = ({ config, height, emptyMessage }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-                const monthlyIncomeData = last6.map(m => ({
-                    name: m.label,
-                    ingresos: sales
-                        .filter((s: any) => { const d = new Date(s.date); return d.getMonth() === m.month && d.getFullYear() === m.year; })
-                        .reduce((a: number, s: any) => a + s.amount, 0),
-                }));
+  useEffect(() => {
+    if (!canvasRef.current || !config) return undefined;
+    const chart = new Chart(canvasRef.current, config);
+    return () => chart.destroy();
+  }, [config]);
 
-                // Tipos de evento
-                const typesCount: Record<string, number> = {};
-                reservations.forEach(r => { const t = r.eventType || 'Otro'; typesCount[t] = (typesCount[t] || 0) + 1; });
-                const eventTypeData = Object.entries(typesCount).map(([name, value]) => ({ name, value }));
-
-                // Tendencia semanal
-                const weeklyTrendData = Array.from({ length: 4 }, (_, i) => {
-                    const start = new Date();
-                    start.setDate(start.getDate() - (i * 7) - start.getDay());
-                    start.setHours(0, 0, 0, 0);
-                    const end = new Date(start);
-                    end.setDate(end.getDate() + 6);
-                    end.setHours(23, 59, 59, 999);
-                    const week = reservations.filter(r => { const d = new Date(r.createdAt); return d >= start && d <= end; });
-                    return {
-                        name: `Sem ${4 - i}`,
-                        confirmadas: week.filter(r => r.status === 'Confirmado').length,
-                        pendientes:  week.filter(r => r.status === 'Pendiente').length,
-                    };
-                }).reverse();
-
-                const sorted = [...activeRes].sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
-
-                setStats({
-                    income: totalIncome,
-                    activeReservations: activeRes.length,
-                    pendingBalance: pending,
-                    totalClients: clients.length,
-                    upcomingEvents: sorted.slice(0, 8),
-                    recentActivity: reservations.slice(0, 5),
-                    monthlyIncomeData,
-                    eventTypeData,
-                    weeklyTrendData,
-                });
-            } finally {
-                setLoading(false);
-                setTimeout(() => setShowToast(true), 500);
-                setTimeout(() => setShowToast(false), 5000);
-            }
-        };
-        load();
-    }, [user]);
-
-    // ── Toast ─────────────────────────────────────────────────────────────────
-    const WelcomeToast = () => createPortal(
-        <div style={{
-            position: 'fixed', top: 24, right: 24, zIndex: 200,
-            transition: 'all 0.4s ease',
-            transform: showToast ? 'translateY(0)' : 'translateY(-12px)',
-            opacity:   showToast ? 1 : 0,
-            pointerEvents: showToast ? 'auto' : 'none',
-        }}>
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '14px 20px', borderRadius: 18,
-                background: '#ffffff',
-                border: `1px solid ${SLATE_200}`,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                minWidth: 300,
-            }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CheckCircle size={18} color={GREEN} />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 700, fontSize: 13, color: DARK }}>¡Bienvenido, {user?.name}!</p>
-                    <p style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>Sesión iniciada correctamente.</p>
-                </div>
-                <button onClick={() => setShowToast(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 8, color: SLATE }}>
-                    <X size={16} />
-                </button>
-            </div>
-        </div>,
-        document.body
-    );
-
-    // ── Loading ───────────────────────────────────────────────────────────────
-    if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: SLATE, fontSize: 14 }}>
-            Cargando tablero…
-        </div>
-    );
-
-    // ── Filtered events ───────────────────────────────────────────────────────
-    const filteredEvents = eventFilter === 'all'
-        ? stats.upcomingEvents
-        : stats.upcomingEvents.filter(e => e.status === eventFilter);
-
-    // ── Render ────────────────────────────────────────────────────────────────
+  if (!config) {
     return (
-        <div style={{ background: '#ffffff', minHeight: '100vh', padding: '32px 0 40px' }}>
-            <WelcomeToast />
-
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-                {/* ── HEADER ─────────────────────────────────────────────────────── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 700, color: DARK }}>
-                            Hola, {user?.name} ✦
-                        </h1>
-                        <p style={{ fontSize: 13, color: SLATE, marginTop: 4 }}>
-                            Resumen financiero y operativo de hoy
-                        </p>
-                    </div>
-                    <div style={{
-                        background: DARK, color: '#ffffff',
-                        padding: '8px 18px', borderRadius: 24,
-                        fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
-                        textTransform: 'capitalize',
-                    }}>
-                        {today}
-                    </div>
-                </div>
-
-                {/* ── KPIs ───────────────────────────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                    <KpiCard title="Ingresos Mes"     value={fmt(stats.income)}                    icon={TrendingUp} accent={RED}   bgAccent={RED_LIGHT}  trend="12% vs mes anterior"    trendUp={true} />
-                    <KpiCard title="Reservas Activas" value={stats.activeReservations.toString()}  icon={Calendar}   accent={DARK}  bgAccent={SLATE_100}  trend="3 eventos esta semana"              />
-                    <KpiCard title="Saldo por Cobrar" value={fmt(stats.pendingBalance)}            icon={AlertCircle}accent={AMBER} bgAccent="#fffbeb"    trend="Gestión requerida"      trendUp={false}/>
-                    <KpiCard title="Total Clientes"   value={stats.totalClients.toString()}        icon={Users}      accent={GREEN} bgAccent="#ecfdf5"    trend="+2 nuevos esta semana"  trendUp={true} />
-                </div>
-
-                {/* ── ROW 1: Barras + Donut ──────────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Ingresos mensuales" subtitle="Últimos 6 meses de ventas" icon={BarChart2} iconColor={RED}>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={stats.monthlyIncomeData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_100} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 11 }} dy={8} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} tickFormatter={fmt} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar
-                                    dataKey="ingresos"
-                                    name="Ingresos"
-                                    radius={[6, 6, 0, 0]}
-                                    barSize={36}
-                                >
-                                    {stats.monthlyIncomeData.map((_: any, i: number) => (
-                                        <Cell
-                                            key={i}
-                                            fill={i === stats.monthlyIncomeData.length - 1 ? RED : SLATE_200}
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-
-                    <SectionCard title="Tipos de evento" subtitle="Distribución por categoría" icon={PieChartIcon} iconColor={SLATE}>
-                        {/* leyenda custom */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                            {stats.eventTypeData.map((d: any, i: number) => (
-                                <span key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: SLATE }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], display: 'inline-block' }} />
-                                    {d.name} {d.value}
-                                </span>
-                            ))}
-                        </div>
-                        <ResponsiveContainer width="100%" height={210}>
-                            <PieChart>
-                                <Pie data={stats.eventTypeData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value">
-                                    {stats.eventTypeData.map((_: any, i: number) => (
-                                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(v: any, name: any) => [v, name]} contentStyle={{ borderRadius: 12, border: `1px solid ${SLATE_200}`, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-                </div>
-
-                {/* ── ROW 2: Area + Metas + Repertorio ──────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Tendencia de reservas" subtitle="Confirmadas vs pendientes por semana" icon={Activity} iconColor={GREEN}>
-                        <ResponsiveContainer width="100%" height={175}>
-                            <AreaChart data={stats.weeklyTrendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="gConf" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%"  stopColor={RED}  stopOpacity={0.12} />
-                                        <stop offset="95%" stopColor={RED}  stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="gPend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%"  stopColor={DARK} stopOpacity={0.08} />
-                                        <stop offset="95%" stopColor={DARK} stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} dy={6} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: SLATE, fontSize: 10 }} />
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={SLATE_100} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="confirmadas" name="Confirmadas" stroke={RED}  strokeWidth={2.5} fill="url(#gConf)" />
-                                <Area type="monotone" dataKey="pendientes"  name="Pendientes"  stroke={DARK} strokeWidth={2}   fill="url(#gPend)" />
-                                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </SectionCard>
-
-                    <SectionCard title="Metas del mes" subtitle="Progreso hacia objetivos" icon={Target} iconColor={AMBER}>
-                        <GoalBar label="Ingresos mensuales"   pct={84} color={RED}   />
-                        <GoalBar label="Nuevos clientes"      pct={66} color={DARK}  />
-                        <GoalBar label="Reservas confirmadas" pct={75} color={GREEN} />
-                        <GoalBar label="NPS satisfacción"     pct={92} color={AMBER} />
-                    </SectionCard>
-
-                    <SectionCard title="Top repertorio" subtitle="Canciones más solicitadas" icon={Music} dark>
-                        {[
-                            { name: 'El Rey',          author: 'José A. Jiménez',    count: 98, pct: 95, color: RED      },
-                            { name: 'Si Nos Dejan',    author: 'José A. Jiménez',    count: 85, pct: 80, color: '#64748b' },
-                            { name: 'Hermoso Cariño',  author: 'Vicente Fernández',  count: 72, pct: 65, color: '#475569' },
-                            { name: 'Volver, Volver',  author: 'Vicente Fernández',  count: 61, pct: 55, color: '#334155' },
-                            { name: 'Cielito Lindo',   author: 'Quirino Mendoza',    count: 54, pct: 48, color: '#1e293b' },
-                        ].map(s => <RepertoireBar key={s.name} {...s} />)}
-                    </SectionCard>
-                </div>
-
-                {/* ── ROW 3: Eventos + Proyección ────────────────────────────────── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
-
-                    <SectionCard title="Próximos eventos" subtitle="Ordenados por fecha" icon={Calendar} iconColor={DARK}>
-                        {/* Tabs */}
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                            {(['all', 'Confirmado', 'Pendiente'] as const).map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setEventFilter(f)}
-                                    style={{
-                                        fontSize: 11, fontWeight: 600,
-                                        padding: '5px 13px', borderRadius: 20,
-                                        border: `1px solid ${eventFilter === f ? DARK : SLATE_200}`,
-                                        background: eventFilter === f ? DARK : 'transparent',
-                                        color: eventFilter === f ? '#fff' : SLATE,
-                                        cursor: 'pointer', transition: 'all 0.15s',
-                                    }}
-                                >
-                                    {f === 'all' ? 'Todos' : f}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
-                            {filteredEvents.length === 0 && (
-                                <p style={{ color: SLATE, fontSize: 13, textAlign: 'center', padding: 24 }}>Sin eventos</p>
-                            )}
-                            {filteredEvents.map(ev => (
-                                <div key={ev.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10,
-                                    padding: '10px 14px', borderRadius: 13,
-                                    background: SLATE_100, border: `1px solid ${SLATE_200}`,
-                                }}>
-                                    <div style={{
-                                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                                        background: ev.status === 'Confirmado' ? GREEN : AMBER,
-                                    }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <p style={{ fontSize: 12, fontWeight: 600, color: DARK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {ev.eventType} — {ev.clientName}
-                                        </p>
-                                        <p style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>
-                                            {new Date(ev.eventDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                                        </p>
-                                    </div>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: DARK, whiteSpace: 'nowrap' }}>
-                                        {fmt(ev.totalAmount)}
-                                    </span>
-                                    <StatusBadge status={ev.status} />
-                                </div>
-                            ))}
-                        </div>
-                    </SectionCard>
-
-                    <SectionCard title="Proyección de ingresos" subtitle="Simulador interactivo de escenarios" icon={TrendingUp} iconColor={GREEN}>
-                        <ProjectionSlider />
-                    </SectionCard>
-                </div>
-
-                {/* ── HEATMAP ────────────────────────────────────────────────────── */}
-                <SectionCard title="Mapa de calor — Disponibilidad semanal" subtitle="Ocupación por día y franja horaria · últimas 4 semanas" icon={BarChart2} iconColor={RED}>
-                    <Heatmap />
-                </SectionCard>
-
-                {/* ── ACTIVIDAD RECIENTE ─────────────────────────────────────────── */}
-                <SectionCard title="Actividad reciente" subtitle="Últimas reservas registradas" icon={Activity} iconColor={SLATE}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {stats.recentActivity.length === 0 && (
-                            <p style={{ color: SLATE, fontSize: 13, textAlign: 'center', padding: 24 }}>Sin actividad reciente.</p>
-                        )}
-                        {stats.recentActivity.map(r => (
-                            <div key={r.id} style={{
-                                display: 'flex', alignItems: 'center', gap: 14,
-                                padding: '12px 16px', borderRadius: 14,
-                                background: SLATE_100, border: `1px solid ${SLATE_200}`,
-                            }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: '50%',
-                                    background: '#ffffff', border: `1px solid ${SLATE_200}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 13, fontWeight: 700, color: DARK, flexShrink: 0,
-                                }}>
-                                    {r.clientName.charAt(0)}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p style={{ fontSize: 13, fontWeight: 600, color: DARK }}>
-                                        {r.eventType} — {r.clientName}
-                                    </p>
-                                    <p style={{ fontSize: 11, color: SLATE, marginTop: 2 }}>
-                                        {new Date(r.createdAt).toLocaleDateString('es-CO')} · {r.status}
-                                    </p>
-                                </div>
-                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                    <p style={{ fontSize: 13, fontWeight: 700, color: DARK }}>{fmt(r.totalAmount)}</p>
-                                    <p style={{ fontSize: 10, color: SLATE, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                        Valor total
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </SectionCard>
-
-            </div>
-        </div>
+      <div
+        className="flex items-center justify-center rounded-2xl bg-slate-50 px-4 text-center text-sm text-slate-400"
+        style={{ height }}
+      >
+        {emptyMessage}
+      </div>
     );
+  }
+
+  return (
+    <div style={{ height }}>
+      <canvas ref={canvasRef} className="h-full w-full" />
+    </div>
+  );
+};
+
+/* ─── Trend Badge ─── */
+const TrendBadge: React.FC<{ value: number; suffix: string }> = ({ value, suffix }) => {
+  const positive = value >= 0;
+  const Icon = positive ? ArrowUpRight : ArrowDownRight;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${
+        positive
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+          : 'border-red-200 bg-red-50 text-red-600'
+      }`}
+    >
+      <Icon size={11} />
+      {Math.abs(Math.round(value))}% {suffix}
+    </span>
+  );
+};
+
+/* ─── Stat Card ─── */
+const StatCard: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: 'red' | 'amber' | 'emerald' | 'slate';
+  meta: React.ReactNode;
+}> = ({ icon: Icon, label, value, tone, meta }) => {
+  const iconStyles = {
+    red: 'bg-red-50 text-red-600 border-red-100',
+    amber: 'bg-amber-50 text-amber-600 border-amber-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    slate: 'bg-slate-100 text-slate-600 border-slate-200',
+  };
+
+  return (
+    <div className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200/60 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:shadow-[0_12px_36px_rgba(15,23,42,0.09)] hover:-translate-y-0.5">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-50/60 to-transparent" />
+      <div className="flex items-start justify-between gap-3">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${iconStyles[tone]}`}>
+          <Icon size={18} />
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
+          <p className="mt-2 text-[2.15rem] font-black tracking-[-0.04em] text-slate-900 leading-none">{value}</p>
+        </div>
+      </div>
+      <div className="mt-4 pt-4 border-t border-slate-100">{meta}</div>
+    </div>
+  );
+};
+
+/* ─── Ranked List Card ─── */
+const RankedListCard: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  items: RankedItem[];
+  tone: 'red' | 'amber' | 'emerald' | 'slate';
+  emptyMessage: string;
+}> = ({ icon: Icon, label, items, tone, emptyMessage }) => {
+  const iconStyles = {
+    red: 'bg-red-50 text-red-600 border-red-100',
+    amber: 'bg-amber-50 text-amber-600 border-amber-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    slate: 'bg-slate-100 text-slate-600 border-slate-200',
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200/60 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${iconStyles[tone]}`}>
+          <Icon size={18} />
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
+          <p className="mt-2 text-[2.15rem] font-black tracking-[-0.04em] text-slate-900 leading-none">{items[0]?.value ?? 0}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {items.length === 0 ? (
+          <p className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-400">{emptyMessage}</p>
+        ) : (
+          items.map((item, index) => (
+            <div
+              key={`${item.name}-${index}`}
+              className="flex items-center justify-between gap-3 rounded-xl bg-slate-50/80 px-3.5 py-2.5"
+            >
+              <div className="min-w-0 flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-600 shadow-sm border border-slate-100">
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="truncate text-sm font-semibold text-slate-700">{item.name}</p>
+                  {item.subtitle && <p className="text-xs text-slate-400">{item.subtitle}</p>}
+                </div>
+              </div>
+              <span className="shrink-0 text-base font-black text-slate-900">{item.value}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Heatmap ─── */
+const Heatmap = React.memo(({ matrix }: { matrix: any[][][] }) => {
+  const getCellBg = (items: any[]): string => {
+    if (items.length === 0) return 'bg-slate-50/40 border-slate-100/50';
+    return 'bg-white/80 border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] backdrop-blur-sm';
+  };
+
+  return (
+    <div className="overflow-x-auto pb-4 -mx-1 px-1 custom-scrollbar">
+      <div className="grid min-w-[900px] grid-cols-[100px_repeat(7,minmax(0,1fr))] gap-3 p-1">
+        <div />
+        {WEEK_DAYS.map(day => (
+          <div key={day} className="flex flex-col items-center pb-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{day}</span>
+            <div className="mt-1 h-1 w-1 rounded-full bg-slate-200" />
+          </div>
+        ))}
+        {SLOT_LABELS.map((slot, rowIndex) => (
+          <React.Fragment key={slot}>
+            <div className="flex flex-col justify-center py-2 pr-4 border-r border-slate-100/50">
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-900 leading-tight">{slot}</span>
+              <span className="mt-0.5 text-[7px] font-bold uppercase tracking-wider text-slate-400">Bloque</span>
+            </div>
+            {WEEK_DAYS.map((_, colIndex) => {
+              const items = matrix[rowIndex]?.[colIndex] ?? [];
+              const count = items.length;
+              
+              return (
+                <div
+                  key={`${slot}-${colIndex}`}
+                  className={`group relative flex flex-col min-h-[100px] rounded-[1.2rem] border p-2.5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${getCellBg(items)}`}
+                >
+                  {count > 0 ? (
+                    <div className="flex flex-col h-full">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className={`flex h-4 w-4 items-center justify-center rounded-lg ${count > 2 ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500'}`}>
+                          <Zap size={9} strokeWidth={3} />
+                        </div>
+                        <span className="text-[8px] font-black text-slate-400 tracking-wider">{count} E</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        {items.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 rounded-xl bg-slate-50/60 px-2 py-1 border border-slate-100 hover:border-red-200 transition-all">
+                            <div className={`h-1 w-1 rounded-full shrink-0 ${item.type === 'reserva' ? 'bg-red-500' : item.type === 'cotizacion' ? 'bg-amber-500' : 'bg-teal-500'}`} />
+                            <span className="truncate text-[9px] font-black text-slate-700 tracking-tight">
+                              {item.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {count > 3 && (
+                        <div className="mt-auto pt-1 flex items-center justify-center border-t border-slate-50">
+                          <span className="text-[8px] font-black text-slate-400 tracking-[0.1em]">+ {count - 3}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center opacity-30">
+                      <div className="h-1 w-1 rounded-full bg-slate-100" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+/* ─── Monthly Calendar ─── */
+const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date; cells: CalendarDayCell[] }) => (
+  <div className="overflow-hidden rounded-[2rem] border border-slate-200/60 bg-white shadow-xl shadow-slate-200/30">
+    <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/30 px-6 py-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Calendario Operativo</p>
+        <p className="mt-1 text-xl font-black tracking-tight text-slate-900">
+          {monthDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).toUpperCase()}
+        </p>
+      </div>
+      <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />Reserva
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />Cotización
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]" />Ensayo
+        </span>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/80">
+      {WEEK_DAYS.map(day => (
+        <div key={day} className="px-2 py-3 text-center text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+          {day}
+        </div>
+      ))}
+    </div>
+
+    <div className="grid grid-cols-7">
+      {cells.map(cell => {
+        const visibleItems = cell.items.slice(0, 3);
+        const remainingItems = Math.max(0, cell.items.length - visibleItems.length);
+
+        return (
+          <div
+            key={cell.date.toISOString()}
+            className={`min-h-[140px] border-b border-r border-slate-100 p-3 transition-colors hover:bg-slate-50/30 ${
+              cell.inMonth ? 'bg-white' : 'bg-slate-50/40 opacity-40'
+            }`}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black transition-all ${
+                  cell.isToday
+                    ? 'bg-slate-950 text-white shadow-lg shadow-slate-900/20 scale-110'
+                    : cell.inMonth
+                    ? 'text-slate-800'
+                    : 'text-slate-400'
+                }`}
+              >
+                {cell.date.getDate()}
+              </span>
+              {cell.items.length > 0 && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 border border-slate-200">
+                  {cell.items.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              {visibleItems.map(item => (
+                <div
+                  key={item.id}
+                  className={`truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                    cell.isPast
+                      ? 'bg-slate-100 text-slate-400'
+                      : item.tone === 'reservation'
+                      ? 'bg-red-50 text-red-700'
+                      : item.tone === 'quotation'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-teal-50 text-teal-700'
+                  }`}
+                  title={item.label}
+                >
+                  {item.label}
+                </div>
+              ))}
+              {remainingItems > 0 && (
+                <p className="text-[10px] font-semibold text-slate-400">+{remainingItems} más</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+));
+
+/* ─── Status Pill ─── */
+const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' | 'agenda' }> = ({
+  status,
+  kind,
+}) => {
+  const normalized =
+    kind === 'quotation' ? normalizeQuotationStatus(status) : normalizeReservationStatus(status);
+
+  const styles =
+    normalized === 'CONFIRMADA' || normalized === 'CONVERTIDA'
+      ? 'bg-emerald-50 text-emerald-700'
+      : normalized === 'ANULADA'
+      ? 'bg-slate-100 text-slate-500'
+      : normalized === 'REPROGRAMADA'
+      ? 'bg-teal-50 text-teal-700'
+      : normalized === 'PENDIENTE' || normalized === 'EN_ESPERA'
+      ? 'bg-amber-50 text-amber-700'
+      : 'bg-slate-100 text-slate-500';
+
+  const label =
+    normalized === 'CONFIRMADA' ? 'Confirmada'
+    : normalized === 'CONVERTIDA' ? 'Convertida'
+    : normalized === 'REPROGRAMADA' ? 'Reprogramada'
+    : normalized === 'ANULADA' ? 'Anulada'
+    : normalized === 'EN_ESPERA' ? 'En espera'
+    : normalized === 'LISTO' ? 'Listo'
+    : normalized === 'PENDIENTE' ? 'Pendiente'
+    : status;
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${styles}`}>
+      {label}
+    </span>
+  );
+};
+
+/* ─── Loading ─── */
+const LoadingDashboard = () => (
+  <div className="space-y-5">
+    <div className="rounded-[2.5rem] bg-slate-950 px-6 py-8">
+      <div className="h-3 w-40 animate-pulse rounded-full bg-white/10" />
+      <div className="mt-4 h-10 w-72 animate-pulse rounded-full bg-white/10" />
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/8" />
+        ))}
+      </div>
+    </div>
+    <div className="grid gap-3 md:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="h-36 animate-pulse rounded-[1.75rem] bg-white/70 border border-slate-100" />
+      ))}
+    </div>
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════
+   DASHBOARD PAGE
+   ════════════════════════════════════════════════════════ */
+export const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
+  const [activeSection, setActiveSection] = useState<DashboardSectionId>('executive');
+  const [dashboard, setDashboard] = useState<DashboardData>({
+    reservations: [],
+    sales: [],
+    quotations: [],
+    rehearsals: [],
+    services: [],
+    songs: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  /* ── Hero mouse-follow state ── */
+  const heroRef = useRef<HTMLElement>(null);
+  const [mousePos, setMousePos] = useState<HeroMousePos>({ x: 50, y: 50 });
+  const [isHovered, setIsHovered] = useState(false);
+  const animFrameRef = useRef<number>(0);
+  const targetPos = useRef<HeroMousePos>({ x: 50, y: 50 });
+  const currentPos = useRef<HeroMousePos>({ x: 50, y: 50 });
+
+  /* Global tracking to ensure it works across tabs, but visually restricted to Hero */
+  useEffect(() => {
+    const handleGlobalMove = (e: MouseEvent) => {
+      if (!heroRef.current) return;
+      const rect = heroRef.current.getBoundingClientRect();
+      
+      // Check if mouse is inside hero bounds
+      const inside = (
+        e.clientX >= rect.left && 
+        e.clientX <= rect.right && 
+        e.clientY >= rect.top && 
+        e.clientY <= rect.bottom
+      );
+      
+      setIsHovered(inside);
+      
+      if (inside) {
+        targetPos.current = {
+          x: ((e.clientX - rect.left) / rect.width) * 100,
+          y: ((e.clientY - rect.top) / rect.height) * 100,
+        };
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMove);
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const tick = () => {
+      currentPos.current.x = lerp(currentPos.current.x, targetPos.current.x, 0.15);
+      currentPos.current.y = lerp(currentPos.current.y, targetPos.current.y, 0.15);
+      setMousePos({ x: currentPos.current.x, y: currentPos.current.y });
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMove);
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
+
+  /* ── Data loading ── */
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      setLoading(true);
+      setErrorMessage(null);
+
+      const results = await Promise.allSettled([
+        reservaService.getReservations(),
+        ventaService.getSales(),
+        cotizacionService.getQuotations(),
+        rehearsalService.getRehearsals(),
+        servicesService.getServices(),
+        repertoireService.getSongs(),
+      ]);
+
+      if (cancelled) return;
+
+      const reservations = results[0].status === 'fulfilled' ? results[0].value : [];
+      const sales = results[1].status === 'fulfilled' ? results[1].value : [];
+      const quotations = results[2].status === 'fulfilled' ? results[2].value : [];
+      const rehearsals = results[3].status === 'fulfilled' ? results[3].value : [];
+      const services = results[4].status === 'fulfilled' ? results[4].value : [];
+      const songs = results[5].status === 'fulfilled' ? results[5].value : [];
+
+      const failures = results.filter(r => r.status === 'rejected').length;
+
+      setDashboard({ reservations, sales, quotations, rehearsals, services, songs });
+
+      if (failures > 0) {
+        setErrorMessage('Algunos módulos no respondieron. El dashboard muestra la información disponible.');
+      }
+
+      setLoading(false);
+      setRefreshing(false);
+    };
+
+    loadDashboard();
+    return () => { cancelled = true; };
+  }, [user, reloadToken]);
+
+  /* ── Date helpers ── */
+  const today = startOfToday();
+  const currentMonthStart = startOfMonth();
+  const currentMonthEnd = endOfMonth();
+  const previousMonthStart = startOfMonth(new Date(), -1);
+  const previousMonthEnd = endOfMonth(new Date(), -1);
+  const next14Days = new Date(today);
+  next14Days.setDate(next14Days.getDate() + 14);
+  const next30Days = new Date(today);
+  next30Days.setDate(next30Days.getDate() + 30);
+  const next60Days = new Date(today);
+  next60Days.setDate(next60Days.getDate() + 60);
+
+  /* ── Data transforms ── */
+  const reservations = dashboard.reservations.map(r => ({
+    ...r,
+    normalizedStatus: normalizeReservationStatus(r.status),
+    pendingValue: getReservationPending(r),
+    eventDateTime: reservationDate(r),
+  }));
+
+  const quotations = dashboard.quotations.map(q => ({
+    ...q,
+    normalizedStatus: normalizeQuotationStatus(q.status),
+    eventDateTime: toDateTime(q.eventDate, q.startTime),
+  }));
+
+  const rehearsals = dashboard.rehearsals.map(r => ({
+    ...r,
+    normalizedStatus: (r.status || 'PENDIENTE').toUpperCase(),
+    eventDateTime: rehearsalDate(r),
+  }));
+
+  const activeReservations = reservations.filter(r =>
+    ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'].includes(r.normalizedStatus)
+  );
+  const futureReservations = activeReservations
+    .filter(r => r.eventDateTime >= today)
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+  const pendingQuotes = quotations.filter(q => q.normalizedStatus === 'EN_ESPERA');
+  const convertedQuotes = quotations.filter(q => q.normalizedStatus === 'CONVERTIDA');
+  const pendingRehearsals = rehearsals
+    .filter(r => r.normalizedStatus === 'PENDIENTE')
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+
+  const reservationLookup = reservations.reduce<Record<string, (typeof reservations)[number]>>(
+    (acc, r) => { acc[String(r.id)] = r; return acc; }, {}
+  );
+  const serviceLookup = dashboard.services.reduce<Record<string, Service>>(
+    (acc, s) => { acc[String(s.id)] = s; return acc; }, {}
+  );
+  const songLookup = dashboard.songs.reduce<Record<string, Song>>(
+    (acc, s) => { acc[String(s.id)] = s; return acc; }, {}
+  );
+
+  const currentMonthSales = dashboard.sales.filter(s => {
+    const d = new Date(s.date);
+    return d >= currentMonthStart && d <= currentMonthEnd;
+  });
+  const currentMonthRevenue = currentMonthSales.reduce((t, s) => t + Number(s.amount || 0), 0);
+  const previousMonthRevenue = dashboard.sales
+    .filter(s => { const d = new Date(s.date); return d >= previousMonthStart && d <= previousMonthEnd; })
+    .reduce((t, s) => t + Number(s.amount || 0), 0);
+
+  const currentMonthReservationsCount = activeReservations.filter(
+    r => r.eventDateTime >= currentMonthStart && r.eventDateTime <= currentMonthEnd
+  ).length;
+  const previousMonthReservationsCount = activeReservations.filter(
+    r => r.eventDateTime >= previousMonthStart && r.eventDateTime <= previousMonthEnd
+  ).length;
+
+  const receivableBalance = activeReservations.reduce((t, r) => t + r.pendingValue, 0);
+  const pipelineValue =
+    pendingQuotes.reduce((t, q) => t + Number(q.totalAmount || 0), 0) + receivableBalance;
+  const paidReservationsCount = activeReservations.filter(r => r.pendingValue <= 0.01).length;
+  const paymentHealth = activeReservations.length
+    ? (paidReservationsCount / activeReservations.length) * 100 : 0;
+  const quoteConversion = quotations.length
+    ? (convertedQuotes.length / quotations.length) * 100 : 0;
+
+  const revenueDelta = getMetricDelta(currentMonthRevenue, previousMonthRevenue);
+  const reservationsDelta = getMetricDelta(currentMonthReservationsCount, previousMonthReservationsCount);
+
+  /* ── Weekly flow data ── */
+  const weeklyFlowData = Array.from({ length: 8 }, (_, index) => {
+    const start = startOfWeek(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (7 * (7 - index))));
+    const end = endOfWeek(start);
+    return {
+      name: `Sem ${index + 1}`,
+      Cotizaciones: quotations.filter(q => { const d = new Date(q.createdAt); return d >= start && d <= end; }).length,
+      Reservas: reservations.filter(r => { const d = new Date(r.createdAt); return d >= start && d <= end; }).length,
+      Ventas: dashboard.sales.filter(s => { const d = new Date(s.date); return d >= start && d <= end; }).length,
+    };
+  });
+
+  const reservationStatusData = [
+    { name: 'Confirmadas', value: reservations.filter(r => r.normalizedStatus === 'CONFIRMADA').length },
+    { name: 'Pendientes', value: reservations.filter(r => r.normalizedStatus === 'PENDIENTE').length },
+    { name: 'Reprogramadas', value: reservations.filter(r => r.normalizedStatus === 'REPROGRAMADA').length },
+    { name: 'Anuladas', value: reservations.filter(r => r.normalizedStatus === 'ANULADA').length },
+  ].filter(i => i.value > 0);
+
+  const getSaleServiceAllocations = (sale: Sale) => {
+    const saleAmount = Number(sale.amount || 0);
+    const directServices = (sale.services || [])
+      .map(s => ({ name: normalizeLabel(s.nombre, 'Servicio general'), weight: Number(s.precio || 0) * Number(s.cantidad || 1) }))
+      .filter(s => s.weight > 0);
+    if (directServices.length > 0) return scaleWeightedEntries(directServices, saleAmount);
+    const linked = sale.reservationId ? reservationLookup[String(sale.reservationId)] : undefined;
+    const reservationServices = (linked?.selectedServices || [])
+      .map(s => {
+        const meta = serviceLookup[String(s.serviceId)];
+        const qty = Number(s.quantity || 1);
+        const base = Number(meta?.precio || 0) * qty;
+        return { name: normalizeLabel(meta?.nombre || linked?.eventType || sale.eventType || sale.concept, 'Servicio general'), weight: base > 0 ? base : qty };
+      })
+      .filter(s => s.weight > 0);
+    if (reservationServices.length > 0) return scaleWeightedEntries(reservationServices, saleAmount);
+    return [{ name: normalizeLabel(sale.eventType || sale.concept, 'Servicio general'), value: saleAmount }];
+  };
+
+  const currentMonthServiceAllocations = currentMonthSales.flatMap(getSaleServiceAllocations);
+  const currentMonthServiceTotals = Object.entries(
+    currentMonthServiceAllocations.reduce<Record<string, number>>((acc, e) => {
+      acc[e.name] = (acc[e.name] || 0) + Number(e.value || 0); return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  const highlightedServiceTotals = currentMonthServiceTotals.slice(0, 4);
+  const currentMonthLeaderService = highlightedServiceTotals[0];
+
+  const currentMonthWeeks = Array.from(
+    { length: Math.max(1, Math.ceil(currentMonthEnd.getDate() / 7)) },
+    (_, i) => ({ name: `Sem ${i + 1}`, total: 0, services: {} as Record<string, number> })
+  );
+  currentMonthSales.forEach(sale => {
+    const d = new Date(sale.date);
+    const wi = Math.min(currentMonthWeeks.length - 1, Math.floor((Math.max(d.getDate(), 1) - 1) / 7));
+    const bucket = currentMonthWeeks[wi];
+    if (!bucket) return;
+    getSaleServiceAllocations(sale).forEach(a => {
+      bucket.services[a.name] = (bucket.services[a.name] || 0) + a.value;
+      bucket.total += a.value;
+    });
+  });
+
+  const serviceTrendSeries = highlightedServiceTotals.slice(0, 3);
+  const currentMonthServiceTrendData = currentMonthWeeks.map(week => {
+    const row: Record<string, string | number> = { name: week.name, total: week.total };
+    serviceTrendSeries.forEach(s => { row[s.name] = week.services[s.name] || 0; });
+    return row;
+  });
+
+  const topEventTypesData = Object.entries(
+    reservations.reduce<Record<string, number>>((acc, r) => {
+      if (r.normalizedStatus === 'ANULADA') return acc;
+      const k = r.eventType || 'Otro';
+      acc[k] = (acc[k] || 0) + 1; return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  const topEventTypesTotal = topEventTypesData.reduce((s, i) => s + i.value, 0);
+  const topEventLeader = topEventTypesData[0];
+
+  const topSongsData = Object.entries(
+    [
+      ...reservations.flatMap(r => (r.repertoireIds || []).map(id => normalizeLabel(songLookup[String(id)]?.title, 'Cancion sin nombre'))),
+      ...quotations.flatMap(q => (q.repertoireIds || []).map(id => normalizeLabel(songLookup[String(id)]?.title, 'Cancion sin nombre'))),
+      ...dashboard.sales.flatMap(s => (s.repertoire || []).map(r => normalizeLabel(r.titulo, 'Cancion sin nombre'))),
+    ].reduce<Record<string, number>>((acc, name) => { acc[name] = (acc[name] || 0) + 1; return acc; }, {})
+  ).map(([name, value]) => ({ name, value, subtitle: value === 1 ? '1 solicitud' : `${value} solicitudes` }))
+    .sort((a, b) => b.value - a.value).slice(0, 4);
+
+  const topClients = Object.values(
+    reservations.reduce<Record<string, { name: string; reservas: number; valor: number }>>((acc, r) => {
+      const k = r.clientName || r.clientEmail || r.clientId || r.id;
+      if (!acc[k]) acc[k] = { name: r.clientName || 'Cliente', reservas: 0, valor: 0 };
+      acc[k].reservas += 1;
+      acc[k].valor += Number(r.totalAmount || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b.valor - a.valor).slice(0, 5);
+
+  const currentMonthLabel = formatMonthName(currentMonthStart);
+  const currentMonthAgenda = futureReservations.filter(
+    r => r.eventDateTime >= currentMonthStart && r.eventDateTime <= currentMonthEnd
+  ).length;
+
+  /* ── Chart configs ── */
+  const topEventTypesChart = useMemo(() => (
+    topEventTypesData.length
+    ? ({
+        type: 'doughnut',
+        data: {
+          labels: topEventTypesData.map(i => i.name),
+          datasets: [{
+            data: topEventTypesData.map(i => i.value),
+            backgroundColor: topEventTypesData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+            borderWidth: 0,
+            hoverOffset: 6,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx: any) => {
+              const total = topEventTypesData.reduce((s, i) => s + i.value, 0);
+              const v = Number(ctx.raw || 0);
+              return `${ctx.label}: ${v} (${total > 0 ? Math.round((v / total) * 100) : 0}%)`;
+            }}},
+          },
+        },
+      } satisfies ChartConfiguration<'doughnut'>)
+    : undefined
+  ), [topEventTypesData]);
+
+  const revenueByServiceChart = useMemo(() => (
+    serviceTrendSeries.length > 0
+    ? ({
+        type: 'line',
+        data: {
+          labels: currentMonthServiceTrendData.map(i => String(i.name)),
+          datasets: [
+            ...serviceTrendSeries.map((s, i) => ({
+              label: s.name,
+              data: currentMonthServiceTrendData.map(d => Number(d[s.name] || 0)),
+              borderColor: CHART_COLORS[i % CHART_COLORS.length],
+              backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.4,
+              yAxisID: 'y',
+            })),
+            {
+              label: 'Total del mes',
+              data: currentMonthServiceTrendData.map(d => Number(d.total || 0)),
+              borderColor: COLORS.slate,
+              backgroundColor: COLORS.slate,
+              borderDash: [6, 4],
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3,
+              yAxisID: 'y1',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', align: 'start', labels: { boxWidth: 10, boxHeight: 10, color: COLORS.slate, font: { size: 11, weight: 'bold' } } },
+            tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label}: ${fullCurrency(Number(ctx.raw || 0))}` } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: COLORS.slate, font: { size: 11 } } },
+            y: { beginAtZero: true, grid: { color: COLORS.slateLine }, ticks: { color: COLORS.slate, callback: (v: any) => shortCurrency(Number(v)) } },
+            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: COLORS.slate, callback: (v: any) => shortCurrency(Number(v)) } },
+          },
+        },
+      } satisfies ChartConfiguration<'line'>)
+    : undefined
+  ), [serviceTrendSeries, currentMonthServiceTrendData]);
+
+  const reservationMixChart = useMemo(() => (
+    reservationStatusData.length
+    ? ({
+        type: 'bar',
+        data: {
+          labels: reservationStatusData.map(i => i.name),
+          datasets: [{
+            data: reservationStatusData.map(i => i.value),
+            backgroundColor: reservationStatusData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+            borderRadius: 10,
+            borderSkipped: false,
+            barThickness: 18,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx: any) => `${ctx.label}: ${Number(ctx.raw || 0)} reservas` } } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: COLORS.slateLine }, ticks: { precision: 0, color: COLORS.slate } },
+            y: { grid: { display: false }, ticks: { color: COLORS.slate, font: { size: 11, weight: 'bold' } } },
+          },
+        },
+      } satisfies ChartConfiguration<'bar'>)
+    : undefined
+  ), [reservationStatusData]);
+
+  const hasWeeklyFlowData = weeklyFlowData.some(item =>
+    Number(item.Cotizaciones || 0) > 0 ||
+    Number(item.Reservas || 0) > 0 ||
+    Number(item.Ventas || 0) > 0
+  );
+
+  const weeklyAgendaLoadData = useMemo(() => WEEK_DAYS.map((day, i) => ({
+    day,
+    Reservas: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+    Ensayos: pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+    Total: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length +
+           pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+  })), [futureReservations, pendingRehearsals]);
+
+  const hasWeeklyAgendaData = weeklyAgendaLoadData.some(item =>
+    Number(item.Reservas || 0) > 0 || Number(item.Ensayos || 0) > 0
+  );
+  const weeklyAgendaPeak = Math.max(
+    0,
+    ...weeklyAgendaLoadData.map(item => Math.max(item.Reservas, item.Ensayos, item.Total))
+  );
+  const weeklyAgendaRadiusMax = Math.max(4, weeklyAgendaPeak);
+  const weeklyAgendaTickCount = Math.min(6, weeklyAgendaRadiusMax + 1);
+
+  const occupancyMatrix = useMemo(() => {
+    const matrix = Array.from({ length: SLOT_LABELS.length }, () => Array(7).fill(0).map(() => [] as any[]));
+    
+    futureReservations.filter(r => r.eventDateTime <= next60Days).forEach(r => {
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.clientName || 'Sin nombre', 
+        type: 'reserva',
+        id: r.id 
+      });
+    });
+    
+    pendingQuotes.filter(q => q.eventDateTime >= today && q.eventDateTime <= next60Days).forEach(q => {
+      matrix[getSlotIndex(q.eventDateTime.getHours())][getWeekdayIndex(q.eventDateTime)].push({ 
+        name: q.clientName || 'Cotización', 
+        type: 'cotizacion',
+        id: q.id 
+      });
+    });
+    
+    pendingRehearsals.filter(r => r.eventDateTime <= next60Days).forEach(r => {
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.title || 'Ensayo', 
+        type: 'ensayo',
+        id: r.id 
+      });
+    });
+    
+    return matrix;
+  }, [futureReservations, pendingQuotes, pendingRehearsals, today, next60Days]);
+
+  /* Calendar */
+  const calendarMonthCells: CalendarDayCell[] = useMemo(() => {
+    const gridStart = startOfWeek(currentMonthStart);
+    const gridEnd = endOfWeekGrid(currentMonthStart);
+    const sourceItems = [
+      ...futureReservations.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `res-${r.id}`, label: `${r.startTime || r.eventTime || '00:00'} ${r.clientName}`, tone: 'reservation' as const } })),
+      ...pendingQuotes.filter(q => q.eventDateTime >= gridStart && q.eventDateTime <= gridEnd)
+        .map(q => ({ date: q.eventDateTime, item: { id: `quote-${q.id}`, label: `${q.startTime || '00:00'} ${q.clientName}`, tone: 'quotation' as const } })),
+      ...pendingRehearsals.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `reh-${r.id}`, label: `${r.time || r.hora || '00:00'} ${r.title}`, tone: 'rehearsal' as const } })),
+    ];
+
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      return {
+        date,
+        inMonth: date.getMonth() === currentMonthStart.getMonth(),
+        isToday: date.toDateString() === today.toDateString(),
+        isPast: date < today && date.toDateString() !== today.toDateString(),
+        items: sourceItems.filter(s => s.date.toDateString() === date.toDateString()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(s => s.item),
+      };
+    });
+  }, [currentMonthStart, futureReservations, pendingQuotes, pendingRehearsals, today]);
+
+  /* Agenda */
+  const agendaItems: AgendaItem[] = useMemo(() => [
+    ...futureReservations.slice(0, 6).map(r => ({
+      id: `res-${r.id}`, title: `${r.eventType} · ${r.clientName}`,
+      subtitle: `Reserva #${r.id} · ${fullCurrency(r.totalAmount)}`,
+      date: r.eventDateTime, kind: 'reserva' as const, status: r.normalizedStatus,
+    })),
+    ...pendingRehearsals.slice(0, 4).map(r => ({
+      id: `ens-${r.id}`, title: r.title, subtitle: r.location,
+      date: r.eventDateTime, kind: 'ensayo' as const, status: r.normalizedStatus,
+    })),
+  ].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 8), [futureReservations, pendingRehearsals]);
+
+  /* Activity feed */
+  const activityFeed: ActivityItem[] = useMemo(() => [
+    ...reservations.map(r => ({ id: `res-${r.id}`, title: `${r.eventType} · ${r.clientName}`, subtitle: `Reserva · ${normalizeReservationStatus(r.status)}`, date: new Date(r.createdAt), amount: Number(r.totalAmount || 0), kind: 'reserva' as const })),
+    ...quotations.map(q => ({ id: `q-${q.id}`, title: `${q.eventType} · ${q.clientName}`, subtitle: `Cotizacion · ${normalizeQuotationStatus(q.status)}`, date: new Date(q.createdAt), amount: Number(q.totalAmount || 0), kind: 'cotizacion' as const })),
+    ...dashboard.sales.map(s => ({ id: `sale-${s.id}`, title: s.concept || s.eventType || 'Venta registrada', subtitle: `${s.clientName} · ${s.method}`, date: new Date(s.date), amount: Number(s.amount || 0), kind: 'venta' as const })),
+  ].filter(i => !Number.isNaN(i.date.getTime())).sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10), [reservations, quotations, dashboard.sales]);
+
+  /* Alerts */
+  const alerts: AlertItem[] = useMemo(() => [
+    ...futureReservations.filter(r => r.pendingValue > 0.01 && r.eventDateTime <= next14Days).slice(0, 3)
+      .map(r => ({ id: `alert-res-${r.id}`, title: `Cobro pendiente · Reserva #${r.id}`, description: `${r.clientName} tiene ${fullCurrency(r.pendingValue)} por pagar. Evento el ${formatCompactDate(r.eventDateTime)}.`, tone: 'danger' as const })),
+    ...pendingQuotes.filter(q => { const days = Math.floor((today.getTime() - new Date(q.createdAt).getTime()) / 86400000); return days >= 7; }).slice(0, 2)
+      .map(q => ({ id: `alert-q-${q.id}`, title: 'Cotizacion sin respuesta', description: `${q.clientName} lleva días esperando respuesta. Propuesta de ${fullCurrency(q.totalAmount)}.`, tone: 'warning' as const })),
+    ...pendingRehearsals.filter(r => r.eventDateTime <= next14Days).slice(0, 2)
+      .map(r => ({ id: `alert-ens-${r.id}`, title: 'Ensayo próximo', description: `${r.title} programado para el ${formatCompactDate(r.eventDateTime)}.`, tone: 'success' as const })),
+  ].slice(0, 6), [futureReservations, pendingQuotes, pendingRehearsals, today, next14Days]);
+
+  const next7DaysAgenda = agendaItems.filter(i => i.date <= next30Days).length;
+
+  /* ── Nav items ── */
+  const sectionItems: DashboardSectionTabItem[] = [
+    { id: 'executive', label: 'Resumen', icon: Sparkles },
+    { id: 'commercial', label: 'Ventas', icon: TrendingUp },
+    { id: 'operations', label: 'Agenda', icon: CalendarRange },
+    { id: 'alerts', label: 'Alertas', icon: AlertTriangle },
+    { id: 'clients', label: 'Clientes', icon: Activity },
+  ];
+
+  const showExecutive = activeSection === 'executive';
+  const showCommercial = activeSection === 'commercial';
+  const showOperations = activeSection === 'operations';
+  const showAlerts = activeSection === 'alerts';
+  const showClients = activeSection === 'clients';
+
+  if (loading) return <LoadingDashboard />;
+
+  return (
+    <div
+      className="min-h-screen overflow-x-hidden"
+      style={{ background: 'linear-gradient(160deg, #fdf8f6 0%, #f8fafc 50%, #f8fafc 100%)' }}
+    >
+      <div className="mx-auto w-full max-w-[1520px] px-3 py-4 sm:px-4 lg:px-6">
+        <div className="flex flex-col gap-4">
+
+          {/* ═══ HERO ═══ */}
+          <section
+            ref={heroRef}
+            className="relative overflow-hidden rounded-[2.5rem] bg-[#0a0a0a] px-6 py-8 md:px-9 md:py-10"
+          >
+            {/* Base atmosphere */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-red-900/25 blur-[80px]" />
+              <div className="absolute right-10 bottom-0 h-48 w-48 rounded-full bg-red-950/30 blur-[60px]" />
+              {/* Fine grid */}
+              <div className="absolute inset-0 opacity-[0.055]"
+                style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+            </div>
+
+            {/* ═══ HERO ═══ */}
+            <div
+              className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+              style={{
+                opacity: isHovered ? 1 : 0.4,
+                background: `
+                  radial-gradient(circle 180px at ${mousePos.x}% ${mousePos.y}%, rgba(220,38,38,0.55), transparent 100%),
+                  radial-gradient(circle 360px at ${mousePos.x}% ${mousePos.y}%, rgba(185,28,28,0.22), transparent 100%),
+                  radial-gradient(circle 600px at ${mousePos.x}% ${mousePos.y}%, rgba(127,29,29,0.10), transparent 100%)
+                `,
+              }}
+            />
+
+            {/* Content */}
+            <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-red-300">
+                  <Zap size={11} className="text-red-400" />
+                  Dashboard ejecutivo
+                </div>
+
+                <h1 className="mt-5 text-[2.4rem] font-black leading-[1.05] tracking-[-0.03em] text-white md:text-[3rem]">
+                  Panel comercial <br />
+                  <span className="text-red-400">y operativo</span>
+                </h1>
+
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-400 md:text-[0.9375rem]">
+                  Centraliza toda tu operación en una sola vista: ingresos, reservas, cotizaciones, ensayos y alertas, diseñada para convertir datos en decisiones.
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center gap-2.5">
+                  <div className="rounded-full border border-white/10 bg-white/6 px-3.5 py-2 text-xs font-semibold text-slate-300">
+                    {formatFullDate(today)}
+                  </div>
+                  <div className="rounded-full border border-red-500/20 bg-red-500/12 px-3.5 py-2 text-xs font-black text-red-300">
+                    {currentMonthAgenda} eventos este mes
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI cards */}
+              <div className="grid min-w-0 gap-2.5 sm:grid-cols-3 xl:w-full xl:max-w-[430px]">
+                {[
+                  { label: 'Pipeline activo', value: shortCurrency(pipelineValue), desc: 'Cotizaciones y saldos pendientes', color: 'border-white/8 bg-white/5' },
+                  { label: 'Cobro sano', value: formatPercent(paymentHealth), desc: 'Reservas con pago completo', color: 'border-emerald-400/15 bg-emerald-400/8' },
+                  { label: 'Conversión', value: formatPercent(quoteConversion), desc: 'Cotizaciones en reserva', color: 'border-amber-300/15 bg-amber-300/8' },
+                ].map((kpi, i) => (
+                  <div key={i} className={`rounded-2xl border ${kpi.color} p-4 backdrop-blur-sm`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{kpi.label}</p>
+                    <p className="mt-2.5 text-2xl font-black text-white">{kpi.value}</p>
+                    <p className="mt-1.5 text-xs text-slate-400">{kpi.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Error notice */}
+          {errorMessage && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-amber-800">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <p className="text-sm font-medium">{errorMessage}</p>
+            </div>
+          )}
+
+          {/* ═══ TABS ═══ */}
+          <DashboardSectionTabs
+            items={sectionItems}
+            activeSection={activeSection}
+            onSelect={setActiveSection}
+          />
+
+          {/* ═══ EXECUTIVE ═══ */}
+          {showExecutive && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Resumen"
+                title="Vista Administrativa"
+                subtitle="Ingresos del mes, reservas activas, saldo por cobrar y canciones más pedidas."
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.15fr)]">
+                <StatCard
+                  icon={Wallet}
+                  label="Ingresos del mes"
+                  value={shortCurrency(currentMonthRevenue)}
+                  tone="red"
+                  meta={<TrendBadge value={revenueDelta} suffix="vs mes pasado" />}
+                />
+                <StatCard
+                  icon={CalendarDays}
+                  label="Reservas activas"
+                  value={String(activeReservations.length)}
+                  tone="slate"
+                  meta={<TrendBadge value={reservationsDelta} suffix="agenda mensual" />}
+                />
+                <StatCard
+                  icon={HandCoins}
+                  label="Saldo por cobrar"
+                  value={shortCurrency(receivableBalance)}
+                  tone="amber"
+                  meta={
+                    <p className="text-sm font-medium text-slate-400">
+                      {futureReservations.filter(r => r.pendingValue > 0.01).length} reservas con cobro abierto
+                    </p>
+                  }
+                />
+                <RankedListCard
+                  icon={Mic2}
+                  label="Canciones más pedidas"
+                  items={topSongsData}
+                  tone="emerald"
+                  emptyMessage="Aún no hay repertorios suficientes para destacar canciones."
+                />
+              </div>
+            </section>
+          )}
+
+          {/* ═══ COMMERCIAL ═══ */}
+          {showCommercial && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Comercial"
+                title="Ventas y conversión"
+                subtitle="Ingresos por servicio, tipos de evento y flujo semanal del embudo comercial."
+              />
+
+              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+                <DashboardCard
+                  title="Ingresos por servicio"
+                  subtitle={`Distribución de ${currentMonthLabel} con avance semanal por línea.`}
+                  accent
+                  actions={
+                    <button
+                      onClick={() => { setRefreshing(true); setReloadToken(c => c + 1); }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 transition-colors hover:border-red-200 hover:text-red-600"
+                    >
+                      <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+                      Actualizar
+                    </button>
+                  }
+                >
+                  <div className="mb-5 grid gap-2.5 sm:grid-cols-3">
+                    {[
+                      { label: 'Mes actual', value: fullCurrency(currentMonthRevenue) },
+                      { label: 'Mes anterior', value: fullCurrency(previousMonthRevenue) },
+                      { label: currentMonthLeaderService ? currentMonthLeaderService.name : 'Sin datos', value: currentMonthLeaderService ? fullCurrency(currentMonthLeaderService.value) : '—' },
+                    ].map((item, i) => (
+                      <div key={i} className="rounded-xl bg-slate-50 p-3.5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                        <p className="mt-1.5 text-lg font-black text-slate-900">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <ChartCanvas
+                    config={revenueByServiceChart}
+                    height={250}
+                    emptyMessage="Sin ventas suficientes este mes para distribuir ingresos por servicio."
+                  />
+                </DashboardCard>
+
+                <DashboardCard
+                  title="Tipos de evento más pedidos"
+                  subtitle="Distribución por reservas activas."
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="relative mx-auto w-full" style={{ height: 220 }}>
+                      <ChartCanvas
+                        config={topEventTypesChart}
+                        height={220}
+                        emptyMessage="No hay reservas suficientes para identificar el tipo de evento líder."
+                      />
+                      {topEventTypesData.length > 0 && (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Total</p>
+                            <p className="text-2xl font-black text-slate-900">{topEventTypesTotal}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {topEventTypesData.length === 0 ? (
+                        <p className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-400">Sin reservas suficientes.</p>
+                      ) : (
+                        topEventTypesData.map((entry, i) => (
+                          <div key={entry.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                              <span className="truncate text-sm font-semibold text-slate-700">{entry.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-black text-slate-900">{entry.value}</span>
+                              <span className="text-[11px] text-slate-400">
+                                {topEventTypesTotal > 0 ? Math.round((entry.value / topEventTypesTotal) * 100) : 0}%
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </DashboardCard>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <DashboardCard
+                  title="Flujo comercial semanal"
+                  subtitle="Cotizaciones, reservas y ventas en las últimas 8 semanas."
+                >
+                  {hasWeeklyFlowData ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={weeklyFlowData} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
+                        <defs>
+                          {[['weeklyQuotes', COLORS.amber], ['weeklyRes', COLORS.red], ['weeklySales', COLORS.teal]].map(([id, color]) => (
+                            <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+                              <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke={COLORS.slateLine} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate, fontSize: 11 }} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Area type="monotone" dataKey="Cotizaciones" stroke={COLORS.amber} strokeWidth={2} fill="url(#weeklyQuotes)" isAnimationActive={false} />
+                        <Area type="monotone" dataKey="Reservas" stroke={COLORS.red} strokeWidth={2} fill="url(#weeklyRes)" isAnimationActive={false} />
+                        <Area type="monotone" dataKey="Ventas" stroke={COLORS.teal} strokeWidth={2} fill="url(#weeklySales)" isAnimationActive={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-[300px] items-center justify-center rounded-xl bg-slate-50 px-4 text-center text-sm text-slate-400">
+                      Aún no hay movimiento comercial suficiente en las últimas 8 semanas para dibujar este gráfico.
+                    </div>
+                  )}
+                </DashboardCard>
+
+                <DashboardCard
+                  title="Estado de reservas activas"
+                  subtitle="Cómo están distribuidas las reservas ahora mismo."
+                >
+                  <div className="space-y-4">
+                    <ChartCanvas
+                      config={reservationMixChart}
+                      height={240}
+                      emptyMessage="No hay reservas suficientes para construir el mix por estado."
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      {reservationStatusData.map((entry, i) => (
+                        <div key={entry.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                            <span className="text-xs font-semibold text-slate-600">{entry.name}</span>
+                          </div>
+                          <span className="text-sm font-black text-slate-900">{entry.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DashboardCard>
+              </div>
+            </section>
+          )}
+
+          {/* ═══ OPERATIONS ═══ */}
+          {showOperations && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Operación"
+                title="Agenda y capacidad"
+                subtitle="Vista operativa: días cargados, ocupación por franjas y agenda inmediata."
+              />
+
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)]">
+                <DashboardCard
+                  title="Días con mayor movimiento"
+                  subtitle="Reservas y ensayos futuros por día de la semana."
+                  accent
+                >
+                  {hasWeeklyAgendaData ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <RadarChart
+                        data={weeklyAgendaLoadData}
+                        outerRadius="74%"
+                        margin={{ top: 10, right: 24, bottom: 10, left: 24 }}
+                      >
+                        <PolarGrid stroke={COLORS.slateLine} />
+                        <PolarAngleAxis dataKey="day" tick={{ fill: COLORS.slate, fontSize: 11 }} />
+                        <PolarRadiusAxis
+                          tick={{ fill: COLORS.slate, fontSize: 10 }}
+                          axisLine={false}
+                          allowDecimals={false}
+                          domain={[0, weeklyAgendaRadiusMax]}
+                          tickCount={weeklyAgendaTickCount}
+                        />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Radar
+                          dataKey="Reservas"
+                          stroke={COLORS.red}
+                          fill={COLORS.red}
+                          fillOpacity={0.18}
+                          strokeWidth={2.5}
+                          name="Reservas"
+                          isAnimationActive={false}
+                        />
+                        <Radar
+                          dataKey="Ensayos"
+                          stroke={COLORS.teal}
+                          fill={COLORS.teal}
+                          fillOpacity={0.15}
+                          strokeWidth={2.5}
+                          name="Ensayos"
+                          isAnimationActive={false}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-[280px] items-center justify-center rounded-[2rem] border border-dashed border-slate-200 bg-slate-50/80 px-8 text-center">
+                      <div className="max-w-sm">
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">
+                          Sin movimiento suficiente
+                        </p>
+                        <p className="mt-3 text-sm leading-6 text-slate-500">
+                          Aun no hay reservas ni ensayos futuros para dibujar este radar con informacion util.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </DashboardCard>
+
+                <DashboardCard title="Salud del negocio" subtitle="Tres señales clave.">
+                  <div className="space-y-3">
+                    {[
+                      { icon: CheckCircle2, label: 'Cobro completo', value: formatPercent(paymentHealth), desc: `${paidReservationsCount} de ${activeReservations.length} reservas pagadas`, color: 'bg-emerald-50 text-emerald-600' },
+                      { icon: FileText, label: 'Cotizaciones abiertas', value: String(pendingQuotes.length), desc: `${shortCurrency(pendingQuotes.reduce((s, q) => s + Number(q.totalAmount || 0), 0))} en oportunidad`, color: 'bg-amber-50 text-amber-600' },
+                      { icon: Mic2, label: 'Ensayos pendientes', value: String(pendingRehearsals.length), desc: `${pendingRehearsals.filter(r => r.eventDateTime <= next14Days).length} en las próximas 2 semanas`, color: 'bg-teal-50 text-teal-600' },
+                    ].map((item, i) => (
+                      <div key={i} className="rounded-xl bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.color}`}>
+                              <item.icon size={18} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                              <p className="text-xl font-black text-slate-900">{item.value}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mt-2 pl-[3.25rem] text-xs text-slate-400">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DashboardCard>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-1">
+                <DashboardCard title="Agenda inmediata" subtitle="Próximos eventos.">
+                  <div className="space-y-2">
+                    {agendaItems.length === 0 ? (
+                      <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                        No hay eventos próximos cargados.
+                      </div>
+                    ) : (
+                      agendaItems.map(item => (
+                        <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.kind === 'reserva' ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-600'}`}>
+                            {item.kind === 'reserva' ? <CalendarRange size={17} /> : <Mic2 size={17} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-slate-800">{item.title}</p>
+                            <p className="text-xs text-slate-400">{item.subtitle}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-bold text-slate-600">{formatCompactDate(item.date)}</p>
+                            <StatusPill status={item.status} kind="agenda" />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DashboardCard>
+              </div>
+
+              <div className="w-full">
+                <DashboardCard title="Mapa de ocupación" subtitle="Próximos 60 días.">
+                  <Heatmap matrix={occupancyMatrix} />
+                </DashboardCard>
+              </div>
+            </section>
+          )}
+
+          {/* ═══ ALERTS ═══ */}
+          {showAlerts && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Seguimiento"
+                title="Alertas y actividad"
+                subtitle="Cobros pendientes, propuestas dormidas y los últimos movimientos del sistema."
+              />
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <DashboardCard title="Alertas y oportunidades" subtitle="Lo que merece atención ahora." accent>
+                  <div className="space-y-2.5">
+                    {alerts.length === 0 ? (
+                      <div className="rounded-xl bg-emerald-50 px-4 py-8 text-center text-sm font-semibold text-emerald-700">
+                        Sin alertas críticas. El tablero se ve estable.
+                      </div>
+                    ) : (
+                      alerts.map(alert => (
+                        <div
+                          key={alert.id}
+                          className={`rounded-xl border px-4 py-3.5 ${
+                            alert.tone === 'danger' ? 'border-red-200 bg-red-50'
+                            : alert.tone === 'warning' ? 'border-amber-200 bg-amber-50'
+                            : 'border-emerald-200 bg-emerald-50'
+                          }`}
+                        >
+                          <div className="flex gap-3">
+                            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                              alert.tone === 'danger' ? 'bg-red-100 text-red-600'
+                              : alert.tone === 'warning' ? 'bg-amber-100 text-amber-600'
+                              : 'bg-emerald-100 text-emerald-600'
+                            }`}>
+                              {alert.tone === 'success' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-slate-800">{alert.title}</p>
+                              <p className="mt-0.5 text-sm text-slate-600">{alert.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DashboardCard>
+
+                <DashboardCard title="Actividad reciente" subtitle="Últimos 10 movimientos registrados.">
+                  <div className="space-y-2">
+                    {activityFeed.length === 0 ? (
+                      <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                        Sin actividad reciente.
+                      </div>
+                    ) : (
+                      activityFeed.map(item => (
+                        <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                            item.kind === 'venta' ? 'bg-emerald-50 text-emerald-600'
+                            : item.kind === 'cotizacion' ? 'bg-amber-50 text-amber-600'
+                            : 'bg-red-50 text-red-600'
+                          }`}>
+                            {item.kind === 'venta' ? <Wallet size={15} /> : item.kind === 'cotizacion' ? <FileText size={15} /> : <Activity size={15} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-slate-800">{item.title}</p>
+                            <p className="text-xs text-slate-400">{item.subtitle}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-semibold text-slate-500">{formatCompactDate(item.date)}</p>
+                            {typeof item.amount === 'number' && (
+                              <p className="text-sm font-black text-slate-900">{fullCurrency(item.amount)}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DashboardCard>
+              </div>
+            </section>
+          )}
+
+          {/* ═══ CLIENTS ═══ */}
+          {showClients && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Relacionamiento"
+                title="Clientes clave"
+                subtitle="Ranking de valor para identificar rápidamente quién más reserva y dónde se concentra el ingreso."
+              />
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { icon: TrendingUp, label: 'Cierre comercial', value: formatPercent(quoteConversion), desc: `${convertedQuotes.length} de ${quotations.length} cotizaciones → reserva`, color: 'bg-red-50 text-red-600' },
+                  { icon: CalendarClock, label: 'Agenda 30 días', value: String(next7DaysAgenda), desc: 'Reservas y ensayos visibles en el corto plazo', color: 'bg-amber-50 text-amber-600' },
+                  { icon: CheckCircle2, label: 'Reservas pagadas', value: String(paidReservationsCount), desc: `${formatPercent(paymentHealth)} del total activo sin saldo pendiente`, color: 'bg-emerald-50 text-emerald-600' },
+                ].map((kpi, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${kpi.color}`}>
+                        <kpi.icon size={19} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{kpi.label}</p>
+                        <p className="text-2xl font-black text-slate-900">{kpi.value}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm text-slate-400">{kpi.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <DashboardCard title="Clientes con mayor Gasto" subtitle="Ranking por reservas registradas y monto acumulado." accent>
+                <div className="space-y-3">
+                  {topClients.length === 0 ? (
+                    <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                      Sin historial suficiente para construir el ranking.
+                    </div>
+                  ) : (
+                    topClients.map((client, i) => {
+                      const maxVal = topClients[0]?.valor || 1;
+                      const width = Math.max(8, (client.valor / maxVal) * 100);
+                      return (
+                        <div key={`${client.name}-${i}`} className="rounded-xl border border-slate-100 bg-white p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-black text-slate-600">
+                                {i + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-slate-800">{client.name}</p>
+                                <p className="text-xs text-slate-400">{client.reservas} reserva(s)</p>
+                              </div>
+                            </div>
+                            <p className="shrink-0 text-sm font-black text-slate-900">{fullCurrency(client.valor)}</p>
+                          </div>
+                          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-red-500 to-amber-400 transition-all duration-500"
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </DashboardCard>
+            </section>
+          )}
+
+        </div>
+      </div>
+
+
+      {/* Refreshing toast */}
+      {refreshing && (
+        <div className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2.5 rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-2xl">
+          <LoaderCircle size={15} className="animate-spin text-red-400" />
+          Actualizando...
+        </div>
+      )}
+    </div>
+  );
 };

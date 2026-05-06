@@ -32,6 +32,7 @@ enum EstadoReserva {
   CONFIRMADA
   ANULADA
   FINALIZADO
+  REPROGRAMADA
 }
 
 enum EstadoEnsayo {

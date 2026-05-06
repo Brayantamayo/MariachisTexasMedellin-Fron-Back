@@ -38,6 +38,10 @@ export const useReservasManager = () => {
   const [isDateDetailsOpen, setIsDateDetailsOpen] = useState(false);
   const [isBlockModalOpen,  setIsBlockModalOpen]  = useState(false);
 
+  // ─── NUEVO: modal de reprogramación ────────────────────────────────────────
+  const [isReprogramarOpen,    setIsReprogramarOpen]    = useState(false);
+  const [reprogramarReserva,   setReprogramarReserva]   = useState<Reservation | null>(null);
+
   const [editingReserva,         setEditingReserva]         = useState<Reservation | null>(null);
   const [selectedReserva,        setSelectedReserva]        = useState<Reservation | null>(null);
   const [selectedDateForForm,    setSelectedDateForForm]    = useState<string | null>(null);
@@ -98,8 +102,7 @@ export const useReservasManager = () => {
         ]);
 
         setReservations(misReservas);
-        
-        // Filtrar ventas directas y clientes directos para usuarios finales
+
         const filteredPublicCalendar = todasReservas.filter((r: any) => {
           const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
           const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
@@ -160,7 +163,6 @@ export const useReservasManager = () => {
   }, [user]);
 
   const handleViewReserva = async (res: Reservation) => {
-    // Cliente: solo puede ver sus propias reservas
     if (isClient) {
       const full = reservations.find(r => r.id === res.id);
       if (!full) { showNotification('No tienes permiso para ver esta reserva.', 'error'); return; }
@@ -169,11 +171,9 @@ export const useReservasManager = () => {
       return;
     }
 
-    // Admin/Empleado: buscar primero en las reservas activas cargadas
     const full = reservations.find(r => r.id === res.id);
     if (full) { setSelectedReserva(full); setIsDetailOpen(true); return; }
 
-    // Si es una venta finalizada (ID tipo VENTA-X), usar los datos del calendario directamente
     if (res.id?.startsWith('VENTA-')) {
       const calRes = calendarReservations.find(r => r.id === res.id);
       if (calRes) {
@@ -185,7 +185,6 @@ export const useReservasManager = () => {
       return;
     }
 
-    // Intentar fetch por ID para reservas finalizadas con ID numérico
     try {
       const fetched = await reservaService.getReservationById(res.id);
       setSelectedReserva(fetched);
@@ -209,7 +208,6 @@ export const useReservasManager = () => {
 
   const handleUpdate = async (data: any) => {
     if (!editingReserva) return;
-    // Validar que el ID sea numérico antes de enviar al backend
     if (!editingReserva.id || isNaN(Number(editingReserva.id))) {
       throw new Error('No se puede editar esta reserva: ID inválido. Por favor recarga la página e intenta de nuevo.');
     }
@@ -319,11 +317,9 @@ export const useReservasManager = () => {
     }
   };
 
-  // ─── SAVE ABONO - FIXED ───────────────────────────────────────────────────
-  // Calls the API directly, refetches data on success, shows proper notification
+  // ─── SAVE ABONO ────────────────────────────────────────────────────────────
   const handleSaveAbono = async (data: any) => {
     try {
-      // Call the reservas abono endpoint directly with the correct field names
       await api.post(`/reservas/${data.reservationId}/abonos`, {
         amount: data.amount,
         date:   data.date,
@@ -331,18 +327,12 @@ export const useReservasManager = () => {
         notes:  data.notes,
       });
 
-      // Close the modal immediately
       setIsAbonoModalOpen(false);
       setAbonoReservationId(undefined);
-
-      // Refetch all data so the reservation moves out of PENDIENTE list
       await fetchData();
-
-      // Show success toast
       showNotification('Tu Abono fue Registrado con Exito', 'success', 6000);
 
     } catch (error: any) {
-      // Extract the real error message from backend
       const msg =
         error?.response?.data?.message ||
         error?.message ||
@@ -380,6 +370,26 @@ export const useReservasManager = () => {
     setIsBlockModalOpen(true);
   };
 
+  // ─── NUEVO: abrir modal de reprogramación ──────────────────────────────────
+  const handleOpenReprogramar = (res: Reservation) => {
+    setReprogramarReserva(res);
+    setIsReprogramarOpen(true);
+  };
+
+  // ─── NUEVO: procesar reprogramación ───────────────────────────────────────
+  const handleReprogramar = async (
+    id: string,
+    data: { eventDate: string; startTime: string; endTime: string }
+  ) => {
+    const updated = await reservaService.reprogramarReservation(id, data);
+    setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+    setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+    if (selectedReserva?.id === id) setSelectedReserva(updated);
+    setIsReprogramarOpen(false);
+    setReprogramarReserva(null);
+    showNotification('Reserva reprogramada exitosamente.', 'success', 5000);
+  };
+
   return {
     view, setView, currentDate, setCurrentDate,
     reservations, setReservations, calendarReservations, blocks, setBlocks,
@@ -390,6 +400,11 @@ export const useReservasManager = () => {
     isCreateOpen, setIsCreateOpen, isEditOpen, setIsEditOpen,
     isDetailOpen, setIsDetailOpen, isAbonoModalOpen, setIsAbonoModalOpen,
     isDateDetailsOpen, setIsDateDetailsOpen, isBlockModalOpen, setIsBlockModalOpen,
+    // ─── NUEVO ───────────────────────────────────────────────────────────────
+    isReprogramarOpen, setIsReprogramarOpen,
+    reprogramarReserva, setReprogramarReserva,
+    handleOpenReprogramar, handleReprogramar,
+    // ─────────────────────────────────────────────────────────────────────────
     editingReserva, setEditingReserva, selectedReserva, setSelectedReserva,
     selectedDateForForm, setSelectedDateForForm, selectedTimeForForm, setSelectedTimeForForm,
     selectedDateForDetails, setSelectedDateForDetails,

@@ -239,6 +239,7 @@ export interface Role {
   description: string
   permissions: string[]
   isActive: boolean
+  isSystem?: boolean
   createdAt: string
 }
 

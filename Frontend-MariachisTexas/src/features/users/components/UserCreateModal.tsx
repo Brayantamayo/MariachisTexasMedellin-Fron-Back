@@ -68,7 +68,13 @@ export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave
   }, [isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    
+    // Prevent non-numeric characters for document and phone
+    if (name === 'documentNumber' || name === 'phone') {
+      value = value.replace(/\D/g, '');
+    }
+
     setFormData((prev: any) => ({ ...prev, [name]: value }));
     if (errors[name as keyof UserFormErrors])
       setErrors(prev => ({ ...prev, [name]: undefined }));

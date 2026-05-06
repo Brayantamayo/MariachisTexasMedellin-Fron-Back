@@ -13,6 +13,7 @@ interface Props {
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
   selectedDate?: string | null;
+  selectedTime?: string | null;
 }
 
 const getTodayLocal = (): string => {
@@ -47,7 +48,7 @@ const validate = (formData: any, blockStatus: any): FormErrors => {
   return errors;
 };
 
-export const RehearsalCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, selectedDate }) => {
+export const RehearsalCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, selectedDate, selectedTime }) => {
   const [formData,       setFormData]       = useState<any>(EMPTY_FORM);
   const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
   const [availableHours, setAvailableHours] = useState<string[]>([]);
@@ -59,7 +60,7 @@ export const RehearsalCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave,
   useEffect(() => {
     if (isOpen) {
       const dateToUse = selectedDate || getTodayLocal();
-      const empty = { ...EMPTY_FORM, date: dateToUse };
+      const empty = { ...EMPTY_FORM, date: dateToUse, time: selectedTime || '' };
       setFormData(empty);
       setErrors({});
       setGlobalError(null);

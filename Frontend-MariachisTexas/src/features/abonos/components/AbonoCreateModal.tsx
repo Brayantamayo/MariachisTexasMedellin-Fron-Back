@@ -39,13 +39,21 @@ const metodoPagoOptions = [
 ];
  
 type TipoPago = '50%' | '100%';
+
+const getTodayLocalDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
  
 export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialReservationId }) => {
   const [reservations,    setReservations]    = useState<ReservaOption[]>([]);
   const [selectedReserva, setSelectedReserva] = useState<ReservaOption | null>(null);
   const [tipoPago,        setTipoPago]        = useState<TipoPago>('50%');
   const [method,          setMethod]          = useState('TRANSFERENCIA');
-  const [date,            setDate]            = useState(new Date().toISOString().split('T')[0]);
+  const [date,            setDate]            = useState(getTodayLocalDate());
   const [notes,           setNotes]           = useState('');
   const [saving,          setSaving]          = useState(false);
   const [error,           setError]           = useState<string | null>(null);
@@ -58,7 +66,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
     setError(null);
     setErrors(EMPTY_ERRORS);
     setMethod('TRANSFERENCIA');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(getTodayLocalDate());
     setNotes('');
     setSaving(false);
     setSelectedReserva(null);
@@ -120,6 +128,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const today = getTodayLocalDate();
  
     // Validación por campo
     const newErrors: AbonoFormErrors = {};
@@ -131,6 +140,8 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
       newErrors.amount = 'Esta reserva no tiene saldo pendiente.';
     if (!date)
       newErrors.date = 'La fecha es requerida.';
+    else if (date > today)
+      newErrors.date = 'La fecha del abono no puede ser posterior a hoy.';
     if (!method)
       newErrors.method = 'El método de pago es requerido.';
  
@@ -247,7 +258,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                   }`}
                 >
-                  Anticipo 50%
+                  1er Abono
                   <span className="block text-[10px] font-normal mt-0.5 opacity-80">
                     ${anticipo50.toLocaleString('es-CO')}
                   </span>
@@ -259,7 +270,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                   }`}
                 >
-                  Pago Total 100%
+                  2do Abono (Saldo)
                   <span className="block text-[10px] font-normal mt-0.5 opacity-80">
                     ${saldo.toLocaleString('es-CO')}
                   </span>
@@ -278,7 +289,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             <div className="bg-gradient-to-br from-red-50 to-red-100/50 border border-red-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest">
-                  {tipoPago === '100%' ? 'Pago Total (100%)' : 'Anticipo (50%)'}
+                  {tipoPago === '100%' ? '2do Abono (Saldo)' : '1er Abono'}
                 </p>
                 <DollarSign size={16} className="text-red-500" />
               </div>
@@ -342,6 +353,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
               <input
                 type="date"
                 value={date}
+                max={getTodayLocalDate()}
                 onChange={e => { setDate(e.target.value); handleFieldChange('date'); }}
                 className={`w-full pl-9 pr-3 py-2.5 rounded-lg border text-sm text-slate-700 outline-none transition-all ${
                   errors.date

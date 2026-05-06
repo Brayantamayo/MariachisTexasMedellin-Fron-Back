@@ -22,10 +22,10 @@ export const mapEventType = (tipo: string): TipoEvento => {
     'FUNERAL':        'FUNERAL',
     'RECONCILIACION': 'RECONCILIACION',
     'DIA_DE_MADRE':   'DIA_DE_MADRE',
-    'AMOR':           'AMOR',           // ← FALTABA
-    'ANIVERSARIO':    'ANIVERSARIO',    // ← FALTABA
-    'PADRES':         'PADRES',         // ← FALTABA
-    'FIESTA':         'FIESTA',         // ← FALTABA
+    'AMOR':           'AMOR',           
+    'ANIVERSARIO':    'ANIVERSARIO',    
+    'PADRES':         'PADRES',         
+    'FIESTA':         'FIESTA',         
     'OTRO':           'OTRO',
   }
   return map[tipo] ?? 'OTRO'
