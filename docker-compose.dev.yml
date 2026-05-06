@@ -8,19 +8,19 @@ services:
     container_name: softmartex_backend_dev
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://Mariachi:123456@host.docker.internal:5432/Softmartex-MX
+      DATABASE_URL: ${DATABASE_URL}
       PORT: 3000
       NODE_ENV: development
-      FRONTEND_URL: http://localhost:5173
-      JWT_SECRET: uJj+8dDingtCFbSokgwi3llAn45iIe6jHdC/SYyiuAo
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 587
-      MAIL_USER: infomarriachistexas@gmail.com
-      MAIL_PASS: "uekf nlbr buga yntp"
-      MAIL_FROM: "Mariachis Texas <infomarriachistexas@gmail.com>"
-      SPOTIFY_CLIENT_ID: 6da9652b0ee1418191ddf930b1d9135b
-      SPOTIFY_CLIENT_SECRET: 7bf4b3a59042496dbd7dadcaacbc2378
-      GROQ_API_KEY: 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
+      FRONTEND_URL: ${FRONTEND_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASS: ${MAIL_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      GROQ_API_KEY: ${GROQ_API_KEY}
     ports:
       - "3000:3000"
     volumes:
@@ -39,7 +39,7 @@ services:
     depends_on:
       - backend
     environment:
-      VITE_API_URL: http://localhost:3000/api
+      VITE_API_URL: ${VITE_API_URL}
     ports:
       - "5173:5173"
     volumes:
