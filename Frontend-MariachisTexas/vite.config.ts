@@ -5,9 +5,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      base: '/',
       server: {
-        port: 5173,           // Puerto fijo para que coincida con docker-compose
-        host: '0.0.0.0',      // Necesario para Docker (y también útil para red local)
+        port: 5173,
+        host: '0.0.0.0',
       },
       plugins: [react()],
       define: {
