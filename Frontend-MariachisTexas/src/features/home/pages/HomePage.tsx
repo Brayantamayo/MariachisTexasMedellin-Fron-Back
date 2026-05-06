@@ -615,7 +615,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
       <div className="relative h-[480px] w-full overflow-hidden border-b border-amber-500/10">
         <div className="absolute inset-0">
           <img
-            src="/shared/assets/images/home-hero.png"
+            src="/images/home-hero.png"
             alt="Hero Background"
             className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-[5s] opacity-50"
           />

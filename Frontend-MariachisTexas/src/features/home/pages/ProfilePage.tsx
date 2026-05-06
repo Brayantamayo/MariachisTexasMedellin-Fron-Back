@@ -231,7 +231,7 @@ export const ProfilePage: React.FC = () => {
       <div className="relative h-72">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="/shared/assets/images/Mariachis 16.jpeg"
+            src="/images/Mariachis 16.jpeg"
             alt="Banner"
             className="w-full h-full object-cover object-center scale-110"
             style={{ filter: 'brightness(0.25) saturate(0.8)' }}
@@ -374,7 +374,7 @@ export const ProfilePage: React.FC = () => {
 
             {/* Banner Mariachis */}
             <div className="relative overflow-hidden rounded-2xl">
-              <img src="/shared/assets/images/Mariachis 11.jpeg" alt=""
+              <img src="/images/Mariachis 11.jpeg" alt=""
                 className="w-full h-36 object-cover opacity-40" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#ce1126]/80 via-black/40 to-transparent" />
               <div className="absolute inset-0 flex flex-col items-center justify-end p-4 text-center">
