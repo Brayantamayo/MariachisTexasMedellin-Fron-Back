@@ -1,18 +1,7 @@
-
 import api from '@/shared/api/api'
 import { Role } from '@/types';
 
-// Tipos para la API del backend
-interface BackendRole {
-  id: string
-  name: string
-  description: string
-  permissions: string[]
-  isActive: boolean
-  createdAt: string
-}
-
-interface BackendPermission {
+export interface BackendPermission {
   id: string
   module: string
   label: string
@@ -20,70 +9,72 @@ interface BackendPermission {
   isActive: boolean
 }
 
+// Cache para no pedir permisos en cada operación
+let permissionsCache: BackendPermission[] | null = null
+
+const fetchPermissionsCache = async (): Promise<BackendPermission[]> => {
+  if (permissionsCache) return permissionsCache
+  const { data } = await api.get('/roles/permisos')
+  permissionsCache = data as BackendPermission[]
+  return permissionsCache
+}
+
+// Traduce nombres de módulo ["dashboard", "clientes"] → IDs numéricos [1, 3]
+const resolvePermisosIds = async (nombres: string[]): Promise<number[]> => {
+  if (!nombres.length) return []
+  const perms = await fetchPermissionsCache()
+  return nombres
+    .map(nombre => perms.find(p => p.module === nombre)?.id)
+    .filter(Boolean)
+    .map(Number)
+}
+
 export const roleService = {
   getRoles: async (): Promise<Role[]> => {
-    try {
-      const { data } = await api.get('/roles')
-      return data as Role[]
-    } catch (error) {
-      console.error('Error fetching roles:', error)
-      throw error
-    }
+    const { data } = await api.get('/roles')
+    return data as Role[]
   },
 
   getPermissions: async (): Promise<BackendPermission[]> => {
-    try {
-      const { data } = await api.get('/roles/permisos')
-      return data as BackendPermission[]
-    } catch (error) {
-      console.error('Error fetching permissions:', error)
-      throw error
-    }
+    return fetchPermissionsCache()
   },
 
-  createRole: async (role: Omit<Role, 'id' | 'createdAt'>): Promise<Role> => {
-    try {
-      const payload = {
-        nombre: role.name,
-        descripcion: role.description || undefined,
-        estado: role.isActive,
-        permisos: role.permissions.map(p => parseInt(p)).filter(id => !isNaN(id))
-      }
-
-      const { data } = await api.post('/roles', payload)
-      return data as Role
-    } catch (error) {
-      console.error('Error creating role:', error)
-      throw error
+  createRole: async (role: any): Promise<Role> => {
+    // role.permisos es string[] de nombres de módulo
+    const permisos = await resolvePermisosIds(role.permisos ?? [])
+    const payload = {
+      nombre:      role.nombre,
+      descripcion: role.descripcion ?? undefined,
+      estado:      role.estado ?? true,
+      permisos,
     }
+    const { data } = await api.post('/roles', payload)
+    return data as Role
   },
 
-  updateRole: async (id: string, updates: Partial<Role>): Promise<Role> => {
-    try {
-      const payload: any = {}
+  updateRole: async (id: string, updates: any): Promise<Role> => {
+    const payload: any = {}
+    if (updates.nombre      !== undefined) payload.nombre      = updates.nombre
+    if (updates.name        !== undefined) payload.nombre      = updates.name
+    if (updates.descripcion !== undefined) payload.descripcion = updates.descripcion
+    if (updates.description !== undefined) payload.descripcion = updates.description
+    if (updates.estado      !== undefined) payload.estado      = updates.estado
+    if (updates.isActive    !== undefined) payload.estado      = updates.isActive
 
-      if (updates.name !== undefined) payload.nombre = updates.name
-      if (updates.description !== undefined) payload.descripcion = updates.description
-      if (updates.isActive !== undefined) payload.estado = updates.isActive
-      if (updates.permissions !== undefined) {
-        payload.permisos = updates.permissions.map(p => parseInt(p)).filter(id => !isNaN(id))
-      }
-
-      const { data } = await api.put(`/roles/${id}`, payload)
-      return data as Role
-    } catch (error) {
-      console.error('Error updating role:', error)
-      throw error
+    if (updates.permisos !== undefined) {
+      payload.permisos = await resolvePermisosIds(updates.permisos)
+    } else if (updates.permissions !== undefined) {
+      payload.permisos = await resolvePermisosIds(updates.permissions)
     }
+
+    const { data } = await api.put(`/roles/${id}`, payload)
+    return data as Role
   },
 
   deleteRole: async (id: string): Promise<boolean> => {
-    try {
-      await api.delete(`/roles/${id}`)
-      return true
-    } catch (error) {
-      console.error('Error deleting role:', error)
-      throw error
-    }
-  }
-};
+    await api.delete(`/roles/${id}`)
+    return true
+  },
+
+  clearPermissionsCache: () => { permissionsCache = null },
+}

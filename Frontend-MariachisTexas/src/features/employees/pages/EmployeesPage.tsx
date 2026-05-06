@@ -63,6 +63,7 @@ export const EmployeesPage: React.FC = () => {
         setIsCreateOpen(false);
     } catch (error: any) {
       console.error('Error al crear empleado:', error);
+      throw error; // Re-throw to allow modal to catch it
     }
   };
 
@@ -75,6 +76,7 @@ export const EmployeesPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error: any) {
         console.error('Error al actualizar empleado:', error);
+        throw error; // Re-throw to allow modal to catch it
     }
   };
 
@@ -96,10 +98,11 @@ export const EmployeesPage: React.FC = () => {
         setEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, isActive: newStatus } : e));
         await employeeService.updateEmployee(employee.id, { isActive: newStatus });
         showNotification(`Empleado ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        fetchEmployees(); 
-        showNotification("Error al cambiar el estado.", "error");
+        fetchEmployees();
+        const msg = error?.response?.data?.message || error?.message || 'Error al cambiar el estado.';
+        showNotification(msg, "error");
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Clock, MapPin, User, Wallet, FileText, Mail, Phone, Music, Star, Package, Check } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, User, Wallet, FileText, Mail, Phone, Music, Star, Package, Check, Ban, CalendarClock } from 'lucide-react';
 import { Reservation, Song, UserRole } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { servicesService } from '@/src/features/servicio/services/servicesService';
@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void;
   reservation: Reservation | null;
   onFinalize?: (id: string) => void;
+  onCancel?: (id: string, motivo: string) => void;
+  onReschedule?: (reservation: Reservation) => void;
 }
 
 // Limpiar __CONTACTO__ de notas
@@ -22,46 +24,55 @@ const limpiarNotas = (notas: string | null | undefined): string => {
 // Estados del backend en mayúsculas → label y estilo
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case 'PENDIENTE':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'PENDIENTE': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'CONFIRMADA': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
-    case 'ANULADA':    return 'bg-red-50 text-red-600 border-red-100'
+    case 'ANULADA': return 'bg-red-50 text-red-600 border-red-100'
+    case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30'
     // Legacy por si acaso
-    case 'Pendiente':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'Pendiente': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'Confirmado': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
     case 'Finalizado': return 'bg-blue-50 text-blue-600 border-blue-100'
-    case 'Anulado':    return 'bg-red-50 text-red-600 border-red-100'
-    default:           return 'bg-slate-50 text-slate-600'
+    case 'Anulado': return 'bg-red-50 text-red-600 border-red-100'
+    default: return 'bg-slate-50 text-slate-600'
   }
 }
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'PENDIENTE':  return 'Pendiente'
+    case 'PENDIENTE': return 'Pendiente'
     case 'CONFIRMADA': return 'Confirmada'
-    case 'ANULADA':    return 'Anulada'
-    default:           return status
+    case 'ANULADA': return 'Anulada'
+    case 'REPROGRAMADA': return 'Reprogramada'
+    default: return status
   }
 }
 
-export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservation, onFinalize }) => {
+export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservation, onFinalize, onCancel, onReschedule }) => {
   const { user } = useAuth();
-  const [allSongs,    setAllSongs]    = useState<Song[]>([]);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelMotivo, setCancelMotivo] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       repertoireService.getSongs().then(setAllSongs)
       servicesService.getServices().then(setAllServices)
+      setShowCancelConfirm(false);
+      setCancelMotivo('');
     }
   }, [isOpen])
 
   if (!isOpen || !reservation) return null;
 
-  const totalAmount    = reservation.totalAmount    || 0
-  const paidAmount     = reservation.paidAmount     || 0
+  const totalAmount = reservation.totalAmount || 0
+  const paidAmount = reservation.paidAmount || 0
   const remainingBalance = totalAmount - paidAmount
-  const progressPercent  = totalAmount > 0 ? Math.min((paidAmount / totalAmount) * 100, 100) : 0
+  const progressPercent = totalAmount > 0 ? Math.min((paidAmount / totalAmount) * 100, 100) : 0
   const isActive = !['ANULADA', 'Anulado', 'Finalizado'].includes(reservation.status)
+  const isClient = user?.role === UserRole.CLIENTE
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO
+  const canActOnReservation = isActive && isAdmin;
 
   const selectedSongs = allSongs.filter(s => reservation.repertoireIds?.includes(s.id))
 
@@ -307,11 +318,59 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3">
-          <button onClick={onClose}
-            className="px-8 py-3 bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-900 transition-colors">
-            Cerrar Detalle
-          </button>
+        <div className="p-4 border-t border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3">
+
+          {/* Confirmación inline de cancelación */}
+          {showCancelConfirm ? (
+            <div className="flex flex-1 items-center gap-3 flex-wrap">
+              <input
+                type="text"
+                value={cancelMotivo}
+                onChange={e => setCancelMotivo(e.target.value)}
+                placeholder="Motivo de cancelación (opcional)"
+                className="flex-1 min-w-[200px] px-4 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+              />
+              <button
+                onClick={() => { onCancel?.(reservation.id, cancelMotivo); onClose(); }}
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+              >
+                Confirmar Cancelación
+              </button>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+              >
+                Volver
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-3 flex-wrap">
+                {canActOnReservation && onCancel && (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+                  >
+                    <Ban size={14} /> Cancelar Serenata
+                  </button>
+                )}
+                {canActOnReservation && onReschedule && (
+                  <button
+                    onClick={() => { onReschedule(reservation); onClose(); }}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+                  >
+                    <CalendarClock size={14} /> Reprogramar
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="px-8 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-900 transition-colors"
+              >
+                Cerrar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>,

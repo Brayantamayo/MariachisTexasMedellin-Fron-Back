@@ -33,7 +33,6 @@ interface Props {
   isPublic?: boolean;
   isEditing?: boolean;
   isClient?: boolean;
-  // ✅ Tipado como any[] porque el shape real del backend es distinto a UserType
   clients: any[];
   songs: Song[];
   services: Service[];
@@ -52,10 +51,10 @@ interface Props {
   onServiceChange: (serviceId: string, quantity: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
+  fieldErrors?: Record<string, string | undefined>;
+  isSaving?: boolean;
 }
 
-// ─── HELPER: construir el label del cliente para el <option> ─────────────────
-// Backend: { id, apellido, telefonoPrincipal, usuario: { nombre } }
 const getClienteLabel = (cliente: any): string => {
   const fullName = `${cliente.name ?? ''} ${cliente.lastName ?? ''}`.trim() || cliente.email
   const telefono = cliente.phone ?? ''
@@ -70,10 +69,15 @@ export const ReservaForm: React.FC<Props> = ({
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel,
+  fieldErrors, isSaving = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const lockClientFields = isEditing || isClient
+  // ─── FIX 1: bloquear campos si ya hay un cliente seleccionado del dropdown ──
+  // Antes: lockClientFields = isEditing || isClient  (no bloqueaba al seleccionar)
+  // Ahora: también se bloquea cuando el admin escoge un cliente existente (clientId poblado)
+  const hasSelectedClient = isAdmin && !!formData.clientId && formData.clientId !== ''
+  const lockClientFields  = isEditing || isClient || hasSelectedClient
 
   const activeServices      = services.filter(s => s.estado === true);
   const baseServices        = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'));
@@ -108,7 +112,7 @@ export const ReservaForm: React.FC<Props> = ({
     ? (formData.selectedServices?.find(s => String(s.serviceId) === String(extraSongsService.id))?.quantity || 0)
     : 0;
 
-  const maxSongs         = 7 + extraSongsQuantity;
+  const maxSongs         = (7 * (1 + extraHoursQuantity)) + extraSongsQuantity;
   const currentSongCount = formData.repertoireIds?.length || 0;
 
   const handleToggleSong = (id: string) => {
@@ -120,6 +124,9 @@ export const ReservaForm: React.FC<Props> = ({
     onToggleSong(id);
   };
 
+  // ─── FIX 2: calcular total sumando TODOS los servicios seleccionados ──────
+  // Antes: totalExtras solo sumaba servicios adicionales (sin el servicio base de serenata)
+  // Ahora: el total mostrado refleja la suma real de todos los servicios activos
   const totalExtras = useMemo(() =>
     formData.selectedServices?.reduce((acc, item) => {
       const s = services.find(srv => String(srv.id) === String(item.serviceId));
@@ -127,6 +134,20 @@ export const ReservaForm: React.FC<Props> = ({
     }, 0) ?? 0,
     [formData.selectedServices, services]
   );
+
+  // Total calculado automáticamente (base serenata + adicionales)
+  const autoTotal = useMemo(() => {
+    return formData.selectedServices?.reduce((acc, item) => {
+      if (item.quantity <= 0) return acc
+      const s = services.find(srv => String(srv.id) === String(item.serviceId))
+      return acc + (s ? Number(s.precio) * item.quantity : 0)
+    }, 0) ?? 0
+  }, [formData.selectedServices, services])
+
+  // Si el admin no ha modificado manualmente el total (es 0 o undefined), usar el calculado
+  const displayTotal = formData.totalAmount && formData.totalAmount > 0
+    ? formData.totalAmount
+    : autoTotal
 
   const today             = new Date().toISOString().split('T')[0];
   const filteredSongs     = searchTerm.trim() === ''
@@ -147,6 +168,15 @@ export const ReservaForm: React.FC<Props> = ({
   const inputClass    = "input-form";
   const lockedClass   = `${inputClass} bg-slate-50 text-slate-500 cursor-not-allowed`;
 
+  // Handler del dropdown que también dispara recálculo del total si queda en 0
+  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onClientSelect(e)
+    // Si se deselecciona el cliente (value = ''), desbloquear campos
+    // El padre maneja el estado, aquí solo propagamos
+  }
+
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   return (
     <form id="reserva-form" onSubmit={onSubmit} className="flex flex-col lg:flex-row h-full">
 
@@ -162,37 +192,83 @@ export const ReservaForm: React.FC<Props> = ({
             Información del Cliente
           </h4>
 
-          {isAdmin && !lockClientFields && (
+          {isAdmin && !isEditing && !isClient && (
             <div className="mb-4">
               <label className="label-form">BUSCAR CLIENTE REGISTRADO</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <select
-                  name="clientId"
-                  value={formData.clientId || ''}
-                  onChange={onClientSelect}
-                  className="w-full pl-9 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 appearance-none cursor-pointer text-slate-700 font-medium"
-                >
-                  <option value="">-- Buscar en base de datos --</option>
-                  {(clients ?? []).map(c => (
-                    // ✅ value usa String(c.id) para garantizar tipo consistente
-                    <option key={String(c.id)} value={String(c.id)}>
-                      {getClienteLabel(c)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
-              </div>
+              
+<div className="relative">
+  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+  <input
+    type="text"
+    placeholder="Escribe nombre, teléfono o correo..."
+    value={clientSearch}
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setShowClientDropdown(true);
+    }}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+    className="w-full pl-9 pr-8 py-2 rounded-lg bg-white border border-orange-200 text-sm outline-none focus:border-orange-400 text-slate-700 font-medium"
+  />
+  {clientSearch && (
+    <button
+      type="button"
+      onClick={() => {
+        setClientSearch('');
+        setShowClientDropdown(false);
+        handleClientSelect({ target: { name: 'clientId', value: '' } } as any);
+      }}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+    >
+      <X size={14} />
+    </button>
+  )}
+
+  {showClientDropdown && clientSearch.trim() !== '' && (
+    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-orange-200 rounded-lg shadow-xl max-h-[220px] overflow-y-auto">
+      {(clients ?? [])
+        .filter(c => {
+          const label = getClienteLabel(c).toLowerCase();
+          return label.includes(clientSearch.toLowerCase());
+        })
+        .slice(0, 8)
+        .map(c => (
+          <div
+            key={String(c.id)}
+            onMouseDown={() => {
+              setClientSearch(getClienteLabel(c));
+              setShowClientDropdown(false);
+              handleClientSelect({ target: { name: 'clientId', value: String(c.id) } } as any);
+            }}
+            className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-slate-50 last:border-0"
+          >
+            <p className="text-sm font-bold text-slate-700">
+              {`${c.name ?? ''} ${c.lastName ?? ''}`.trim() || c.email}
+            </p>
+            <p className="text-xs text-slate-400">{c.phone ?? c.email}</p>
+          </div>
+        ))}
+      {(clients ?? []).filter(c =>
+        getClienteLabel(c).toLowerCase().includes(clientSearch.toLowerCase())
+      ).length === 0 && (
+        <p className="text-xs text-slate-400 text-center py-4">No se encontraron clientes.</p>
+      )}
+    </div>
+  )}
+</div>
             </div>
           )}
 
+          {/* Aviso de bloqueo — se muestra cuando hay cliente seleccionado O en edición/cliente */}
           {lockClientFields && (
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-4">
               <Lock size={12} className="text-slate-400" />
               <p className="text-[11px] text-slate-400 font-medium">
                 {isClient
                   ? 'Tus datos se toman de tu perfil registrado.'
-                  : 'Los datos del cliente no se pueden modificar.'}
+                  : isEditing
+                  ? 'Los datos del cliente no se pueden modificar.'
+                  : 'Cliente seleccionado. Los datos se cargan automáticamente.'}
               </p>
             </div>
           )}
@@ -200,21 +276,23 @@ export const ReservaForm: React.FC<Props> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>Nombre Completo <span className="text-orange-500">*</span></label>
-              <input type="text" name="clientName" required
+              <input type="text" name="clientName" 
                 value={formData.clientName || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientName ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="Tu nombre completo" />
+              {fieldErrors?.clientName && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientName}</p>}
             </div>
             <div>
               <label className={labelClass}>Teléfono Principal <span className="text-orange-500">*</span></label>
-              <input type="tel" name="clientPhone" required
+              <input type="tel" name="clientPhone" 
                 value={formData.clientPhone || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="Ej: 300 123 4567" />
+              {fieldErrors?.clientPhone && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientPhone}</p>}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -229,12 +307,13 @@ export const ReservaForm: React.FC<Props> = ({
             </div>
             <div>
               <label className={labelClass}>Correo Electrónico <span className="text-orange-500">*</span></label>
-              <input type="email" name="clientEmail" required
+              <input type="email" name="clientEmail" 
                 value={formData.clientEmail || ''}
                 onChange={onChange}
                 disabled={lockClientFields}
-                className={lockClientFields ? lockedClass : inputClass}
+                className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientEmail ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
                 placeholder="tucorreo@ejemplo.com" />
+              {fieldErrors?.clientEmail && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientEmail}</p>}
             </div>
           </div>
         </div>
@@ -283,22 +362,23 @@ export const ReservaForm: React.FC<Props> = ({
                   label={isPublic ? undefined : "FECHA EVENTO"}
                   value={formData.eventDate || ''}
                   onChange={onDateChange}
-                  required
                   minDate={today}
-                  className={isPublic ? `${inputClass} !pl-12` : undefined}
+                  className={isPublic ? `${inputClass} !pl-12 ${fieldErrors?.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}` : (fieldErrors?.eventDate ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : '')}
                 />
+                {fieldErrors?.eventDate && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.eventDate}</p>}
               </div>
             </div>
             <div>
               <label className={labelClass}>Tipo Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
                 <select name="eventType" value={formData.eventType || ''} onChange={onChange}
-                  className={`${inputClass} appearance-none cursor-pointer`}>
+                  className={`${inputClass} appearance-none cursor-pointer ${fieldErrors?.eventType ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}>
                   {TIPOS_EVENTO.map(tipo => (
                     <option key={tipo} value={tipo}>{tipo}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                {fieldErrors?.eventType && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.eventType}</p>}
               </div>
             </div>
           </div>
@@ -310,13 +390,13 @@ export const ReservaForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA INICIO <span className="text-orange-500">*</span></label>
                   <div className="relative">
-                    <select name="startTime" required
+                    <select name="startTime" 
                       value={formData.startTime || formData.eventTime || ''}
                       onChange={(e) => {
                         onChange(e);
                         onChange({ target: { name: 'eventTime', value: e.target.value } } as any);
                       }}
-                      className={`${isPublic ? inputClass : 'w-full bg-white border border-orange-200 text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium'}`}>
+                      className={`${isPublic ? `${inputClass} ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}` : `w-full bg-white border ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100' : 'border-orange-200'} text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium`}`}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
                         <option key={`start-${time}`} value={time}>{time}</option>
@@ -326,6 +406,7 @@ export const ReservaForm: React.FC<Props> = ({
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
+                    {fieldErrors?.startTime && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.startTime}</p>}
                   </div>
                 </div>
                 <div className="flex-1">
@@ -360,7 +441,7 @@ export const ReservaForm: React.FC<Props> = ({
                 )?.quantity ?? 0) > 0;
                 return (
                   <div key={service.id} onClick={() => handleBaseServiceSelect(service.id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : fieldErrors?.serviceId ? 'border-red-400 bg-red-50 shadow-sm' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
                         <Check size={12} strokeWidth={3} />
@@ -372,6 +453,7 @@ export const ReservaForm: React.FC<Props> = ({
                   </div>
                 );
               })}
+              {fieldErrors?.serviceId && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium w-full">{fieldErrors.serviceId}</p>}
             </div>
           </div>
 
@@ -380,8 +462,9 @@ export const ReservaForm: React.FC<Props> = ({
               <label className={labelClass}>Dirección del Evento <span className="text-orange-500">*</span></label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" name="location" required value={formData.location || ''} onChange={onChange}
-                  className={`${inputClass} !pl-12`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+                <input type="text" name="location" value={formData.location || ''} onChange={onChange}
+                  className={`${inputClass} !pl-12 ${fieldErrors?.location ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`} placeholder="Dirección completa (Calle, Barrio, Ciudad)" />
+                {fieldErrors?.location && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.location}</p>}
               </div>
             </div>
           </div>
@@ -519,25 +602,32 @@ export const ReservaForm: React.FC<Props> = ({
         {/* Resumen de Costos */}
         <div className={`p-8 border-t border-slate-200 ${isPublic ? 'bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20' : 'bg-white'}`}>
           <div className="space-y-3 mb-8 text-sm">
-            {formData.selectedServices && formData.selectedServices.length > 0 && (
-              <div className="flex justify-between text-slate-500">
-                <span>Servicios Adicionales</span>
-                <span className="font-bold text-slate-700">+${totalExtras.toLocaleString()}</span>
-              </div>
-            )}
+            {/* Desglose por servicio seleccionado */}
+            {formData.selectedServices && formData.selectedServices
+              .filter(item => item.quantity > 0)
+              .map(item => {
+                const s = services.find(srv => String(srv.id) === String(item.serviceId))
+                if (!s) return null
+                return (
+                  <div key={item.serviceId} className="flex justify-between text-slate-500">
+                    <span>{s.nombre}{item.quantity > 1 ? ` ×${item.quantity}` : ''}</span>
+                    <span className="font-bold text-slate-700">
+                      +${(Number(s.precio) * item.quantity).toLocaleString()}
+                    </span>
+                  </div>
+                )
+              })}
             <div className="h-px bg-slate-100 my-4" />
             <div className="flex flex-col">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                TOTAL ESTIMADO {isAdmin && <span className="text-emerald-500">(Editable)</span>}
-              </label>
               <div className="relative">
                 <DollarSign className={`absolute left-0 top-1/2 -translate-y-1/2 ${isPublic ? 'text-slate-800' : 'text-primary-600'}`} size={isPublic ? 32 : 24} />
                 <input
                   type="number"
                   name="totalAmount"
-                  value={formData.totalAmount || 0}
+                  // ─── FIX 2: mostrar autoTotal si el valor guardado es 0 ───
+                  value={displayTotal}
                   onChange={onChange}
-                  disabled={!isAdmin}
+                  disabled={true}
                   className={`w-full pl-8 pr-4 py-2 rounded-xl font-serif font-black border outline-none transition-all
                     ${isAdmin
                       ? 'bg-white border-slate-200 text-slate-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-2xl'
@@ -558,16 +648,30 @@ export const ReservaForm: React.FC<Props> = ({
               className="flex-1 py-4 border border-slate-200 rounded-xl text-xs font-bold uppercase text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={blockStatus.isBlocked}
+            <button type="submit" disabled={blockStatus.isBlocked || isSaving}
               className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all transform flex items-center justify-center gap-2
-                ${blockStatus.isBlocked
-                  ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                ${(blockStatus.isBlocked || isSaving)
+                  ? 'bg-slate-400 cursor-not-allowed shadow-none hover:translate-y-0'
                   : isPublic
                     ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-orange-900/20 hover:-translate-y-1'
                     : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-primary-900/20 hover:-translate-y-0.5'
                 }`}>
-              {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Guardar Reserva'}
-              {!blockStatus.isBlocked && <ArrowLeft className="rotate-180" size={18} />}
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin w-5 h-5 text-white" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Guardando...
+                </>
+              ) : blockStatus.isBlocked ? (
+                'Fecha Bloqueada'
+              ) : (
+                <>
+                  Guardar Reserva
+                  <ArrowLeft className="rotate-180" size={18} />
+                </>
+              )}
             </button>
           </div>
         </div>

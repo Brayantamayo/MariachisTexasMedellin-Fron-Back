@@ -23,13 +23,18 @@ const getEmpleadoRolId = async (): Promise<number> => {
 
 // ─── MAPEAR DE BACKEND A FRONTEND ────────────────────────────────────────────
 const mapFromBackend = (backend: any): User => {
-  const nombreCompleto = backend.nombre || '';
-  const nombreParts = nombreCompleto.split(' ');
-  
+  const nombreCompleto = (backend.nombre || '').trim()
+
+  // Para empleados no hay campo apellido separado.
+  // Separamos por el primer espacio: todo lo demás es apellido.
+  const spaceIdx  = nombreCompleto.indexOf(' ')
+  const firstName = spaceIdx >= 0 ? nombreCompleto.slice(0, spaceIdx) : nombreCompleto
+  const lastName  = spaceIdx >= 0 ? nombreCompleto.slice(spaceIdx + 1) : ''
+
   return {
   id: String(backend.id),
-  name: nombreParts[0] || '',
-  lastName: nombreParts.slice(1).join(' ') || '',
+  name: firstName,
+  lastName: lastName,
   email: backend.email || '',
   role: backend.rol?.nombre as UserRole,
   isActive: backend.estado ?? false,
@@ -62,6 +67,12 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
     throw new Error('Contraseña es requerida');
   }
 
+  const otrosInstrumentos = Array.isArray(user.otherInstruments)
+    ? user.otherInstruments.join(', ')
+    : typeof user.otherInstruments === 'string'
+      ? (user.otherInstruments as any).trim() || null
+      : null;
+
   return {
     nombre,
     email: user.email,
@@ -72,14 +83,14 @@ const mapToBackend = async (user: Omit<User, 'id'>) => {
     numeroDocumento: user.documentNumber,
     fechaNacimiento: user.birthDate,
     telefonoPrincipal: user.phone,
-    telefonoAlternativo: user.secondaryPhone || null,
+    telefonoAlternativo: user.secondaryPhone?.trim() || undefined,
     ciudad: user.city || 'Medellín',
     barrio: user.neighborhood,
     direccion: user.address,
     zonaServicio: user.serviceZone || 'URBANA',
     instrumentoPrincipal: user.mainInstrument,
-    otrosInstrumentos: user.otherInstruments ? user.otherInstruments.join(', ') : null,
-    anosExperiencia: user.experienceYears || 0,
+    otrosInstrumentos,
+    anosExperiencia: Number(user.experienceYears) || 0,
     foto: user.avatar || null
   };
 };
@@ -99,10 +110,29 @@ export const employeeService = {
   updateEmployee: async (id: string, updates: Partial<User>): Promise<User> => {
     const nombre = updates.name ? `${updates.name} ${updates.lastName || ''}`.trim() : undefined;
     
+    const otrosInstrumentos = Array.isArray(updates.otherInstruments)
+      ? updates.otherInstruments.join(', ')
+      : typeof updates.otherInstruments === 'string'
+        ? (updates.otherInstruments as any).trim() || undefined
+        : undefined;
+
     const data = {
       ...(nombre && { nombre }),
       ...(updates.email && { email: updates.email }),
       ...(updates.isActive !== undefined && { estado: updates.isActive }),
+      ...(updates.documentType && { tipoDocumento: updates.documentType }),
+      ...(updates.documentNumber && { numeroDocumento: updates.documentNumber }),
+      ...(updates.birthDate && { fechaNacimiento: updates.birthDate }),
+      ...(updates.phone && { telefonoPrincipal: updates.phone }),
+      ...(updates.secondaryPhone !== undefined && { telefonoAlternativo: updates.secondaryPhone }),
+      ...(updates.city && { ciudad: updates.city }),
+      ...(updates.neighborhood && { barrio: updates.neighborhood }),
+      ...(updates.address && { direccion: updates.address }),
+      ...(updates.serviceZone && { zonaServicio: updates.serviceZone }),
+      ...(updates.mainInstrument && { instrumentoPrincipal: updates.mainInstrument }),
+      ...(otrosInstrumentos !== undefined && { otrosInstrumentos }),
+      ...(updates.experienceYears !== undefined && { anosExperiencia: Number(updates.experienceYears) }),
+      ...(updates.avatar !== undefined && { foto: updates.avatar }),
     };
     
     const response = await api.put(`/empleados/${id}`, data);

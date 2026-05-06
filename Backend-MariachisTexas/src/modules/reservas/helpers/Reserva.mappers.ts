@@ -1,5 +1,5 @@
 import type { ReservationResponse } from '../../../types/interfaces'
-import { toLocalDate, toLocalTime } from '../../../utils/date.helpers'
+import { toLocalDate, toLocalTime, buildClientName } from '../../../utils/date.helpers'
 
 // ─── Tipo inferido de Prisma para Reserva con relaciones ─────────────────────
 // Se define aquí para tipar correctamente los mappers sin usar any
@@ -52,7 +52,11 @@ export type ReservaPublica = {
     horaInicio:  Date
     horaFin:     Date
     tipoEvento:  string
-    cliente:     { email: string } | null
+    cliente:     { 
+      email:    string
+      apellido: string                    // ← nuevo
+      usuario:  { nombre: string } | null // ← nuevo
+    } | null
   } | null
 }
 
@@ -61,7 +65,7 @@ export type ReservaPublica = {
 export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse => {
   const cot            = r.cotizacion
   const clientName     = cot.cliente
-    ? `${cot.cliente.usuario?.nombre ?? ''} ${cot.cliente.apellido}`.trim()
+    ? buildClientName(cot.cliente.usuario?.nombre, cot.cliente.apellido)
     : cot.contactoNombre || cot.nombreHomenajeado || ''
   const clientPhone    = cot.cliente?.telefonoPrincipal   || cot.contactoTelefono  || ''
   const secondaryPhone = cot.cliente?.telefonoAlternativo || cot.contactoTelefono2 || ''
@@ -102,12 +106,16 @@ export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse =
 // ─── mapToPublicReservation ───────────────────────────────────────────────────
 // Versión reducida para el calendario — no expone datos sensibles
 export const mapToPublicReservation = (r: ReservaPublica) => ({
-  id:        String(r.id),
-  clientId:  String(r.cotizacion?.clienteId ?? ''),
-  eventDate: r.cotizacion?.fechaEvento ? toLocalDate(r.cotizacion.fechaEvento) : '',
-  eventTime: r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
-  startTime: r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
-  endTime:   r.cotizacion?.horaFin     ? toLocalTime(r.cotizacion.horaFin)     : '',
-  eventType: r.cotizacion?.tipoEvento  ?? '',
-  status:    r.estado,
+  id:          String(r.id),
+  clientId:    String(r.cotizacion?.clienteId ?? ''),
+  clientName:  r.cotizacion?.cliente
+    ? buildClientName(r.cotizacion.cliente.usuario?.nombre, r.cotizacion.cliente.apellido)
+    : '',
+  clientEmail: r.cotizacion?.cliente?.email ?? '', // ← nuevo
+  eventDate:   r.cotizacion?.fechaEvento ? toLocalDate(r.cotizacion.fechaEvento) : '',
+  eventTime:   r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
+  startTime:   r.cotizacion?.horaInicio  ? toLocalTime(r.cotizacion.horaInicio)  : '',
+  endTime:     r.cotizacion?.horaFin     ? toLocalTime(r.cotizacion.horaFin)     : '',
+  eventType:   r.cotizacion?.tipoEvento  ?? '',
+  status:      r.estado,
 })

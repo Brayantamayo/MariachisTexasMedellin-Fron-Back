@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { X, User as UserIcon, MapPin, Phone, Calendar, Mail, Hash, Building, Flag, DollarSign } from 'lucide-react';
 import { User } from '@/types';
 import { abonoService, EnrichedPayment } from '../../abonos/services/abonoService';
+import { ventaService, Sale } from '../../ventas/services/ventaService';
 
 interface Props {
   isOpen: boolean;
@@ -14,10 +15,13 @@ interface Props {
 export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) => {
   const [abonos, setAbonos] = useState<EnrichedPayment[]>([]);
   const [loadingAbonos, setLoadingAbonos] = useState(false);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
 
   useEffect(() => {
     if (isOpen && client) {
       loadAbonos();
+      loadSales();
     }
   }, [isOpen, client]);
 
@@ -33,6 +37,21 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
       console.error('Error loading abonos:', error);
     } finally {
       setLoadingAbonos(false);
+    }
+  };
+
+  const loadSales = async () => {
+    setLoadingSales(true);
+    try {
+      const allSales = await ventaService.getSales();
+      const clientSales = allSales.filter(sale =>
+        client?.email ? sale.clientEmail?.toLowerCase() === client.email.toLowerCase() : sale.clientId === String(client?.id)
+      );
+      setSales(clientSales);
+    } catch (error) {
+      console.error('Error loading sales:', error);
+    } finally {
+      setLoadingSales(false);
     }
   };
 
@@ -90,9 +109,7 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
                 <h2 className="text-2xl font-serif font-bold text-slate-800">{client.name} {client.lastName}</h2>
                 <div className="flex gap-2 mt-2">
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase">{client.role}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${client.isActive ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                        {client.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
+
                 </div>
             </div>
 
@@ -150,6 +167,54 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
                                         {abono.notes}
                                     </p>
                                 )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Sección de Ventas */}
+            <div className="mt-8">
+                <h3 className="text-lg font-serif font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Building size={20} className="text-emerald-600" />
+                    Historial de Ventas
+                </h3>
+                {loadingSales ? (
+                    <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
+                        <p className="text-sm text-slate-500 mt-2">Cargando ventas...</p>
+                    </div>
+                ) : sales.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-xl border border-slate-100">
+                        <Building size={48} className="text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500">No hay ventas registradas</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {sales.map((sale) => (
+                            <div key={sale.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-700">
+                                            {sale.concept}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            ${sale.amount.toLocaleString('es-CO')} - {sale.type}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-medium text-slate-600">
+                                            {new Date(sale.date).toLocaleDateString('es-CO')}
+                                        </p>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                            sale.status === 'CONFIRMADO' ? 'bg-emerald-100 text-emerald-700' : 
+                                            sale.status === 'FINALIZADO' ? 'bg-blue-100 text-blue-700' : 
+                                            'bg-slate-100 text-slate-700'
+                                        }`}>
+                                            {sale.status}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>

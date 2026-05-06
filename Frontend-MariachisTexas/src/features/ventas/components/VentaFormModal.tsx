@@ -201,7 +201,6 @@ export const VentaFormModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
                             >
                                 <option value="EFECTIVO">Efectivo</option>
                                 <option value="TRANSFERENCIA">Transferencia</option>
-                                <option value="TARJETA">Tarjeta</option>
                                 <option value="NEQUI">Nequi</option>
                                 <option value="DAVIPLATA">Daviplata</option>
                                 <option value="OTRO">Otro</option>

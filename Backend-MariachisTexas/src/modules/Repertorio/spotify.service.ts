@@ -93,6 +93,35 @@ const msToMinutes = (ms: number): string => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
+// ─── Mercados a probar en orden para conseguir preview_url ──────────────────
+const MARKETS_FALLBACK = ['CO', 'MX', 'US', 'ES', 'AR', 'CL', 'PE', 'EC', 'VE'];
+
+/**
+ * Intenta obtener el preview_url de una canción probando distintos mercados.
+ * Spotify eliminó preview_url para muchas regiones — probando varios mercados
+ * aumentamos las posibilidades de encontrar uno.
+ */
+const findPreviewUrl = async (
+  trackId: string,
+  token: string
+): Promise<string | null> => {
+  for (const market of MARKETS_FALLBACK) {
+    try {
+      const res = await fetchWithRetry(
+        `https://api.spotify.com/v1/tracks/${trackId}?market=${market}`,
+        token
+      );
+      const track = await res.json();
+      if (track.preview_url) {
+        return track.preview_url;
+      }
+    } catch {
+      // si falla en este mercado, seguir con el siguiente
+    }
+  }
+  return null;
+};
+
 // ─── Búsqueda principal ──────────────────────────────────────────────────────
 export const searchSongs = async (
   query: string,
@@ -118,16 +147,27 @@ export const searchSongs = async (
     return [];
   }
 
-  return data.tracks.items.map((track: any): SpotifySong => ({
-    spotifyId: track.id,
-    title: track.name,
-    artist: track.artists.map((a: any) => a.name).join(', '),
-    album: track.album.name,
-    coverImage: track.album.images?.[0]?.url ?? null,
-    previewUrl: track.preview_url ?? null,
-    duration: msToMinutes(track.duration_ms),
-    durationMs: track.duration_ms,
-    popularity: track.popularity,
-    externalUrl: track.external_urls.spotify,
-  }));
+  // Mapear tracks y buscar preview_url en múltiples mercados si viene null
+  const tracks: SpotifySong[] = await Promise.all(
+    data.tracks.items.map(async (track: any): Promise<SpotifySong> => {
+      // Intentar obtener preview_url probando distintos mercados
+      const previewUrl = track.preview_url
+        ?? await findPreviewUrl(track.id, token);
+
+      return {
+        spotifyId:   track.id,
+        title:       track.name,
+        artist:      track.artists.map((a: any) => a.name).join(', '),
+        album:       track.album.name,
+        coverImage:  track.album.images?.[0]?.url ?? null,
+        previewUrl,
+        duration:    msToMinutes(track.duration_ms),
+        durationMs:  track.duration_ms,
+        popularity:  track.popularity,
+        externalUrl: track.external_urls.spotify,
+      };
+    })
+  );
+
+  return tracks;
 };

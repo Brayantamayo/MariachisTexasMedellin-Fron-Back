@@ -31,6 +31,8 @@ enum EstadoReserva {
   PENDIENTE
   CONFIRMADA
   ANULADA
+  FINALIZADO
+  REPROGRAMADA
 }
 
 enum EstadoEnsayo {
@@ -42,12 +44,12 @@ enum EstadoVenta {
   CONFIRMADO
   FINALIZADO
   VENTA_DIRECTA
+  CANCELADA
 }
 
 enum MetodoPago {
   EFECTIVO
   TRANSFERENCIA
-  TARJETA
   NEQUI
   DAVIPLATA
   OTRO

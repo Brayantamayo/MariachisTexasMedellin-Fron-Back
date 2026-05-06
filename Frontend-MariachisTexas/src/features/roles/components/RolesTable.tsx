@@ -16,9 +16,19 @@ interface Props {
 export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, onDelete, onToggleStatus }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const isSystemRole = (role: Role) => Boolean(role.isSystem);
   
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string }> = ({ icon: Icon, onClick, tooltip }) => (
-    <button onClick={onClick} title={tooltip} className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all duration-200">
+  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, disabled?: boolean }> = ({ icon: Icon, onClick, tooltip, disabled = false }) => (
+    <button
+        onClick={onClick}
+        title={tooltip}
+        disabled={disabled}
+        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
+            disabled
+              ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-70'
+              : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+        }`}
+    >
         <Icon size={16} strokeWidth={2} />
     </button>
   );
@@ -57,6 +67,12 @@ export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, on
           <div className="space-y-4">
               {currentRoles.map((role) => (
                   <div key={role.id} className="group grid grid-cols-1 md:grid-cols-12 gap-6 items-center p-2 md:py-4 transition-all hover:bg-slate-50/50 rounded-xl">
+                      {(() => {
+                        const locked = isSystemRole(role);
+                        const actionsTooltip = locked ? 'Rol predeterminado del sistema' : undefined;
+
+                        return (
+                          <>
                       
                       {/* Role Profile */}
                       <div className="col-span-5 flex items-center gap-5">
@@ -64,7 +80,14 @@ export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, on
                               {role.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                              <h3 className="font-bold text-[#1e293b] text-sm uppercase tracking-wide mb-1">{role.name}</h3>
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
+                                  <h3 className="font-bold text-[#1e293b] text-sm uppercase tracking-wide">{role.name}</h3>
+                                  {locked && (
+                                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 border border-amber-200">
+                                      Predeterminado
+                                    </span>
+                                  )}
+                              </div>
                               <p className="text-xs text-slate-500 max-w-xs leading-relaxed">{role.description}</p>
                           </div>
                       </div>
@@ -85,23 +108,29 @@ export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, on
                       <div className="col-span-2 flex items-center justify-center gap-3">
                           <button 
                               onClick={() => onToggleStatus(role)} 
-                              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${role.isActive ? 'bg-[#dc2626]' : 'bg-slate-200'}`}
+                              disabled={locked}
+                              title={actionsTooltip}
+                              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${role.isActive ? 'bg-[#dc2626]' : 'bg-slate-200'} ${locked ? 'cursor-not-allowed opacity-60' : ''}`}
                           >
                               <span 
                                   className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${role.isActive ? 'translate-x-6' : 'translate-x-0'}`} 
                               />
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider w-14 ${role.isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
-                              {role.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
                       </div>
 
                       {/* Actions */}
                       <div className="col-span-2 flex justify-center gap-3">
                           <ActionButton icon={Eye} onClick={() => onView(role)} tooltip="Ver detalle" />
-                          <ActionButton icon={Edit2} onClick={() => onEdit(role)} tooltip="Editar rol" />
-                          <ActionButton icon={Trash2} onClick={() => onDelete(role.id)} tooltip="Eliminar rol" />
+                          {(role.isActive || locked) && (
+                            <>
+                              <ActionButton icon={Edit2} onClick={() => onEdit(role)} tooltip={actionsTooltip ?? 'Editar rol'} disabled={locked} />
+                              <ActionButton icon={Trash2} onClick={() => onDelete(role.id)} tooltip={actionsTooltip ?? 'Eliminar rol'} disabled={locked} />
+                            </>
+                          )}
                       </div>
+                          </>
+                        );
+                      })()}
                   </div>
               ))}
           </div>

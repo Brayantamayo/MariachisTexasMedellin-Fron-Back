@@ -56,7 +56,7 @@ const uploadToCloudinary = async (
 // ─── Subir imagen (portada canción / foto perfil usuario) ─────────────────────
 export const uploadImage = async (
   file: File,
-  folder: 'repertorio/portadas' | 'usuarios/fotos' = 'repertorio/portadas',
+  folder: 'repertorio/portadas' | 'usuarios/fotos' | 'empleados/fotos' | 'clientes/fotos' = 'repertorio/portadas',
   onProgress?: (pct: number) => void
 ): Promise<string> => {
 

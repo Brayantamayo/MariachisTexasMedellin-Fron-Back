@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Plus, User, ArrowRight, ShieldAlert, Lock, Info, AlertTriangle, Music, FileText } from 'lucide-react';
+import { X, Plus, User, ArrowRight, ShieldAlert, Lock, Info, AlertTriangle, Music, FileText, CheckCircle } from 'lucide-react';
 import { Reservation, CalendarBlock, UserRole, Rehearsal, Quotation } from '@/types';
 import { useAuth } from '@/shared/contexts/AuthContext';
 
@@ -55,7 +55,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     const prevMin = hMin - 60
     const prevTime = prevMin >= 0
       ? `${Math.floor(prevMin / 60).toString().padStart(2,'0')}:${String(prevMin % 60).padStart(2,'0')}`
-      : `${(23).toString().padStart(2,'00')}:00`
+      : `23:00`
 
     // 1. Reserva — hora exacta de inicio
     const reservation = reservations.find(r => r.startTime === time || r.eventTime === time)
@@ -69,11 +69,10 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Buffer POST-reserva: la hora exacta de fin es cierre/transporte ← FIX
-    //    Ej: reserva 10:00–13:00 → 13:00 es buffer
+    // 3. Buffer POST-reserva: la hora exacta de fin
     const bufferPostReserva = reservations.find(r => {
       const end = timeToMinutes(r.endTime || '00:00')
-      return hMin === end  // ← exactamente la hora de fin
+      return hMin === end
     })
     if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
@@ -89,19 +88,19 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (quote) return { status: 'quote', data: quote }
 
-    // 6. Buffer POST-cotización: hora exacta de fin ← FIX
+    // 6. Buffer POST-cotización: hora exacta de fin
     const bufferPostCotizacion = quotations.find(q => {
       const end = timeToMinutes(q.endTime)
-      return hMin === end  // ← exactamente la hora de fin
+      return hMin === end
     })
     if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
 
     // 7. Ensayo
-    const rehearsal = rehearsals.find(r => (r.time ?? r.hora) === time)
+    const rehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === time)
     if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
     // 8. Buffer ensayo (hora siguiente al ensayo)
-    const prevRehearsal = rehearsals.find(r => (r.time ?? r.hora) === prevTime)
+    const prevRehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === prevTime)
     if (prevRehearsal) return { status: 'buffer_rehearsal', data: prevRehearsal }
 
     // 9. Bloqueo total
@@ -133,12 +132,43 @@ export const DateDetailsModal: React.FC<Props> = ({
       onCreateNew(time);
     } else if (slotData.status === 'reserved' || slotData.status === 'reserved_range') {
       const res = slotData.data as Reservation;
-      if (isClient) {
-        if (user?.email !== res.clientEmail) return
-      }
+      if (isClient && user?.email !== res.clientEmail) return;
       onViewReservation(slotData.data);
     }
   };
+
+  // ─── Status color helpers ─────────────────────────────────────────────────
+  const getReservaColors = (res: Reservation) => {
+    const s = (res as any).status ?? res.status
+    if (s === 'CONFIRMADA') return {
+      border: 'border-emerald-300',
+      bg:     'bg-emerald-50',
+      text:   'text-emerald-800',
+      sub:    'text-emerald-600',
+      badge:  'bg-emerald-100 text-emerald-700 border-emerald-200',
+      label:  'Confirmada',
+      dot:    'bg-emerald-500',
+    }
+    if (s === 'REPROGRAMADA') return {
+      border: 'border-[#0c808b]/30',
+      bg:     'bg-[#e1f8ff]',
+      text:   'text-[#0c808b]',
+      sub:    'text-[#0c808b]',
+      badge:  'bg-white text-[#0c808b] border-[#0c808b]/30',
+      label:  'Reprogramada',
+      dot:    'bg-[#0c808b]',
+    }
+    // PENDIENTE
+    return {
+      border: 'border-amber-300',
+      bg:     'bg-amber-50',
+      text:   'text-amber-800',
+      sub:    'text-amber-600',
+      badge:  'bg-amber-100 text-amber-700 border-amber-200',
+      label:  'Pendiente',
+      dot:    'bg-amber-500',
+    }
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -169,116 +199,179 @@ export const DateDetailsModal: React.FC<Props> = ({
               let containerClass = '';
               let content: React.ReactNode = null;
 
-              if (status === 'reserved' || status === 'reserved_range') {
-                const res = data as Reservation;
+              // ── RESERVED (start hour) ────────────────────────────────────
+              if (status === 'reserved') {
+                const res   = data as Reservation;
+                const clrs  = getReservaColors(res);
+                const range = `${res.startTime || res.eventTime} → ${res.endTime}`
                 const isMyReservation = !isClient || user?.email === res.clientEmail;
-                const rangeLabel = `${res.startTime || res.eventTime} - ${res.endTime}`
+                const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
 
-                if (isMyReservation) {
-                  if (status === 'reserved') {
-                    containerClass = "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
-                    content = (
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <p className="text-xs font-bold text-emerald-800">{res.eventType}</p>
-                          <p className="text-[10px] text-emerald-600 flex items-center gap-1">
-                            <User size={10}/> {res.clientName}
-                          </p>
-                          <p className="text-[10px] text-emerald-500 font-mono mt-0.5">{rangeLabel}</p>
+                if (isFinalizado) {
+                  // ── FINALIZADO slot ──────────────────────────────────────
+                  containerClass = `border-blue-300 bg-blue-50 ${isMyReservation ? 'cursor-pointer hover:bg-blue-100' : 'cursor-not-allowed'}`;
+                  content = isMyReservation ? (
+                    <div className="flex items-center justify-between w-full" onClick={() => onViewReservation(res)}>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                          <CheckCircle size={14} className="text-blue-600" />
                         </div>
-                        <ArrowRight size={14} className="text-emerald-400" />
+                        <div>
+                          <p className="text-sm font-bold text-blue-800">{isClient ? `Tu reserva - ${res.clientName}` : res.clientName}</p>
+                          <p className="text-[10px] text-blue-600 uppercase tracking-wide mt-0.5">{res.eventType}</p>
+                          <p className="text-[10px] font-mono text-blue-500 mt-0.5">{range}</p>
+                          <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-blue-600 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
+                            ✓ Evento Finalizado
+                          </span>
+                        </div>
                       </div>
-                    );
-                  } else {
-                    containerClass = "border-emerald-100 bg-emerald-50/40 cursor-pointer";
-                    content = (
-                      <div className="flex items-center gap-2 w-full text-emerald-600 opacity-70">
-                        <span className="text-[10px] font-bold uppercase tracking-widest">En curso — {res.eventType}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center w-full text-slate-400">
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> Reservado</span>
+                    </div>
+                  );
+
+                } else if (isMyReservation) {
+                  // ── PENDIENTE / CONFIRMADA slot ──────────────────────────
+                  containerClass = `${clrs.border} ${clrs.bg} cursor-pointer hover:brightness-95 transition-all`;
+                  content = (
+                    <div className="flex items-center justify-between w-full" onClick={() => onViewReservation(res)}>
+                      <div className="flex items-start gap-3">
+                        {/* Color dot indicating status */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${clrs.badge} border`}>
+                          
+                          
+                          <User size={14}
+                          />
+                        </div>
+                        <div>
+                          {/* CLIENT NAME — prominent */}
+                          <p className={`text-sm font-bold ${clrs.text}`}>{isClient ? `Tu reserva - ${res.clientName}` : res.clientName} </p>
+                          <p className={`text-[10px] font-mono mt-0.5 ${clrs.sub}`}>{range}</p>
+                          {/* Status badge */}
+                          <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${clrs.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${clrs.dot}`} />
+                            {clrs.label}
+                          </span>
+                        </div>
                       </div>
-                    );
-                  }
+                      <ArrowRight size={16} className={`shrink-0 ${clrs.sub}`} />
+                    </div>
+                  );
                 } else {
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                        <Lock size={10} /> No disponible
-                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Lock size={10} /> Reservado</span>
                     </div>
                   );
                 }
 
+              // ── RESERVED RANGE (intermediate hours) ─────────────────────
+              } else if (status === 'reserved_range') {
+                const res  = data as Reservation;
+                const clrs = getReservaColors(res);
+                const isMyReservation = !isClient || user?.email === res.clientEmail;
+                const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
+
+                if (isFinalizado) {
+                  containerClass = "border-blue-100 bg-blue-50/50 cursor-pointer";
+                  content = (
+                    <div className="flex items-center gap-3 w-full opacity-70" onClick={() => onViewReservation(res)}>
+                      <div className="h-full w-0.5 bg-blue-300 rounded-full" />
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ {isClient ? 'Tu reserva' : res.clientName} — Finalizado</span>
+                    </div>
+                  );
+                } else if (isMyReservation) {
+                  containerClass = `${clrs.border.replace('border-', 'border-').replace('300', '100')} ${clrs.bg.replace('50', '50/50')} cursor-pointer`;
+                  content = (
+                    <div className="flex items-center gap-3 w-full opacity-80" onClick={() => onViewReservation(res)}>
+                      <div className={`h-full w-0.5 rounded-full ${clrs.dot}`} />
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${clrs.sub}`}>
+                        ↳ {isClient ? 'Tu reserva' : res.clientName} — En curso
+                      </span>
+                    </div>
+                  );
+                } else {
+                  containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
+                  content = (
+                    <div className="flex items-center justify-center w-full text-slate-400">
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> Reservado</span>
+                    </div>
+                  );
+                }
+
+              // ── QUOTE ────────────────────────────────────────────────────
               } else if (status === 'quote') {
                 const q = data as Quotation;
-                const rangeLabel = `${q.startTime} - ${q.endTime}`
-
+                const range = `${q.startTime} → ${q.endTime}`
                 if (!isClient) {
-                  containerClass = "border-amber-100 bg-amber-50 cursor-not-allowed";
+                  containerClass = "border-amber-200 bg-amber-50/70 cursor-not-allowed";
                   content = (
-                    <div className="flex items-center justify-between w-full text-amber-800">
-                      <div>
-                        <p className="text-xs font-bold flex items-center gap-2">
-                          <FileText size={12}/> Cotización en Espera
-                        </p>
-                        <p className="text-[10px] opacity-70">{q.clientName}</p>
-                        <p className="text-[10px] font-mono opacity-60 mt-0.5">{rangeLabel}</p>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                          <FileText size={13} className="text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-amber-800">{q.clientName || 'Sin nombre'}</p>
+                          <p className="text-[10px] text-amber-600 font-mono mt-0.5">{range}</p>
+                        </div>
                       </div>
-                      <span className="text-[9px] font-bold border border-amber-200 px-2 py-0.5 rounded-full bg-white/50 uppercase">Bloqueado</span>
+                      <span className="text-[9px] font-bold border border-amber-200 px-2 py-0.5 rounded-full bg-white/60 text-amber-700 uppercase">
+                        Cotización
+                      </span>
                     </div>
                   );
                 } else {
                   containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
                   content = (
                     <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2">
-                        <Lock size={10}/> No disponible
-                      </span>
+                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                     </div>
                   );
                 }
 
+              // ── REHEARSAL ────────────────────────────────────────────────
               } else if (status === 'rehearsal') {
-                const reh = data as Rehearsal;
-                const rehTime  = reh.time ?? reh.hora ?? ''
-                const rangeLabel = `${rehTime} - ${addOneHour(rehTime)}`
-
-                containerClass = "border-slate-200 bg-slate-100 cursor-not-allowed";
+                const reh      = data as Rehearsal;
+                const rehTime  = reh.time ?? (reh as any).hora ?? ''
+                const rangeLabel = `${rehTime} → ${addOneHour(rehTime)}`
+                containerClass   = "border-slate-200 bg-slate-100 cursor-not-allowed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
-                      <Lock size={10}/> No disponible
-                    </span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between w-full text-blue-500">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
-                      <Music size={12}/> Ensayo Programado
-                    </span>
-                    <span className="text-[10px] font-mono opacity-60">{rangeLabel}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                        <Music size={13} className="text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-blue-800">Ensayo Programado</p>
+                        <p className="text-[10px] font-mono text-blue-500 mt-0.5">{rangeLabel}</p>
+                      </div>
+                    </div>
                   </div>
                 );
 
+              // ── BUFFER ───────────────────────────────────────────────────
               } else if (status === 'buffer' || status === 'buffer_rehearsal') {
-                // Calcular rango del buffer según la fuente
                 let bufferRange = ''
                 if (data) {
                   const d = data as any
-                  if (d.endTime) {
-                    // buffer post-reserva o post-cotización: endTime → endTime+1h
-                    bufferRange = `${d.endTime} - ${addOneHour(d.endTime)}`
-                  } else if (d.time ?? d.hora) {
-                    // buffer post-ensayo
+                  if (d.endTime) bufferRange = `${d.endTime} → ${addOneHour(d.endTime)}`
+                  else if (d.time ?? d.hora) {
                     const t = d.time ?? d.hora
-                    bufferRange = `${addOneHour(t)} - ${addOneHour(addOneHour(t))}`
+                    bufferRange = `${addOneHour(t)} → ${addOneHour(addOneHour(t))}`
                   }
                 }
-
-                containerClass = "border-slate-100 bg-slate-50 cursor-not-allowed border-dashed";
+                containerClass = "border-slate-100 bg-slate-50/80 cursor-not-allowed border-dashed";
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
-                      <Lock size={10}/> No disponible
-                    </span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between w-full text-slate-400 opacity-70">
@@ -290,14 +383,13 @@ export const DateDetailsModal: React.FC<Props> = ({
                   </div>
                 );
 
+              // ── BLOCKED PARTIAL ──────────────────────────────────────────
               } else if (status === 'blocked_partial') {
                 containerClass = "border-red-100 bg-[repeating-linear-gradient(45deg,#fef2f2,#fef2f2_10px,#fee2e2_10px,#fee2e2_20px)] cursor-not-allowed";
                 const block = data as CalendarBlock;
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-red-400">
-                    <span className="text-[10px] font-bold uppercase flex items-center gap-2">
-                      <Lock size={10}/> No disponible
-                    </span>
+                    <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-800 w-full">
@@ -306,6 +398,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   </div>
                 );
 
+              // ── BLOCKED FULL ─────────────────────────────────────────────
               } else if (status === 'blocked_full') {
                 containerClass = "border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed";
                 content = (
@@ -315,6 +408,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   </div>
                 );
 
+              // ── FREE ─────────────────────────────────────────────────────
               } else {
                 containerClass = "border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 hover:shadow-sm bg-white cursor-pointer";
                 content = (
@@ -337,7 +431,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   <div className="w-12 text-center shrink-0">
                     <span className="text-sm font-bold text-slate-500 font-mono">{time}</span>
                   </div>
-                  <div className="flex-1 flex items-center">{content}</div>
+                  <div className="flex-1 flex items-center min-w-0">{content}</div>
                 </div>
               );
             })}

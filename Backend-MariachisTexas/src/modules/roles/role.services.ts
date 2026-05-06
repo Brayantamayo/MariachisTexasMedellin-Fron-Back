@@ -2,12 +2,24 @@ import prisma from '../../config/prisma'
 import { RolCreateSchema, RolUpdateSchema, zodError } from '../schemas'
 import type { RolCreateInput, RolUpdateInput } from '../../types/interfaces'
 
+const SYSTEM_ROLE_NAMES = new Set(['ADMIN', 'EMPLEADO', 'CLIENTE'])
+
+const normalizeRoleName = (name: string) => name.trim().toUpperCase()
+const isSystemRoleName = (name: string) => SYSTEM_ROLE_NAMES.has(normalizeRoleName(name))
+
+const assertRoleIsMutable = (rol: { nombre: string }) => {
+  if (isSystemRoleName(rol.nombre)) {
+    throw new Error('No se puede modificar ni eliminar un rol predeterminado del sistema')
+  }
+}
+
 const mapToRole = (r: any) => ({
   id: String(r.id),
   name: r.nombre,
   description: r.descripcion ?? '',
   permissions: r.rolPermisos?.map((rp: any) => rp.permiso.nombre) ?? [],
   isActive: r.estado,
+  isSystem: isSystemRoleName(r.nombre),
   createdAt: r.createdAt?.toISOString() ?? ''
 })
 
@@ -58,6 +70,10 @@ export const createRol = async (data: RolCreateInput): Promise<any> => {
   if (!parsed.success) throw new Error(zodError(parsed.error))
 
   const d = parsed.data
+
+  if (isSystemRoleName(d.nombre)) {
+    throw new Error('Ese nombre esta reservado para un rol predeterminado del sistema')
+  }
 
   // Verificar que no exista un rol con el mismo nombre
   const existing = await prisma.rol.findUnique({ where: { nombre: d.nombre } })
@@ -111,6 +127,7 @@ export const getRolById = async (id: number): Promise<any> => {
 export const updateRol = async (id: number, data: RolUpdateInput): Promise<any> => {
   const rol = await prisma.rol.findUnique({ where: { id } })
   if (!rol) throw new Error('Rol no encontrado')
+  assertRoleIsMutable(rol)
 
   const parsed = RolUpdateSchema.safeParse(data)
   if (!parsed.success) throw new Error(zodError(parsed.error))
@@ -167,6 +184,7 @@ export const deleteRol = async (id: number) => {
   })
 
   if (!rol) throw new Error('Rol no encontrado')
+  assertRoleIsMutable(rol)
   if (rol.usuarios.length > 0) throw new Error('No se puede eliminar un rol que tiene usuarios asignados')
 
   await prisma.rol.delete({ where: { id } })

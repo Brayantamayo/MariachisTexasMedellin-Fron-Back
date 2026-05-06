@@ -113,7 +113,7 @@ export interface VentaCreateInput {
   montoTotal:   number
   montoPagado:  number
   fechaVenta:   string
-  metodoPago:   'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA' | 'OTRO'
+  metodoPago:   'EFECTIVO' | 'TRANSFERENCIA' | 'NEQUI' | 'DAVIPLATA' | 'OTRO'
 }
 
 export interface VentaUpdateInput extends Partial<VentaCreateInput> {}
@@ -138,7 +138,7 @@ export interface RehearsalResponse {
   time:          string
   notes:         string
   repertoireIds: string[]
-  status:        'Pendiente' | 'Completado' | 'Programado'
+  status:        'PENDIENTE' | 'LISTO'
   createdAt?:    string
   updatedAt?:    string
 }

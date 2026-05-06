@@ -8,6 +8,8 @@ const router = Router()
 // ─── PÚBLICAS ──────────────────────────────────────────────────────────────────
 // Endpoint público para obtener el ID del rol EMPLEADO
 router.get('/public/empleado-rol-id', roleController.getEmpleadoRolId)
+// Lista pública de roles activos — usada en formularios de creación de usuarios
+router.get('/public/list',            roleController.getPublicList)
 
 // ─── PROTEGIDAS ───────────────────────────────────────────────────────────────
 router.use(verifyToken)

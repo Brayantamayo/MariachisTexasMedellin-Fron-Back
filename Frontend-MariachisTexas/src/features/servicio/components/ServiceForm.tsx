@@ -11,7 +11,28 @@ interface Props {
 ////errors para resaltar los campos con errores se puede reutilizar en los demas formularios
 export const ServiceForm: React.FC<Props> = ({ formData, onChange, errors }) => {
     
-return (
+  const formatDisplayPrice = (val: number) => {
+    if (val === 0) return '';
+    return val.toLocaleString('es-CO');
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Eliminar cualquier cosa que no sea un número
+    const rawValue = e.target.value.replace(/\D/g, '');
+    const numericValue = rawValue === '' ? 0 : parseInt(rawValue, 10);
+    
+    // Enviar el número limpio al componente padre
+    const syntheticEvent = {
+      target: {
+        name: 'precio',
+        value: numericValue
+      }
+    } as any;
+    
+    onChange(syntheticEvent);
+  };
+
+  return (
     <form className="space-y-6">
 <div className="space-y-4">
         {/* Nombre */}
@@ -51,16 +72,16 @@ return (
         {/* Precio */}
         <div>
         <label className="label-form">Precio <span className="text-red-500">*</span></label>
-        <div className="relative">
+        <div className="relative group">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
-            type="number"
+            type="text"
             name="precio"
-            value={formData.precio}
-            onChange={onChange}
+            id="service-price-input"
+            value={formatDisplayPrice(formData.precio)}
+            onChange={handlePriceChange}
             className="input-form pl-10 font-mono font-bold"
             placeholder="0"
-            min="0"
             />
         </div>
         {errors?.precio && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.precio}</p>}

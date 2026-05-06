@@ -60,7 +60,6 @@ export const abonoService = {
       const methodMap: Record<string, string> = {
         transferencia: 'TRANSFERENCIA',
         efectivo: 'EFECTIVO',
-        tarjeta: 'TARJETA',
         nequi: 'NEQUI',
         daviplata: 'DAVIPLATA',
         otro: 'OTRO'

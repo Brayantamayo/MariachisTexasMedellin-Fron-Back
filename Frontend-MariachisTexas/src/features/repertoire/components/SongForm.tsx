@@ -145,14 +145,37 @@ export const SongForm: React.FC<Props> = ({
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploadError(null); setUploadingAudio(true)
-    try {
-      onFieldChange('audioUrl', await uploadAudio(file, setAudioProgress))
-    } catch (err: any) {
-      setUploadError(err.message || 'Error al subir el audio.')
-    } finally {
-      setUploadingAudio(false); setAudioProgress(0)
-      if (audioInputRef.current) audioInputRef.current.value = ''
+
+    // Validar duración antes de subir
+    const audio = new Audio()
+    const objectUrl = URL.createObjectURL(file)
+    audio.src = objectUrl
+
+    audio.onloadedmetadata = async () => {
+      const duration = audio.duration
+      URL.revokeObjectURL(objectUrl)
+
+      if (duration > 30) {
+        setUploadError('El audio demo no puede superar los 30 segundos.')
+        if (audioInputRef.current) audioInputRef.current.value = ''
+        return
+      }
+
+      // Si es válido, proceder con la subida
+      setUploadError(null); setUploadingAudio(true)
+      try {
+        onFieldChange('audioUrl', await uploadAudio(file, setAudioProgress))
+      } catch (err: any) {
+        setUploadError(err.message || 'Error al subir el audio.')
+      } finally {
+        setUploadingAudio(false); setAudioProgress(0)
+        if (audioInputRef.current) audioInputRef.current.value = ''
+      }
+    }
+
+    audio.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      setUploadError('Error al procesar el archivo de audio.')
     }
   }
 

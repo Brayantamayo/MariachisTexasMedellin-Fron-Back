@@ -13,7 +13,7 @@ import { asyncHandler } from '../../middlewares/Asynchandler'
 // POST /api/clientes
 export const registrarCliente = asyncHandler(async (req: Request, res: Response) => {
   const cliente = await crearCliente(req.body)
-  res.status(201).json({ message: 'Cliente registrado exitosamente', cliente })
+  res.status(201).json(cliente)
 })
 
 // GET /api/clientes/buscar?query=...
@@ -28,8 +28,8 @@ export const buscarCliente = asyncHandler(async (req: Request, res: Response) =>
 
 // GET /api/clientes?page=1&limit=10
 export const listarCliente = asyncHandler(async (req: Request, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 10
+  const page = req.query.page !== undefined ? parseInt(req.query.page as string) : undefined
+  const limit = req.query.limit !== undefined ? parseInt(req.query.limit as string) : undefined
   const result = await listarClientes(page, limit)
   res.json(result)
 })

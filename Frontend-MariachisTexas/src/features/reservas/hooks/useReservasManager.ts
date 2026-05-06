@@ -5,7 +5,7 @@ import { reservaService } from '../services/reservaService';
 import { blockService } from '../../bloqueos/services/blockService';
 import { rehearsalService } from '../../ensayos/services/rehearsalService';
 import { cotizacionService } from '../../cotizaciones/services/cotizacionService';
-import { abonoService } from '../../abonos/services/abonoService';
+import api from '@/shared/api/api';
 
 export const useReservasManager = () => {
   const { user } = useAuth();
@@ -38,6 +38,10 @@ export const useReservasManager = () => {
   const [isDateDetailsOpen, setIsDateDetailsOpen] = useState(false);
   const [isBlockModalOpen,  setIsBlockModalOpen]  = useState(false);
 
+  // ─── NUEVO: modal de reprogramación ────────────────────────────────────────
+  const [isReprogramarOpen,    setIsReprogramarOpen]    = useState(false);
+  const [reprogramarReserva,   setReprogramarReserva]   = useState<Reservation | null>(null);
+
   const [editingReserva,         setEditingReserva]         = useState<Reservation | null>(null);
   const [selectedReserva,        setSelectedReserva]        = useState<Reservation | null>(null);
   const [selectedDateForForm,    setSelectedDateForForm]    = useState<string | null>(null);
@@ -51,19 +55,17 @@ export const useReservasManager = () => {
   const [deleteTimeBlocksModal, setDeleteTimeBlocksModal] = useState<{ isOpen: boolean; date: string | null }>({ isOpen: false, date: null });
   const [deleteReservaModal,    setDeleteReservaModal]    = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
 
-  // ── Modal de anulación (reemplaza window.confirm) ──────────────────────────
   const [anularModal, setAnularModal] = useState<{ isOpen: boolean; reservation: Reservation | null }>({
     isOpen: false, reservation: null,
   });
 
-  // ── Modal de toggle ensayo (reemplaza window.confirm) ──────────────────────
   const [toggleEnsayoModal, setToggleEnsayoModal] = useState<{ isOpen: boolean; rehearsal: Rehearsal | null }>({
     isOpen: false, rehearsal: null,
   });
 
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success', duration = 4000) => {
+  const showNotification = (message: string, type: 'success' | 'error' = 'success', duration = 5000) => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), duration);
   };
@@ -76,13 +78,19 @@ export const useReservasManager = () => {
       setBlocks(blocksData);
 
       if (!isClient) {
-        const [resData, rehData, quoteData] = await Promise.all([
+        const [resData, calendarData, rehData, quoteData] = await Promise.all([
           reservaService.getReservations(),
+          reservaService.getReservationsForCalendar(),
           rehearsalService.getRehearsals(),
           cotizacionService.getQuotations()
         ]);
+        const filteredCalendar = calendarData.filter((r: any) => {
+          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
+          return !isVentaDirecta && !isClienteDirecto;
+        });
         setReservations(resData);
-        setCalendarReservations(resData);
+        setCalendarReservations(filteredCalendar);
         setRehearsals(rehData);
         setQuotations(quoteData);
       } else {
@@ -94,7 +102,13 @@ export const useReservasManager = () => {
         ]);
 
         setReservations(misReservas);
-        setCalendarReservations(todasReservas);
+
+        const filteredPublicCalendar = todasReservas.filter((r: any) => {
+          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
+          return !isVentaDirecta && !isClienteDirecto;
+        });
+        setCalendarReservations(filteredPublicCalendar);
 
         setRehearsals(
           (ensayosDisp as any[]).map((e, i) => ({
@@ -106,7 +120,7 @@ export const useReservasManager = () => {
             time:          e.hora  ?? e.time  ?? '',
             notes:         '',
             repertoireIds: [],
-            status:        'Programado' as const,
+            status:        'PENDIENTE' as const,
             createdAt:     '',
             updatedAt:     '',
           }))
@@ -156,8 +170,21 @@ export const useReservasManager = () => {
       setIsDetailOpen(true);
       return;
     }
+
     const full = reservations.find(r => r.id === res.id);
     if (full) { setSelectedReserva(full); setIsDetailOpen(true); return; }
+
+    if (res.id?.startsWith('VENTA-')) {
+      const calRes = calendarReservations.find(r => r.id === res.id);
+      if (calRes) {
+        setSelectedReserva(calRes as unknown as Reservation);
+        setIsDetailOpen(true);
+        return;
+      }
+      showNotification('No se encontraron los detalles de este evento.', 'error');
+      return;
+    }
+
     try {
       const fetched = await reservaService.getReservationById(res.id);
       setSelectedReserva(fetched);
@@ -175,13 +202,15 @@ export const useReservasManager = () => {
       showNotification('Reserva creada. Comuníquese para el pago del anticipo.', 'success', 5000);
       setIsCreateOpen(false);
     } catch (error: any) {
-      // Relanzar el error para que ReservaCreateModal lo maneje
       throw error;
     }
   };
 
   const handleUpdate = async (data: any) => {
     if (!editingReserva) return;
+    if (!editingReserva.id || isNaN(Number(editingReserva.id))) {
+      throw new Error('No se puede editar esta reserva: ID inválido. Por favor recarga la página e intenta de nuevo.');
+    }
     try {
       const updated = await reservaService.updateReservation(editingReserva.id, data);
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
@@ -190,7 +219,6 @@ export const useReservasManager = () => {
       showNotification('Reserva actualizada.');
       setIsEditOpen(false);
     } catch (error: any) {
-      // Relanzar el error para que ReservaEditModal lo maneje
       throw error;
     }
   };
@@ -226,7 +254,7 @@ export const useReservasManager = () => {
       await blockService.deleteBlock(deleteBlockModal.blockId);
       setBlocks(prev => prev.filter(b => b.id !== deleteBlockModal.blockId));
       showNotification('Bloqueo eliminado correctamente.');
-    } catch (error) {
+    } catch {
       showNotification('Error al eliminar bloqueo.', 'error');
     } finally {
       setDeleteBlockModal({ isOpen: false, blockId: null });
@@ -242,20 +270,18 @@ export const useReservasManager = () => {
       await Promise.all(blocksToDelete.map(b => blockService.deleteBlock(b.id)));
       setBlocks(prev => prev.filter(b => !blocksToDelete.map(x => x.id).includes(b.id)));
       showNotification('Se han liberado las horas bloqueadas de este día.');
-    } catch (error) {
+    } catch {
       showNotification('Error al eliminar bloqueos de hora.', 'error');
     } finally {
       setDeleteTimeBlocksModal({ isOpen: false, date: null });
     }
   };
 
-  // Abre el AnularReservaModal — sin window.confirm
   const handleCancelReserva = (id: string) => {
     const reservation = reservations.find(r => r.id === id) ?? null;
     setAnularModal({ isOpen: true, reservation });
   };
 
-  // Ejecuta la anulación real una vez el modal confirma (recibe motivo)
   const processCancel = async (id: string, motivo: string) => {
     try {
       const updated = await reservaService.cancelReservation(id, motivo || 'Cancelación manual por usuario');
@@ -268,25 +294,21 @@ export const useReservasManager = () => {
     }
   };
 
-  // Abre el modal de toggle ensayo — sin window.confirm
   const handleToggleStatus = (rehearsal: Rehearsal) => {
-    const isCompleted = rehearsal.status === 'Completado';
-    // Si ya está completado, revertir directamente (no necesita confirmación)
+    const isCompleted = rehearsal.status === 'LISTO';
     if (isCompleted) {
       processToggleStatus(rehearsal);
       return;
     }
-    // Si va a completarse, pedir confirmación via modal
     setToggleEnsayoModal({ isOpen: true, rehearsal });
   };
 
-  // Ejecuta el toggle real una vez confirmado
   const processToggleStatus = async (rehearsal: Rehearsal) => {
     try {
       const updated = await rehearsalService.toggleStatus(rehearsal.id);
       setRehearsals(prev => prev.map(r => r.id === updated.id ? updated : r));
       showNotification(
-        updated.status === 'Completado'
+        updated.status === 'LISTO'
           ? `Ensayo "${updated.title}" marcado como Listo.`
           : `Ensayo "${updated.title}" marcado como Pendiente.`
       );
@@ -295,14 +317,27 @@ export const useReservasManager = () => {
     }
   };
 
+  // ─── SAVE ABONO ────────────────────────────────────────────────────────────
   const handleSaveAbono = async (data: any) => {
     try {
-      await abonoService.createAbono(data);
-      await fetchData();
-      showNotification('Abono registrado y saldo actualizado.');
+      await api.post(`/reservas/${data.reservationId}/abonos`, {
+        amount: data.amount,
+        date:   data.date,
+        method: data.method,
+        notes:  data.notes,
+      });
+
       setIsAbonoModalOpen(false);
+      setAbonoReservationId(undefined);
+      await fetchData();
+      showNotification('Tu Abono fue Registrado con Exito', 'success', 6000);
+
     } catch (error: any) {
-      showNotification(error?.response?.data?.message || 'Error al registrar el abono.', 'error');
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Error al registrar el abono';
+      showNotification(`❌ ${msg}`, 'error', 6000);
     }
   };
 
@@ -314,7 +349,7 @@ export const useReservasManager = () => {
       setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
       if (selectedReserva?.id === updated.id) setSelectedReserva(updated);
       showNotification('Evento finalizado exitosamente.');
-    } catch (error) {
+    } catch {
       showNotification('Error al finalizar el evento.', 'error');
     } finally {
       setFinalizeModal({ isOpen: false, id: null });
@@ -335,6 +370,26 @@ export const useReservasManager = () => {
     setIsBlockModalOpen(true);
   };
 
+  // ─── NUEVO: abrir modal de reprogramación ──────────────────────────────────
+  const handleOpenReprogramar = (res: Reservation) => {
+    setReprogramarReserva(res);
+    setIsReprogramarOpen(true);
+  };
+
+  // ─── NUEVO: procesar reprogramación ───────────────────────────────────────
+  const handleReprogramar = async (
+    id: string,
+    data: { eventDate: string; startTime: string; endTime: string }
+  ) => {
+    const updated = await reservaService.reprogramarReservation(id, data);
+    setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+    setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+    if (selectedReserva?.id === id) setSelectedReserva(updated);
+    setIsReprogramarOpen(false);
+    setReprogramarReserva(null);
+    showNotification('Reserva reprogramada exitosamente.', 'success', 5000);
+  };
+
   return {
     view, setView, currentDate, setCurrentDate,
     reservations, setReservations, calendarReservations, blocks, setBlocks,
@@ -345,6 +400,11 @@ export const useReservasManager = () => {
     isCreateOpen, setIsCreateOpen, isEditOpen, setIsEditOpen,
     isDetailOpen, setIsDetailOpen, isAbonoModalOpen, setIsAbonoModalOpen,
     isDateDetailsOpen, setIsDateDetailsOpen, isBlockModalOpen, setIsBlockModalOpen,
+    // ─── NUEVO ───────────────────────────────────────────────────────────────
+    isReprogramarOpen, setIsReprogramarOpen,
+    reprogramarReserva, setReprogramarReserva,
+    handleOpenReprogramar, handleReprogramar,
+    // ─────────────────────────────────────────────────────────────────────────
     editingReserva, setEditingReserva, selectedReserva, setSelectedReserva,
     selectedDateForForm, setSelectedDateForForm, selectedTimeForForm, setSelectedTimeForForm,
     selectedDateForDetails, setSelectedDateForDetails,
@@ -352,9 +412,7 @@ export const useReservasManager = () => {
     finalizeModal, setFinalizeModal, deleteBlockModal, setDeleteBlockModal,
     deleteTimeBlocksModal, setDeleteTimeBlocksModal,
     deleteReservaModal, setDeleteReservaModal, handleDeleteReserva,
-    // Anular reserva
     anularModal, setAnularModal, handleCancelReserva, processCancel,
-    // Toggle ensayo
     toggleEnsayoModal, setToggleEnsayoModal, handleToggleStatus, processToggleStatus,
     notification, setNotification, showNotification,
     canManage, isClient, user,

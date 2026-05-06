@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { roleService } from '../services/roleService';
 import { Role } from '@/types';
+import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 
 // Componentes Modulares
 import { RolesTable } from '../components/RolesTable';
@@ -12,6 +14,7 @@ import { RoleEditModal } from '../components/RoleEditModal';
 import { RoleDetailModal } from '../components/RoleDetailModal';
 
 export const RolesPage: React.FC = () => {
+  const SYSTEM_ROLE_NAMES = new Set(['ADMIN', 'EMPLEADO', 'CLIENTE']);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +24,7 @@ export const RolesPage: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; roleId: string | null }>({ isOpen: false, roleId: null });
 
   // Notificaciones
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -29,6 +33,9 @@ export const RolesPage: React.FC = () => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  const isSystemRole = (role?: Role | null) =>
+    Boolean(role?.isSystem) || SYSTEM_ROLE_NAMES.has(role?.name?.trim().toUpperCase() ?? '');
 
   const fetchRoles = async () => {
     setLoading(true);
@@ -57,11 +64,16 @@ export const RolesPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       showNotification("Error al crear el rol.", "error");
+      throw error;
     }
   };
 
   const handleUpdateRole = async (roleData: any) => {
     if (!selectedRole) return;
+    if (isSystemRole(selectedRole)) {
+      showNotification('Los roles predeterminados no se pueden editar.', 'error');
+      return;
+    }
     try {
         const updatedRole = await roleService.updateRole(selectedRole.id, roleData);
         setRoles(prevRoles => prevRoles.map(role => 
@@ -71,24 +83,45 @@ export const RolesPage: React.FC = () => {
         setIsEditOpen(false);
     } catch (error) {
       console.error(error);
-      showNotification("Error al actualizar el rol.", "error");
+      showNotification(getErrorMessage(error, "Error al actualizar el rol."), "error");
+      throw error;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este rol permanentemente?")) {
-        try {
-            await roleService.deleteRole(id);
-            setRoles(prev => prev.filter(r => r.id !== id));
-            showNotification('El rol ha sido eliminado del sistema.');
-        } catch (error) {
-            console.error("Error eliminando", error);
-            showNotification("No se pudo eliminar el rol.", "error");
-        }
+  const handleDelete = (id: string) => {
+    const role = roles.find(r => r.id === id);
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no se pueden eliminar.', 'error');
+      return;
+    }
+    setDeleteModal({ isOpen: true, roleId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.roleId) return;
+    const role = roles.find(r => r.id === deleteModal.roleId);
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no se pueden eliminar.', 'error');
+      setDeleteModal({ isOpen: false, roleId: null });
+      return;
+    }
+    try {
+      await roleService.deleteRole(deleteModal.roleId);
+      setRoles(prev => prev.filter(r => r.id !== deleteModal.roleId));
+      showNotification('El rol ha sido eliminado del sistema.');
+    } catch (error) {
+      console.error("Error eliminando", error);
+      showNotification(getErrorMessage(error, "No se pudo eliminar el rol."), "error");
+    } finally {
+      setDeleteModal({ isOpen: false, roleId: null });
     }
   };
 
   const handleToggleStatus = async (role: Role) => {
+    if (isSystemRole(role)) {
+      showNotification('Los roles predeterminados no pueden cambiar de estado.', 'error');
+      return;
+    }
     const newStatus = !role.isActive;
     try {
         setRoles(prev => prev.map(r => r.id === role.id ? { ...r, isActive: newStatus } : r));
@@ -97,7 +130,7 @@ export const RolesPage: React.FC = () => {
     } catch (error) {
         console.error("Error cambiando estado", error);
         fetchRoles(); 
-        showNotification("Error al cambiar el estado.", "error");
+        showNotification(getErrorMessage(error, "Error al cambiar el estado."), "error");
     }
   };
 
@@ -180,7 +213,14 @@ export const RolesPage: React.FC = () => {
             roles={filteredRoles}
             loading={loading}
             onView={(role) => { setSelectedRole(role); setIsDetailOpen(true); }}
-            onEdit={(role) => { setSelectedRole(role); setIsEditOpen(true); }}
+            onEdit={(role) => {
+              if (isSystemRole(role)) {
+                showNotification('Los roles predeterminados no se pueden editar.', 'error');
+                return;
+              }
+              setSelectedRole(role);
+              setIsEditOpen(true);
+            }}
             onDelete={handleDelete}
             onToggleStatus={handleToggleStatus}
         />
@@ -204,6 +244,15 @@ export const RolesPage: React.FC = () => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         role={selectedRole}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={confirmDelete}
+        title="¿Eliminar Rol?"
+        message="Estás a punto de eliminar este rol permanentemente. Esta acción no se puede deshacer y los usuarios asignados perderán su acceso."
+        confirmText="Sí, Eliminar"
       />
     </div>
   );

@@ -66,23 +66,23 @@ const buildHtml = (cot: any): string => {
     : ''
 
   // ─── Sección repertorio ───────────────────────────────────────────────────
-  const repertorioSection = cot.repertorios?.length
-    ? `<div class="section">
-        <div class="section-title">🎶 Repertorio (${cot.repertorios.length} canciones)</div>
-        <div class="songs-grid">
-          ${cot.repertorios
-            .sort((a: any, b: any) => a.orden - b.orden)
-            .map((r: any, i: number) => `
-              <div class="song-item">
-                <span class="song-num">${String(i + 1).padStart(2, '0')}</span>
-                <div>
-                  <div class="song-title">${r.repertorio?.title ?? ''}</div>
-                  <div class="song-artist">${r.repertorio?.artist ?? ''}</div>
-                </div>
-              </div>`).join('')}
-        </div>
-      </div>`
-    : ''
+const repertorioSection = cot.repertorios?.length
+  ? `<div class="section">
+      <div class="section-title">🎶 Repertorio (${cot.repertorios.length} canciones)</div>
+      <div class="songs-grid">
+        ${cot.repertorios
+          .sort((a: any, b: any) => a.orden - b.orden)
+          .map((r: any, i: number) => `
+            <div class="song-item">
+              <span class="song-num">${String(i + 1).padStart(2, '0')}</span>
+              <div class="song-info">
+                <div class="song-title">${r.repertorio?.titulo ?? 'Sin título'}</div>
+                <div class="song-artist">${r.repertorio?.artista ?? 'Artista desconocido'}</div>
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>`
+  : '';
 
   // ─── Reemplazar placeholders ──────────────────────────────────────────────
   html = html

@@ -60,5 +60,13 @@ export const reservaService = {
     return data
   },
 
+  reprogramarReservation: async (
+    id: string,
+    data: { eventDate: string; startTime: string; endTime: string }
+  ): Promise<Reservation> => {
+    const { data: res } = await api.patch(`/reservas/${id}/reprogramar`, data)
+    return res
+  },
+
   checkAndProcessPastEvents: async (): Promise<void> => Promise.resolve(),
 }
