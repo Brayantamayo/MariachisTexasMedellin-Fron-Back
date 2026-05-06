@@ -16,6 +16,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
 RUN npx prisma generate
 RUN npm run build
 
@@ -49,7 +51,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 COPY prisma ./prisma
