@@ -2,20 +2,24 @@
 # Etapa 1: dependencias
 # ════════════════════════════════════════════════════════════════
 FROM node:20-slim AS deps
+
 WORKDIR /app
 
 COPY package*.json ./
+
 RUN npm ci
 
 # ════════════════════════════════════════════════════════════════
-# Etapa 2: build TypeScript
+# Etapa 2: build TypeScript + Prisma
 # ════════════════════════════════════════════════════════════════
 FROM node:20-slim AS builder
+
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Prisma necesita una URL válida durante generate/build
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
 RUN npx prisma generate
@@ -41,23 +45,40 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
+# Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Node
 ENV NODE_ENV=production
+
+# Fuerza IPv4 primero (soluciona ENETUNREACH IPv6)
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 WORKDIR /app
 
 COPY package*.json ./
+
+# Instala deps de producción
 RUN npm ci --omit=dev
 
+# Copia build
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/generated ./dist/src/generated
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
+# Copia Prisma generado
+COPY --from=builder /app/src/generated ./dist/src/generated
+
+# Copia TODOS los node_modules desde builder
+# (Prisma necesita .prisma internamente)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Prisma schema/config
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
+# Entrypoint
 COPY entrypoint.sh ./
+
 RUN chmod +x entrypoint.sh
 
 EXPOSE 3000

@@ -1,8 +1,10 @@
-# ── Imagen base con Chrome para Puppeteer ────────────────────────
-# Usamos la imagen oficial de Puppeteer que ya incluye Chromium
+# ── Imagen base quiero usar una imagen ya hecha que tiene Node.js 20 instalado ────────────────────────
+
 FROM node:20-slim
 
 # Dependencias del sistema necesarias para Puppeteer/Chrome
+# Instalar paquetes Linux
+
 RUN apt-get update && apt-get install -y \
     chromium \
     libatk-bridge2.0-0 \
@@ -19,12 +21,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Decirle a Puppeteer que use el Chromium del sistema (no descarga el suyo)
+# estas son la variables de entorno 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
+#esta es la caropeta de trabajo  osea que todo se va ejecutar aqui adentro 
 WORKDIR /app
 
-# Instala dependencias primero (cache de Docker)
+# Instala dependencias primero 
+# aqui instala todas las dependencias  expres  prisma  ts 
+#se copia el packjson primero 
 COPY package*.json ./
 RUN npm install
 
@@ -34,10 +40,13 @@ COPY prisma.config.ts ./
 RUN npx prisma generate
 
 # Copia el resto del código
+#controllers  models  services  utils etcc osea todo el codigo
 COPY . .
 
+#puerto de entrada
 EXPOSE 3000
 
 # Entrypoint: migra y arranca con hot reload
+#esto es que ejecutar cuando se inicia el contenedor en este caso construye la imagen crea contenedor y lo arranca 
 CMD npx prisma db push && \
     npx ts-node-dev -r dotenv/config --respawn --transpile-only src/index.ts
