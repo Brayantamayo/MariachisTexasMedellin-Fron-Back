@@ -19,11 +19,26 @@ const EMPTY_ERRORS: EmployeeFormErrors = {};
 const validate = (data: any): EmployeeFormErrors => {
   const errors: EmployeeFormErrors = {};
 
-  if (!data.email?.trim()) errors.email = 'El correo es requerido';
+  if (!data.email?.trim()) {
+    errors.email = 'El correo es requerido';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+    errors.email = 'El correo no es válido';
+  }
+
   if (!data.name?.trim()) errors.name = 'El nombre es requerido';
   if (!data.lastName?.trim()) errors.lastName = 'El apellido es requerido';
-  if (!data.documentNumber?.trim()) errors.documentNumber = 'El número de documento es requerido';
-  if (!data.phone?.trim()) errors.phone = 'El teléfono es requerido';
+  
+  if (!data.documentNumber?.trim()) {
+    errors.documentNumber = 'El número de documento es requerido';
+  } else if (!/^\d{6,12}$/.test(data.documentNumber.trim())) {
+    errors.documentNumber = 'El documento debe tener 6-12 dígitos';
+  }
+
+  if (!data.phone?.trim()) {
+    errors.phone = 'El teléfono es requerido';
+  } else if (!/^3\d{9}$/.test(data.phone.trim())) {
+    errors.phone = 'El teléfono debe ser válido (10 dígitos, empieza en 3)';
+  }
 
   if (!data.birthDate) {
     errors.birthDate = 'La fecha de nacimiento es requerida';
@@ -80,7 +95,13 @@ export const EmployeeEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, em
   }, [employee, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Prevent non-numeric characters for document and phone
+    if (name === 'documentNumber' || name === 'phone') {
+      value = value.replace(/\D/g, '');
+    }
+
     setFormData((prev: any) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: undefined }));
     if (error)        setError(null);

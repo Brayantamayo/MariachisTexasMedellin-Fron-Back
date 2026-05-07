@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { Quotation, Rehearsal, Reservation, Service, Song } from '@/types';
 import { reservaService } from '../../reservas/services/reservaService';
-import { dashboardService } from '../services/dashboardService';
 import { ventaService, Sale } from '../../ventas/services/ventaService';
 import { cotizacionService } from '../../cotizaciones/services/cotizacionService';
 import { rehearsalService } from '../../ensayos/services/rehearsalService';
@@ -70,7 +69,7 @@ const COLORS = {
 
 const CHART_COLORS = [COLORS.red, COLORS.ink, COLORS.amber, COLORS.emerald, COLORS.teal];
 const WEEK_DAYS = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
-const SLOT_LABELS = ['Mañana', 'Tarde', 'Noche', 'Madrugada'];
+const SLOT_LABELS = ['Ma├▒ana', 'Tarde', 'Noche', 'Madrugada'];
 
 interface DashboardData {
   reservations: Reservation[];
@@ -292,7 +291,7 @@ const tooltipFormatter = (value: number, name: string) => {
   return [value, name];
 };
 
-/* ─── Custom Tooltip ─── */
+/* ÔöÇÔöÇÔöÇ Custom Tooltip ÔöÇÔöÇÔöÇ */
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
 
@@ -316,7 +315,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-/* ─── Dashboard Card ─── */
+/* ÔöÇÔöÇÔöÇ Dashboard Card ÔöÇÔöÇÔöÇ */
 const DashboardCard: React.FC<{
   title: string;
   subtitle?: string;
@@ -340,7 +339,7 @@ const DashboardCard: React.FC<{
   </section>
 );
 
-/* ─── Section Header ─── */
+/* ÔöÇÔöÇÔöÇ Section Header ÔöÇÔöÇÔöÇ */
 const DashboardSectionHeader: React.FC<{
   eyebrow: string;
   title: string;
@@ -358,7 +357,7 @@ const DashboardSectionHeader: React.FC<{
   </div>
 );
 
-/* ─── Section Tabs ─── */
+/* ÔöÇÔöÇÔöÇ Section Tabs ÔöÇÔöÇÔöÇ */
 const DashboardSectionTabs: React.FC<{
   items: DashboardSectionTabItem[];
   activeSection: DashboardSectionId;
@@ -392,7 +391,7 @@ const DashboardSectionTabs: React.FC<{
   </div>
 );
 
-/* ─── Chart Canvas ─── */
+/* ÔöÇÔöÇÔöÇ Chart Canvas ÔöÇÔöÇÔöÇ */
 const ChartCanvas: React.FC<{
   config?: ChartConfiguration;
   height: number;
@@ -424,7 +423,7 @@ const ChartCanvas: React.FC<{
   );
 };
 
-/* ─── Trend Badge ─── */
+/* ÔöÇÔöÇÔöÇ Trend Badge ÔöÇÔöÇÔöÇ */
 const TrendBadge: React.FC<{ value: number; suffix: string }> = ({ value, suffix }) => {
   const positive = value >= 0;
   const Icon = positive ? ArrowUpRight : ArrowDownRight;
@@ -443,7 +442,7 @@ const TrendBadge: React.FC<{ value: number; suffix: string }> = ({ value, suffix
   );
 };
 
-/* ─── Stat Card ─── */
+/* ÔöÇÔöÇÔöÇ Stat Card ÔöÇÔöÇÔöÇ */
 const StatCard: React.FC<{
   icon: React.ElementType;
   label: string;
@@ -475,7 +474,7 @@ const StatCard: React.FC<{
   );
 };
 
-/* ─── Ranked List Card ─── */
+/* ÔöÇÔöÇÔöÇ Ranked List Card ÔöÇÔöÇÔöÇ */
 const RankedListCard: React.FC<{
   icon: React.ElementType;
   label: string;
@@ -529,7 +528,7 @@ const RankedListCard: React.FC<{
   );
 };
 
-/* ─── Heatmap ─── */
+/* ÔöÇÔöÇÔöÇ Heatmap ÔöÇÔöÇÔöÇ */
 const Heatmap = React.memo(({ matrix }: { matrix: any[][][] }) => {
   const getCellBg = (items: any[]): string => {
     if (items.length === 0) return 'bg-slate-50/40 border-slate-100/50';
@@ -602,7 +601,7 @@ const Heatmap = React.memo(({ matrix }: { matrix: any[][][] }) => {
   );
 });
 
-/* ─── Monthly Calendar ─── */
+/* ÔöÇÔöÇÔöÇ Monthly Calendar ÔöÇÔöÇÔöÇ */
 const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date; cells: CalendarDayCell[] }) => (
   <div className="overflow-hidden rounded-[2rem] border border-slate-200/60 bg-white shadow-xl shadow-slate-200/30">
     <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/30 px-6 py-5">
@@ -617,7 +616,7 @@ const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date
           <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />Reserva
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />Cotización
+          <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />Cotizaci├│n
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]" />Ensayo
@@ -682,7 +681,7 @@ const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date
                 </div>
               ))}
               {remainingItems > 0 && (
-                <p className="text-[10px] font-semibold text-slate-400">+{remainingItems} más</p>
+                <p className="text-[10px] font-semibold text-slate-400">+{remainingItems} m├ís</p>
               )}
             </div>
           </div>
@@ -692,7 +691,7 @@ const MonthlyCalendarBoard = React.memo(({ monthDate, cells }: { monthDate: Date
   </div>
 ));
 
-/* ─── Status Pill ─── */
+/* ÔöÇÔöÇÔöÇ Status Pill ÔöÇÔöÇÔöÇ */
 const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' | 'agenda' }> = ({
   status,
   kind,
@@ -728,7 +727,7 @@ const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' |
   );
 };
 
-/* ─── Loading ─── */
+/* ÔöÇÔöÇÔöÇ Loading ÔöÇÔöÇÔöÇ */
 const LoadingDashboard = () => (
   <div className="space-y-5">
     <div className="rounded-[2.5rem] bg-slate-950 px-6 py-8">
@@ -748,9 +747,9 @@ const LoadingDashboard = () => (
   </div>
 );
 
-/* ════════════════════════════════════════════════════════
+/* ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
    DASHBOARD PAGE
-   ════════════════════════════════════════════════════════ */
+   ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<DashboardSectionId>('executive');
@@ -767,7 +766,7 @@ export const DashboardPage: React.FC = () => {
   const [reloadToken, setReloadToken] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  /* ── Hero mouse-follow state ── */
+  /* ÔöÇÔöÇ Hero mouse-follow state ÔöÇÔöÇ */
   const heroRef = useRef<HTMLElement>(null);
   const [mousePos, setMousePos] = useState<HeroMousePos>({ x: 50, y: 50 });
   const [isHovered, setIsHovered] = useState(false);
@@ -816,202 +815,677 @@ export const DashboardPage: React.FC = () => {
     };
   }, []);
 
-  /* ── Data loading ── */
+  /* ÔöÇÔöÇ Data loading ÔöÇÔöÇ */
   useEffect(() => {
     let cancelled = false;
 
     const loadDashboard = async () => {
       setLoading(true);
-      
-      const reservations = await reservaService.getReservations();
-      const sales = await ventaService.getSales();
+      setErrorMessage(null);
 
-      // ✅ CORRECCIÓN: getClients() puede retornar { clients: User[], pagination: any }
-      const clientsResponse = await clientService.getClients();
-      const clients = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.clients;
+      const results = await Promise.allSettled([
+        reservaService.getReservations(),
+        ventaService.getSales(),
+        cotizacionService.getQuotations(),
+        rehearsalService.getRehearsals(),
+        servicesService.getServices(),
+        repertoireService.getSongs(),
+      ]);
 
-      const activeRes = reservations.filter(r => r.status === 'Confirmado' || r.status === 'Pendiente');
-      const totalIncome = sales.reduce((acc, curr) => acc + curr.amount, 0);
-      const pending = activeRes.reduce((acc, curr) => acc + (curr.totalAmount - curr.paidAmount), 0);
-      
-      let relevantEvents = [...activeRes];
-      relevantEvents.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+      if (cancelled) return;
 
-      // 1. Ingresos Mensuales (Últimos 6 meses)
-      const last6Months = Array.from({ length: 6 }, (_, i) => {
-          const d = new Date();
-          d.setDate(1);
-          d.setMonth(d.getMonth() - i);
-          return {
-            label: d.toLocaleString('es-CO', { month: 'short' }),
-            month: d.getMonth(),
-            year: d.getFullYear()
-          };
-      }).reverse();
+      const reservations = results[0].status === 'fulfilled' ? results[0].value : [];
+      const sales = results[1].status === 'fulfilled' ? results[1].value : [];
+      const quotations = results[2].status === 'fulfilled' ? results[2].value : [];
+      const rehearsals = results[3].status === 'fulfilled' ? results[3].value : [];
+      const services = results[4].status === 'fulfilled' ? results[4].value : [];
+      const songs = results[5].status === 'fulfilled' ? results[5].value : [];
 
-      const monthlyIncome = last6Months.map(m => {
-          const monthlySales = sales.filter(s => {
-              const d = new Date(s.date);
-              return d.getMonth() === m.month && d.getFullYear() === m.year;
-          });
-          const total = monthlySales.reduce((sum, s) => sum + s.amount, 0);
-          return { name: m.label, ingresos: total };
-      });
+      const failures = results.filter(r => r.status === 'rejected').length;
 
-      // 2. Tipos de Evento
-      const eventTypesCount: Record<string, number> = {};
-      reservations.forEach(r => {
-          const type = r.eventType || 'Otro';
-          eventTypesCount[type] = (eventTypesCount[type] || 0) + 1;
-      });
-      const eventTypeData = Object.keys(eventTypesCount).map(type => ({
-          name: type,
-          value: eventTypesCount[type]
-      }));
+      setDashboard({ reservations, sales, quotations, rehearsals, services, songs });
 
-      // 3. Tendencia Semanal (Últimas 4 semanas)
-      const weeklyTrendData = [];
-      for (let i = 3; i >= 0; i--) {
-          const startOfWeek = new Date();
-          startOfWeek.setDate(startOfWeek.getDate() - (i * 7) - startOfWeek.getDay());
-          startOfWeek.setHours(0, 0, 0, 0);
-          
-          const endOfWeek = new Date(startOfWeek);
-          endOfWeek.setDate(endOfWeek.getDate() + 6);
-          endOfWeek.setHours(23, 59, 59, 999);
-
-          const weekReservations = reservations.filter(r => {
-              const d = new Date(r.createdAt);
-              return d >= startOfWeek && d <= endOfWeek;
-          });
-
-          weeklyTrendData.push({
-              name: `Sem ${4-i}`,
-              confirmadas: weekReservations.filter(r => r.status === 'Confirmado').length,
-              pendientes: weekReservations.filter(r => r.status === 'Pendiente').length
-          });
+      if (failures > 0) {
+        setErrorMessage('Algunos m├│dulos no respondieron. El dashboard muestra la informaci├│n disponible.');
       }
 
-      setStats({
-        income: totalIncome,
-        activeReservations: activeRes.length,
-        pendingBalance: pending,
-        totalClients: clients.length, // ✅ Ahora clients siempre es un array
-        upcomingEvents: relevantEvents.slice(0, 5),
-        recentActivity: reservations.slice(0, 5),
-        monthlyIncomeData: monthlyIncome,
-        eventTypeData: eventTypeData,
-        reservationStatusData: weeklyTrendData
-      });
-
       setLoading(false);
-      setTimeout(() => setShowWelcomeToast(true), 500);
-      setTimeout(() => setShowWelcomeToast(false), 5000);
+      setRefreshing(false);
     };
 
-    loadDashboardData();
-  }, [user]);
+    loadDashboard();
+    return () => { cancelled = true; };
+  }, [user, reloadToken]);
 
-  if (loading) {
-      return <div className="p-10 text-center text-slate-400">Cargando tablero...</div>;
-  }
+  /* ÔöÇÔöÇ Date helpers ÔöÇÔöÇ */
+  const today = startOfToday();
+  const currentMonthStart = startOfMonth();
+  const currentMonthEnd = endOfMonth();
+  const previousMonthStart = startOfMonth(new Date(), -1);
+  const previousMonthEnd = endOfMonth(new Date(), -1);
+  const next14Days = new Date(today);
+  next14Days.setDate(next14Days.getDate() + 14);
+  const next30Days = new Date(today);
+  next30Days.setDate(next30Days.getDate() + 30);
+  const next60Days = new Date(today);
+  next60Days.setDate(next60Days.getDate() + 60);
 
-  const WelcomeToast = () => (
-      createPortal(
-        <div className={`fixed top-6 right-6 z-[200] transition-all duration-500 transform ${showWelcomeToast ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
-            <div className="flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border border-secondary-100 bg-white/95 backdrop-blur-md min-w-[320px]">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-secondary-100 text-secondary-600">
-                    <CheckCircle size={20} strokeWidth={3} />
-                </div>
-                <div className="flex-1">
-                    <h4 className="font-bold text-sm text-secondary-950">¡Bienvenido, {user?.name}!</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-0.5">
-                        Sesión iniciada correctamente.
-                    </p>
-                </div>
-                <button onClick={() => setShowWelcomeToast(false)} className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
-                    <X size={18} />
-                </button>
-            </div>
-        </div>,
-        document.body
-      )
+  /* ÔöÇÔöÇ Data transforms ÔöÇÔöÇ */
+  const reservations = (dashboard.reservations ?? []).map(r => ({
+    ...r,
+    normalizedStatus: normalizeReservationStatus(r.status),
+    pendingValue: getReservationPending(r),
+    eventDateTime: reservationDate(r),
+  }));
+
+  const quotations = (dashboard.quotations ?? []).map(q => ({
+    ...q,
+    normalizedStatus: normalizeQuotationStatus(q.status),
+    eventDateTime: toDateTime(q.eventDate, q.startTime),
+  }));
+
+  const rehearsals = (dashboard.rehearsals ?? []).map(r => ({
+    ...r,
+    normalizedStatus: (r.status || 'PENDIENTE').toUpperCase(),
+    eventDateTime: rehearsalDate(r),
+  }));
+
+  const activeReservations = reservations.filter(r =>
+    ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'].includes(r.normalizedStatus)
+  );
+  const futureReservations = activeReservations
+    .filter(r => r.eventDateTime >= today)
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+  const pendingQuotes = quotations.filter(q => q.normalizedStatus === 'EN_ESPERA');
+  const convertedQuotes = quotations.filter(q => q.normalizedStatus === 'CONVERTIDA');
+  const pendingRehearsals = rehearsals
+    .filter(r => r.normalizedStatus === 'PENDIENTE')
+    .sort((a, b) => a.eventDateTime.getTime() - b.eventDateTime.getTime());
+
+  const reservationLookup = reservations.reduce<Record<string, (typeof reservations)[number]>>(
+    (acc, r) => { acc[String(r.id)] = r; return acc; }, {}
+  );
+  const serviceLookup = dashboard.services.reduce<Record<string, Service>>(
+    (acc, s) => { acc[String(s.id)] = s; return acc; }, {}
+  );
+  const songLookup = dashboard.songs.reduce<Record<string, Song>>(
+    (acc, s) => { acc[String(s.id)] = s; return acc; }, {}
   );
 
+  const currentMonthSales = dashboard.sales.filter(s => {
+    const d = new Date(s.date);
+    return d >= currentMonthStart && d <= currentMonthEnd;
+  });
+  const currentMonthRevenue = currentMonthSales.reduce((t, s) => t + Number(s.amount || 0), 0);
+  const previousMonthRevenue = dashboard.sales
+    .filter(s => { const d = new Date(s.date); return d >= previousMonthStart && d <= previousMonthEnd; })
+    .reduce((t, s) => t + Number(s.amount || 0), 0);
+
+  const currentMonthReservationsCount = activeReservations.filter(
+    r => r.eventDateTime >= currentMonthStart && r.eventDateTime <= currentMonthEnd
+  ).length;
+  const previousMonthReservationsCount = activeReservations.filter(
+    r => r.eventDateTime >= previousMonthStart && r.eventDateTime <= previousMonthEnd
+  ).length;
+
+  const receivableBalance = activeReservations.reduce((t, r) => t + r.pendingValue, 0);
+  const pipelineValue =
+    pendingQuotes.reduce((t, q) => t + Number(q.totalAmount || 0), 0) + receivableBalance;
+  const paidReservationsCount = activeReservations.filter(r => r.pendingValue <= 0.01).length;
+  const paymentHealth = activeReservations.length
+    ? (paidReservationsCount / activeReservations.length) * 100 : 0;
+  const quoteConversion = quotations.length
+    ? (convertedQuotes.length / quotations.length) * 100 : 0;
+
+  const revenueDelta = getMetricDelta(currentMonthRevenue, previousMonthRevenue);
+  const reservationsDelta = getMetricDelta(currentMonthReservationsCount, previousMonthReservationsCount);
+
+  /* ÔöÇÔöÇ Weekly flow data ÔöÇÔöÇ */
+  const weeklyFlowData = Array.from({ length: 8 }, (_, index) => {
+    const start = startOfWeek(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (7 * (7 - index))));
+    const end = endOfWeek(start);
+    return {
+      name: `Sem ${index + 1}`,
+      Cotizaciones: quotations.filter(q => { const d = new Date(q.createdAt); return d >= start && d <= end; }).length,
+      Reservas: reservations.filter(r => { const d = new Date(r.createdAt); return d >= start && d <= end; }).length,
+      Ventas: dashboard.sales.filter(s => { const d = new Date(s.date); return d >= start && d <= end; }).length,
+    };
+  });
+
+  const reservationStatusData = [
+    { name: 'Confirmadas', value: reservations.filter(r => r.normalizedStatus === 'CONFIRMADA').length },
+    { name: 'Pendientes', value: reservations.filter(r => r.normalizedStatus === 'PENDIENTE').length },
+    { name: 'Reprogramadas', value: reservations.filter(r => r.normalizedStatus === 'REPROGRAMADA').length },
+    { name: 'Anuladas', value: reservations.filter(r => r.normalizedStatus === 'ANULADA').length },
+  ].filter(i => i.value > 0);
+
+  const getSaleServiceAllocations = (sale: Sale) => {
+    const saleAmount = Number(sale.amount || 0);
+    const directServices = (sale.services || [])
+      .map(s => ({ name: normalizeLabel(s.nombre, 'Servicio general'), weight: Number(s.precio || 0) * Number(s.cantidad || 1) }))
+      .filter(s => s.weight > 0);
+    if (directServices.length > 0) return scaleWeightedEntries(directServices, saleAmount);
+    const linked = sale.reservationId ? reservationLookup[String(sale.reservationId)] : undefined;
+    const reservationServices = (linked?.selectedServices || [])
+      .map(s => {
+        const meta = serviceLookup[String(s.serviceId)];
+        const qty = Number(s.quantity || 1);
+        const base = Number(meta?.precio || 0) * qty;
+        return { name: normalizeLabel(meta?.nombre || linked?.eventType || sale.eventType || sale.concept, 'Servicio general'), weight: base > 0 ? base : qty };
+      })
+      .filter(s => s.weight > 0);
+    if (reservationServices.length > 0) return scaleWeightedEntries(reservationServices, saleAmount);
+    return [{ name: normalizeLabel(sale.eventType || sale.concept, 'Servicio general'), value: saleAmount }];
+  };
+
+  const currentMonthServiceAllocations = currentMonthSales.flatMap(getSaleServiceAllocations);
+  const currentMonthServiceTotals = Object.entries(
+    currentMonthServiceAllocations.reduce<Record<string, number>>((acc, e) => {
+      acc[e.name] = (acc[e.name] || 0) + Number(e.value || 0); return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  const highlightedServiceTotals = currentMonthServiceTotals.slice(0, 4);
+  const currentMonthLeaderService = highlightedServiceTotals[0];
+
+  const currentMonthWeeks = Array.from(
+    { length: Math.max(1, Math.ceil(currentMonthEnd.getDate() / 7)) },
+    (_, i) => ({ name: `Sem ${i + 1}`, total: 0, services: {} as Record<string, number> })
+  );
+  currentMonthSales.forEach(sale => {
+    const d = new Date(sale.date);
+    const wi = Math.min(currentMonthWeeks.length - 1, Math.floor((Math.max(d.getDate(), 1) - 1) / 7));
+    const bucket = currentMonthWeeks[wi];
+    if (!bucket) return;
+    getSaleServiceAllocations(sale).forEach(a => {
+      bucket.services[a.name] = (bucket.services[a.name] || 0) + a.value;
+      bucket.total += a.value;
+    });
+  });
+
+  const serviceTrendSeries = highlightedServiceTotals.slice(0, 3);
+  const currentMonthServiceTrendData = currentMonthWeeks.map(week => {
+    const row: Record<string, string | number> = { name: week.name, total: week.total };
+    serviceTrendSeries.forEach(s => { row[s.name] = week.services[s.name] || 0; });
+    return row;
+  });
+
+  const topEventTypesData = Object.entries(
+    reservations.reduce<Record<string, number>>((acc, r) => {
+      if (r.normalizedStatus === 'ANULADA') return acc;
+      const k = r.eventType || 'Otro';
+      acc[k] = (acc[k] || 0) + 1; return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  const topEventTypesTotal = topEventTypesData.reduce((s, i) => s + i.value, 0);
+  const topEventLeader = topEventTypesData[0];
+
+  const topSongsData = Object.entries(
+    [
+      ...reservations.flatMap(r => (r.repertoireIds || []).map(id => normalizeLabel(songLookup[String(id)]?.title, 'Cancion sin nombre'))),
+      ...quotations.flatMap(q => (q.repertoireIds || []).map(id => normalizeLabel(songLookup[String(id)]?.title, 'Cancion sin nombre'))),
+      ...dashboard.sales.flatMap(s => (s.repertoire || []).map(r => normalizeLabel(r.titulo, 'Cancion sin nombre'))),
+    ].reduce<Record<string, number>>((acc, name) => { acc[name] = (acc[name] || 0) + 1; return acc; }, {})
+  ).map(([name, value]) => ({ name, value, subtitle: value === 1 ? '1 solicitud' : `${value} solicitudes` }))
+    .sort((a, b) => b.value - a.value).slice(0, 4);
+
+  const topClients = Object.values(
+    reservations.reduce<Record<string, { name: string; reservas: number; valor: number }>>((acc, r) => {
+      const k = r.clientName || r.clientEmail || r.clientId || r.id;
+      if (!acc[k]) acc[k] = { name: r.clientName || 'Cliente', reservas: 0, valor: 0 };
+      acc[k].reservas += 1;
+      acc[k].valor += Number(r.totalAmount || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b.valor - a.valor).slice(0, 5);
+
+  const currentMonthLabel = formatMonthName(currentMonthStart);
+  const currentMonthAgenda = futureReservations.filter(
+    r => r.eventDateTime >= currentMonthStart && r.eventDateTime <= currentMonthEnd
+  ).length;
+
+  /* ÔöÇÔöÇ Chart configs ÔöÇÔöÇ */
+  const topEventTypesChart = useMemo(() => (
+    topEventTypesData.length
+    ? ({
+        type: 'doughnut',
+        data: {
+          labels: topEventTypesData.map(i => i.name),
+          datasets: [{
+            data: topEventTypesData.map(i => i.value),
+            backgroundColor: topEventTypesData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+            borderWidth: 0,
+            hoverOffset: 6,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx: any) => {
+              const total = topEventTypesData.reduce((s, i) => s + i.value, 0);
+              const v = Number(ctx.raw || 0);
+              return `${ctx.label}: ${v} (${total > 0 ? Math.round((v / total) * 100) : 0}%)`;
+            }}},
+          },
+        },
+      } satisfies ChartConfiguration<'doughnut'>)
+    : undefined
+  ), [topEventTypesData]);
+
+  const revenueByServiceChart = useMemo(() => (
+    serviceTrendSeries.length > 0
+    ? ({
+        type: 'line',
+        data: {
+          labels: currentMonthServiceTrendData.map(i => String(i.name)),
+          datasets: [
+            ...serviceTrendSeries.map((s, i) => ({
+              label: s.name,
+              data: currentMonthServiceTrendData.map(d => Number(d[s.name] || 0)),
+              borderColor: CHART_COLORS[i % CHART_COLORS.length],
+              backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.4,
+              yAxisID: 'y',
+            })),
+            {
+              label: 'Total del mes',
+              data: currentMonthServiceTrendData.map(d => Number(d.total || 0)),
+              borderColor: COLORS.slate,
+              backgroundColor: COLORS.slate,
+              borderDash: [6, 4],
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3,
+              yAxisID: 'y1',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', align: 'start', labels: { boxWidth: 10, boxHeight: 10, color: COLORS.slate, font: { size: 11, weight: 'bold' } } },
+            tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label}: ${fullCurrency(Number(ctx.raw || 0))}` } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: COLORS.slate, font: { size: 11 } } },
+            y: { beginAtZero: true, grid: { color: COLORS.slateLine }, ticks: { color: COLORS.slate, callback: (v: any) => shortCurrency(Number(v)) } },
+            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: COLORS.slate, callback: (v: any) => shortCurrency(Number(v)) } },
+          },
+        },
+      } satisfies ChartConfiguration<'line'>)
+    : undefined
+  ), [serviceTrendSeries, currentMonthServiceTrendData]);
+
+  const reservationMixChart = useMemo(() => (
+    reservationStatusData.length
+    ? ({
+        type: 'bar',
+        data: {
+          labels: reservationStatusData.map(i => i.name),
+          datasets: [{
+            data: reservationStatusData.map(i => i.value),
+            backgroundColor: reservationStatusData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+            borderRadius: 10,
+            borderSkipped: false,
+            barThickness: 18,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx: any) => `${ctx.label}: ${Number(ctx.raw || 0)} reservas` } } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: COLORS.slateLine }, ticks: { precision: 0, color: COLORS.slate } },
+            y: { grid: { display: false }, ticks: { color: COLORS.slate, font: { size: 11, weight: 'bold' } } },
+          },
+        },
+      } satisfies ChartConfiguration<'bar'>)
+    : undefined
+  ), [reservationStatusData]);
+
+  const hasWeeklyFlowData = weeklyFlowData.some(item =>
+    Number(item.Cotizaciones || 0) > 0 ||
+    Number(item.Reservas || 0) > 0 ||
+    Number(item.Ventas || 0) > 0
+  );
+
+  const weeklyAgendaLoadData = useMemo(() => WEEK_DAYS.map((day, i) => ({
+    day,
+    Reservas: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+    Ensayos: pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+    Total: futureReservations.filter(r => getWeekdayIndex(r.eventDateTime) === i).length +
+           pendingRehearsals.filter(r => getWeekdayIndex(r.eventDateTime) === i).length,
+  })), [futureReservations, pendingRehearsals]);
+
+  const hasWeeklyAgendaData = weeklyAgendaLoadData.some(item =>
+    Number(item.Reservas || 0) > 0 || Number(item.Ensayos || 0) > 0
+  );
+  const weeklyAgendaPeak = Math.max(
+    0,
+    ...weeklyAgendaLoadData.map(item => Math.max(item.Reservas, item.Ensayos, item.Total))
+  );
+  const weeklyAgendaRadiusMax = Math.max(4, weeklyAgendaPeak);
+  const weeklyAgendaTickCount = Math.min(6, weeklyAgendaRadiusMax + 1);
+
+  const occupancyMatrix = useMemo(() => {
+    const matrix = Array.from({ length: SLOT_LABELS.length }, () => Array(7).fill(0).map(() => [] as any[]));
+    
+    futureReservations.filter(r => r.eventDateTime <= next60Days).forEach(r => {
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.clientName || 'Sin nombre', 
+        type: 'reserva',
+        id: r.id 
+      });
+    });
+    
+    pendingQuotes.filter(q => q.eventDateTime >= today && q.eventDateTime <= next60Days).forEach(q => {
+      matrix[getSlotIndex(q.eventDateTime.getHours())][getWeekdayIndex(q.eventDateTime)].push({ 
+        name: q.clientName || 'Cotizaci├│n', 
+        type: 'cotizacion',
+        id: q.id 
+      });
+    });
+    
+    pendingRehearsals.filter(r => r.eventDateTime <= next60Days).forEach(r => {
+      matrix[getSlotIndex(r.eventDateTime.getHours())][getWeekdayIndex(r.eventDateTime)].push({ 
+        name: r.title || 'Ensayo', 
+        type: 'ensayo',
+        id: r.id 
+      });
+    });
+    
+    return matrix;
+  }, [futureReservations, pendingQuotes, pendingRehearsals, today, next60Days]);
+
+  /* Calendar */
+  const calendarMonthCells: CalendarDayCell[] = useMemo(() => {
+    const gridStart = startOfWeek(currentMonthStart);
+    const gridEnd = endOfWeekGrid(currentMonthStart);
+    const sourceItems = [
+      ...futureReservations.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `res-${r.id}`, label: `${r.startTime || r.eventTime || '00:00'} ${r.clientName}`, tone: 'reservation' as const } })),
+      ...pendingQuotes.filter(q => q.eventDateTime >= gridStart && q.eventDateTime <= gridEnd)
+        .map(q => ({ date: q.eventDateTime, item: { id: `quote-${q.id}`, label: `${q.startTime || '00:00'} ${q.clientName}`, tone: 'quotation' as const } })),
+      ...pendingRehearsals.filter(r => r.eventDateTime >= gridStart && r.eventDateTime <= gridEnd)
+        .map(r => ({ date: r.eventDateTime, item: { id: `reh-${r.id}`, label: `${r.time || r.hora || '00:00'} ${r.title}`, tone: 'rehearsal' as const } })),
+    ];
+
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      return {
+        date,
+        inMonth: date.getMonth() === currentMonthStart.getMonth(),
+        isToday: date.toDateString() === today.toDateString(),
+        isPast: date < today && date.toDateString() !== today.toDateString(),
+        items: sourceItems.filter(s => s.date.toDateString() === date.toDateString()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(s => s.item),
+      };
+    });
+  }, [currentMonthStart, futureReservations, pendingQuotes, pendingRehearsals, today]);
+
+  /* Agenda */
+  const agendaItems: AgendaItem[] = useMemo(() => [
+    ...futureReservations.slice(0, 6).map(r => ({
+      id: `res-${r.id}`, title: `${r.eventType} ┬À ${r.clientName}`,
+      subtitle: `Reserva #${r.id} ┬À ${fullCurrency(r.totalAmount)}`,
+      date: r.eventDateTime, kind: 'reserva' as const, status: r.normalizedStatus,
+    })),
+    ...pendingRehearsals.slice(0, 4).map(r => ({
+      id: `ens-${r.id}`, title: r.title, subtitle: r.location,
+      date: r.eventDateTime, kind: 'ensayo' as const, status: r.normalizedStatus,
+    })),
+  ].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 8), [futureReservations, pendingRehearsals]);
+
+  /* Activity feed */
+  const activityFeed: ActivityItem[] = useMemo(() => [
+    ...reservations.map(r => ({ id: `res-${r.id}`, title: `${r.eventType} ┬À ${r.clientName}`, subtitle: `Reserva ┬À ${normalizeReservationStatus(r.status)}`, date: new Date(r.createdAt), amount: Number(r.totalAmount || 0), kind: 'reserva' as const })),
+    ...quotations.map(q => ({ id: `q-${q.id}`, title: `${q.eventType} ┬À ${q.clientName}`, subtitle: `Cotizacion ┬À ${normalizeQuotationStatus(q.status)}`, date: new Date(q.createdAt), amount: Number(q.totalAmount || 0), kind: 'cotizacion' as const })),
+    ...dashboard.sales.map(s => ({ id: `sale-${s.id}`, title: s.concept || s.eventType || 'Venta registrada', subtitle: `${s.clientName} ┬À ${s.method}`, date: new Date(s.date), amount: Number(s.amount || 0), kind: 'venta' as const })),
+  ].filter(i => !Number.isNaN(i.date.getTime())).sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10), [reservations, quotations, dashboard.sales]);
+
+  /* Alerts */
+  const alerts: AlertItem[] = useMemo(() => [
+    ...futureReservations.filter(r => r.pendingValue > 0.01 && r.eventDateTime <= next14Days).slice(0, 3)
+      .map(r => ({ id: `alert-res-${r.id}`, title: `Cobro pendiente ┬À Reserva #${r.id}`, description: `${r.clientName} tiene ${fullCurrency(r.pendingValue)} por pagar. Evento el ${formatCompactDate(r.eventDateTime)}.`, tone: 'danger' as const })),
+    ...pendingQuotes.filter(q => { const days = Math.floor((today.getTime() - new Date(q.createdAt).getTime()) / 86400000); return days >= 7; }).slice(0, 2)
+      .map(q => ({ id: `alert-q-${q.id}`, title: 'Cotizacion sin respuesta', description: `${q.clientName} lleva d├¡as esperando respuesta. Propuesta de ${fullCurrency(q.totalAmount)}.`, tone: 'warning' as const })),
+    ...pendingRehearsals.filter(r => r.eventDateTime <= next14Days).slice(0, 2)
+      .map(r => ({ id: `alert-ens-${r.id}`, title: 'Ensayo pr├│ximo', description: `${r.title} programado para el ${formatCompactDate(r.eventDateTime)}.`, tone: 'success' as const })),
+  ].slice(0, 6), [futureReservations, pendingQuotes, pendingRehearsals, today, next14Days]);
+
+  const next7DaysAgenda = agendaItems.filter(i => i.date <= next30Days).length;
+
+  /* ÔöÇÔöÇ Nav items ÔöÇÔöÇ */
+  const sectionItems: DashboardSectionTabItem[] = [
+    { id: 'executive', label: 'Resumen', icon: Sparkles },
+    { id: 'commercial', label: 'Ventas', icon: TrendingUp },
+    { id: 'operations', label: 'Agenda', icon: CalendarRange },
+    { id: 'alerts', label: 'Alertas', icon: AlertTriangle },
+    { id: 'clients', label: 'Clientes', icon: Activity },
+  ];
+
+  const showExecutive = activeSection === 'executive';
+  const showCommercial = activeSection === 'commercial';
+  const showOperations = activeSection === 'operations';
+  const showAlerts = activeSection === 'alerts';
+  const showClients = activeSection === 'clients';
+
+  if (loading) return <LoadingDashboard />;
+
   return (
-    <div className="space-y-8 animate-fade-in-up pb-10">
-      <WelcomeToast />
-      
-      {/* Welcome Header */}
-      <div className="flex justify-between items-end">
-          <div>
-              <h1 className="text-3xl font-serif font-bold text-slate-800">Hola, {user?.name}</h1>
-              <p className="text-slate-500 mt-1">Aquí tienes el resumen financiero y operativo de hoy.</p>
-          </div>
-          <div className="text-right hidden md:block">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">FECHA ACTUAL</p>
-              <p className="text-lg font-bold text-slate-700">{new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-          </div>
-      </div>
+    <div
+      className="min-h-screen overflow-x-hidden"
+      style={{ background: 'linear-gradient(160deg, #fdf8f6 0%, #f8fafc 50%, #f8fafc 100%)' }}
+    >
+      <div className="mx-auto w-full max-w-[1520px] px-3 py-4 sm:px-4 lg:px-6">
+        <div className="flex flex-col gap-4">
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <KpiCard 
-              title="Ingresos Mes" 
-              value={`$${stats.income.toLocaleString()}`} 
-              icon={TrendingUp} 
-              color="emerald" 
-              trend="+12% vs mes anterior"
-          />
-          <KpiCard 
-              title="Reservas Activas" 
-              value={stats.activeReservations.toString()} 
-              icon={Calendar} 
-              color="red" 
-              trend="3 eventos esta semana"
-          />
-          <KpiCard 
-              title="Saldo por Cobrar" 
-              value={`$${stats.pendingBalance.toLocaleString()}`} 
-              icon={DollarSign} 
-              color="dark" 
-              trend="Gestión de cobro requerida"
-          />
-          <KpiCard 
-              title="Total Clientes" 
-              value={stats.totalClients.toString()} 
-              icon={Users} 
-              color="gray" 
-              trend="+2 nuevos esta semana"
-          />
-      </div>
+          {/* ÔòÉÔòÉÔòÉ HERO ÔòÉÔòÉÔòÉ */}
+          <section
+            ref={heroRef}
+            className="relative overflow-hidden rounded-[2.5rem] bg-[#0a0a0a] px-6 py-8 md:px-9 md:py-10"
+          >
+            {/* Base atmosphere */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-red-900/25 blur-[80px]" />
+              <div className="absolute right-10 bottom-0 h-48 w-48 rounded-full bg-red-950/30 blur-[60px]" />
+              {/* Fine grid */}
+              <div className="absolute inset-0 opacity-[0.055]"
+                style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+            </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Gráfico 1: Ingresos Mensuales */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                  <div>
-                      <h3 className="font-serif font-bold text-slate-800 text-lg flex items-center gap-2">
-                          <BarChart2 size={20} className="text-primary-600" />
-                          Ingresos Mensuales
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-1">Comportamiento de ventas últimos 6 meses</p>
+            {/* ÔòÉÔòÉÔòÉ HERO ÔòÉÔòÉÔòÉ */}
+            <div
+              className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+              style={{
+                opacity: isHovered ? 1 : 0.4,
+                background: `
+                  radial-gradient(circle 180px at ${mousePos.x}% ${mousePos.y}%, rgba(220,38,38,0.55), transparent 100%),
+                  radial-gradient(circle 360px at ${mousePos.x}% ${mousePos.y}%, rgba(185,28,28,0.22), transparent 100%),
+                  radial-gradient(circle 600px at ${mousePos.x}% ${mousePos.y}%, rgba(127,29,29,0.10), transparent 100%)
+                `,
+              }}
+            />
+
+            {/* Content */}
+            <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-red-300">
+                  <Zap size={11} className="text-red-400" />
+                  Dashboard ejecutivo
+                </div>
+
+                <h1 className="mt-5 text-[2.4rem] font-black leading-[1.05] tracking-[-0.03em] text-white md:text-[3rem]">
+                  Panel comercial <br />
+                  <span className="text-red-400">y operativo</span>
+                </h1>
+
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-400 md:text-[0.9375rem]">
+                  Centraliza toda tu operaci├│n en una sola vista: ingresos, reservas, cotizaciones, ensayos y alertas, dise├▒ada para convertir datos en decisiones.
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center gap-2.5">
+                  <div className="rounded-full border border-white/10 bg-white/6 px-3.5 py-2 text-xs font-semibold text-slate-300">
+                    {formatFullDate(today)}
                   </div>
+                  <div className="rounded-full border border-red-500/20 bg-red-500/12 px-3.5 py-2 text-xs font-black text-red-300">
+                    {currentMonthAgenda} eventos este mes
+                  </div>
+                </div>
               </div>
-              <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.monthlyIncomeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(value) => `$${value / 1000}k`} />
-                          <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
-                          <Bar dataKey="ingresos" fill="#ce1126" radius={[6, 6, 0, 0]} barSize={40} />
-                      </BarChart>
-                  </ResponsiveContainer>
+
+              {/* KPI cards */}
+              <div className="grid min-w-0 gap-2.5 sm:grid-cols-3 xl:w-full xl:max-w-[430px]">
+                {[
+                  { label: 'Pipeline activo', value: shortCurrency(pipelineValue), desc: 'Cotizaciones y saldos pendientes', color: 'border-white/8 bg-white/5' },
+                  { label: 'Cobro sano', value: formatPercent(paymentHealth), desc: 'Reservas con pago completo', color: 'border-emerald-400/15 bg-emerald-400/8' },
+                  { label: 'Conversi├│n', value: formatPercent(quoteConversion), desc: 'Cotizaciones en reserva', color: 'border-amber-300/15 bg-amber-300/8' },
+                ].map((kpi, i) => (
+                  <div key={i} className={`rounded-2xl border ${kpi.color} p-4 backdrop-blur-sm`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{kpi.label}</p>
+                    <p className="mt-2.5 text-2xl font-black text-white">{kpi.value}</p>
+                    <p className="mt-1.5 text-xs text-slate-400">{kpi.desc}</p>
+                  </div>
+                ))}
               </div>
-          </div>
+            </div>
+          </section>
+
+          {/* Error notice */}
+          {errorMessage && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-amber-800">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <p className="text-sm font-medium">{errorMessage}</p>
+            </div>
+          )}
+
+          {/* ÔòÉÔòÉÔòÉ TABS ÔòÉÔòÉÔòÉ */}
+          <DashboardSectionTabs
+            items={sectionItems}
+            activeSection={activeSection}
+            onSelect={setActiveSection}
+          />
+
+          {/* ÔòÉÔòÉÔòÉ EXECUTIVE ÔòÉÔòÉÔòÉ */}
+          {showExecutive && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Resumen"
+                title="Vista Administrativa"
+                subtitle="Ingresos del mes, reservas activas, saldo por cobrar y canciones m├ís pedidas."
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.15fr)]">
+                <StatCard
+                  icon={Wallet}
+                  label="Ingresos del mes"
+                  value={shortCurrency(currentMonthRevenue)}
+                  tone="red"
+                  meta={<TrendBadge value={revenueDelta} suffix="vs mes pasado" />}
+                />
+                <StatCard
+                  icon={CalendarDays}
+                  label="Reservas activas"
+                  value={String(activeReservations.length)}
+                  tone="slate"
+                  meta={<TrendBadge value={reservationsDelta} suffix="agenda mensual" />}
+                />
+                <StatCard
+                  icon={HandCoins}
+                  label="Saldo por cobrar"
+                  value={shortCurrency(receivableBalance)}
+                  tone="amber"
+                  meta={
+                    <p className="text-sm font-medium text-slate-400">
+                      {futureReservations.filter(r => r.pendingValue > 0.01).length} reservas con cobro abierto
+                    </p>
+                  }
+                />
+                <RankedListCard
+                  icon={Mic2}
+                  label="Canciones m├ís pedidas"
+                  items={topSongsData}
+                  tone="emerald"
+                  emptyMessage="A├║n no hay repertorios suficientes para destacar canciones."
+                />
+              </div>
+            </section>
+          )}
+
+          {/* ÔòÉÔòÉÔòÉ COMMERCIAL ÔòÉÔòÉÔòÉ */}
+          {showCommercial && (
+            <section className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Comercial"
+                title="Ventas y conversi├│n"
+                subtitle="Ingresos por servicio, tipos de evento y flujo semanal del embudo comercial."
+              />
+
+              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+                <DashboardCard
+                  title="Ingresos por servicio"
+                  subtitle={`Distribuci├│n de ${currentMonthLabel} con avance semanal por l├¡nea.`}
+                  accent
+                  actions={
+                    <button
+                      onClick={() => { setRefreshing(true); setReloadToken(c => c + 1); }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 transition-colors hover:border-red-200 hover:text-red-600"
+                    >
+                      <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+                      Actualizar
+                    </button>
+                  }
+                >
+                  <div className="mb-5 grid gap-2.5 sm:grid-cols-3">
+                    {[
+                      { label: 'Mes actual', value: fullCurrency(currentMonthRevenue) },
+                      { label: 'Mes anterior', value: fullCurrency(previousMonthRevenue) },
+                      { label: currentMonthLeaderService ? currentMonthLeaderService.name : 'Sin datos', value: currentMonthLeaderService ? fullCurrency(currentMonthLeaderService.value) : 'ÔÇö' },
+                    ].map((item, i) => (
+                      <div key={i} className="rounded-xl bg-slate-50 p-3.5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                        <p className="mt-1.5 text-lg font-black text-slate-900">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <ChartCanvas
+                    config={revenueByServiceChart}
+                    height={250}
+                    emptyMessage="Sin ventas suficientes este mes para distribuir ingresos por servicio."
+                  />
+                </DashboardCard>
+
+                <DashboardCard
+                  title="Tipos de evento m├ís pedidos"
+                  subtitle="Distribuci├│n por reservas activas."
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="relative mx-auto w-full" style={{ height: 220 }}>
+                      <ChartCanvas
+                        config={topEventTypesChart}
+                        height={220}
+                        emptyMessage="No hay reservas suficientes para identificar el tipo de evento l├¡der."
+                      />
+                      {topEventTypesData.length > 0 && (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Total</p>
+                            <p className="text-2xl font-black text-slate-900">{topEventTypesTotal}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="space-y-2">
                       {topEventTypesData.length === 0 ? (
@@ -1040,7 +1514,7 @@ export const DashboardPage: React.FC = () => {
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
                 <DashboardCard
                   title="Flujo comercial semanal"
-                  subtitle="Cotizaciones, reservas y ventas en las últimas 8 semanas."
+                  subtitle="Cotizaciones, reservas y ventas en las ├║ltimas 8 semanas."
                 >
                   {hasWeeklyFlowData ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -1064,14 +1538,14 @@ export const DashboardPage: React.FC = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-[300px] items-center justify-center rounded-xl bg-slate-50 px-4 text-center text-sm text-slate-400">
-                      Aún no hay movimiento comercial suficiente en las últimas 8 semanas para dibujar este gráfico.
+                      A├║n no hay movimiento comercial suficiente en las ├║ltimas 8 semanas para dibujar este gr├ífico.
                     </div>
                   )}
                 </DashboardCard>
 
                 <DashboardCard
                   title="Estado de reservas activas"
-                  subtitle="Cómo están distribuidas las reservas ahora mismo."
+                  subtitle="C├│mo est├ín distribuidas las reservas ahora mismo."
                 >
                   <div className="space-y-4">
                     <ChartCanvas
@@ -1096,19 +1570,19 @@ export const DashboardPage: React.FC = () => {
             </section>
           )}
 
-          {/* ═══ OPERATIONS ═══ */}
+          {/* ÔòÉÔòÉÔòÉ OPERATIONS ÔòÉÔòÉÔòÉ */}
           {showOperations && (
             <section className="space-y-4">
               <DashboardSectionHeader
-                eyebrow="Operación"
+                eyebrow="Operaci├│n"
                 title="Agenda y capacidad"
-                subtitle="Vista operativa: días cargados, ocupación por franjas y agenda inmediata."
+                subtitle="Vista operativa: d├¡as cargados, ocupaci├│n por franjas y agenda inmediata."
               />
 
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)]">
                 <DashboardCard
-                  title="Días con mayor movimiento"
-                  subtitle="Reservas y ensayos futuros por día de la semana."
+                  title="D├¡as con mayor movimiento"
+                  subtitle="Reservas y ensayos futuros por d├¡a de la semana."
                   accent
                 >
                   {hasWeeklyAgendaData ? (
@@ -1162,12 +1636,12 @@ export const DashboardPage: React.FC = () => {
                   )}
                 </DashboardCard>
 
-                <DashboardCard title="Salud del negocio" subtitle="Tres señales clave.">
+                <DashboardCard title="Salud del negocio" subtitle="Tres se├▒ales clave.">
                   <div className="space-y-3">
                     {[
                       { icon: CheckCircle2, label: 'Cobro completo', value: formatPercent(paymentHealth), desc: `${paidReservationsCount} de ${activeReservations.length} reservas pagadas`, color: 'bg-emerald-50 text-emerald-600' },
                       { icon: FileText, label: 'Cotizaciones abiertas', value: String(pendingQuotes.length), desc: `${shortCurrency(pendingQuotes.reduce((s, q) => s + Number(q.totalAmount || 0), 0))} en oportunidad`, color: 'bg-amber-50 text-amber-600' },
-                      { icon: Mic2, label: 'Ensayos pendientes', value: String(pendingRehearsals.length), desc: `${pendingRehearsals.filter(r => r.eventDateTime <= next14Days).length} en las próximas 2 semanas`, color: 'bg-teal-50 text-teal-600' },
+                      { icon: Mic2, label: 'Ensayos pendientes', value: String(pendingRehearsals.length), desc: `${pendingRehearsals.filter(r => r.eventDateTime <= next14Days).length} en las pr├│ximas 2 semanas`, color: 'bg-teal-50 text-teal-600' },
                     ].map((item, i) => (
                       <div key={i} className="rounded-xl bg-slate-50 p-4">
                         <div className="flex items-center justify-between gap-3">
@@ -1189,11 +1663,11 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="grid gap-4 xl:grid-cols-1">
-                <DashboardCard title="Agenda inmediata" subtitle="Próximos eventos.">
+                <DashboardCard title="Agenda inmediata" subtitle="Pr├│ximos eventos.">
                   <div className="space-y-2">
                     {agendaItems.length === 0 ? (
                       <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
-                        No hay eventos próximos cargados.
+                        No hay eventos pr├│ximos cargados.
                       </div>
                     ) : (
                       agendaItems.map(item => (
@@ -1217,28 +1691,28 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="w-full">
-                <DashboardCard title="Mapa de ocupación" subtitle="Próximos 60 días.">
+                <DashboardCard title="Mapa de ocupaci├│n" subtitle="Pr├│ximos 60 d├¡as.">
                   <Heatmap matrix={occupancyMatrix} />
                 </DashboardCard>
               </div>
             </section>
           )}
 
-          {/* ═══ ALERTS ═══ */}
+          {/* ÔòÉÔòÉÔòÉ ALERTS ÔòÉÔòÉÔòÉ */}
           {showAlerts && (
             <section className="space-y-4">
               <DashboardSectionHeader
                 eyebrow="Seguimiento"
                 title="Alertas y actividad"
-                subtitle="Cobros pendientes, propuestas dormidas y los últimos movimientos del sistema."
+                subtitle="Cobros pendientes, propuestas dormidas y los ├║ltimos movimientos del sistema."
               />
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <DashboardCard title="Alertas y oportunidades" subtitle="Lo que merece atención ahora." accent>
+                <DashboardCard title="Alertas y oportunidades" subtitle="Lo que merece atenci├│n ahora." accent>
                   <div className="space-y-2.5">
                     {alerts.length === 0 ? (
                       <div className="rounded-xl bg-emerald-50 px-4 py-8 text-center text-sm font-semibold text-emerald-700">
-                        Sin alertas críticas. El tablero se ve estable.
+                        Sin alertas cr├¡ticas. El tablero se ve estable.
                       </div>
                     ) : (
                       alerts.map(alert => (
@@ -1269,7 +1743,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </DashboardCard>
 
-                <DashboardCard title="Actividad reciente" subtitle="Últimos 10 movimientos registrados.">
+                <DashboardCard title="Actividad reciente" subtitle="├Ültimos 10 movimientos registrados.">
                   <div className="space-y-2">
                     {activityFeed.length === 0 ? (
                       <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
@@ -1304,19 +1778,19 @@ export const DashboardPage: React.FC = () => {
             </section>
           )}
 
-          {/* ═══ CLIENTS ═══ */}
+          {/* ÔòÉÔòÉÔòÉ CLIENTS ÔòÉÔòÉÔòÉ */}
           {showClients && (
             <section className="space-y-4">
               <DashboardSectionHeader
                 eyebrow="Relacionamiento"
                 title="Clientes clave"
-                subtitle="Ranking de valor para identificar rápidamente quién más reserva y dónde se concentra el ingreso."
+                subtitle="Ranking de valor para identificar r├ípidamente qui├®n m├ís reserva y d├│nde se concentra el ingreso."
               />
 
               <div className="grid gap-4 md:grid-cols-3">
                 {[
-                  { icon: TrendingUp, label: 'Cierre comercial', value: formatPercent(quoteConversion), desc: `${convertedQuotes.length} de ${quotations.length} cotizaciones → reserva`, color: 'bg-red-50 text-red-600' },
-                  { icon: CalendarClock, label: 'Agenda 30 días', value: String(next7DaysAgenda), desc: 'Reservas y ensayos visibles en el corto plazo', color: 'bg-amber-50 text-amber-600' },
+                  { icon: TrendingUp, label: 'Cierre comercial', value: formatPercent(quoteConversion), desc: `${convertedQuotes.length} de ${quotations.length} cotizaciones ÔåÆ reserva`, color: 'bg-red-50 text-red-600' },
+                  { icon: CalendarClock, label: 'Agenda 30 d├¡as', value: String(next7DaysAgenda), desc: 'Reservas y ensayos visibles en el corto plazo', color: 'bg-amber-50 text-amber-600' },
                   { icon: CheckCircle2, label: 'Reservas pagadas', value: String(paidReservationsCount), desc: `${formatPercent(paymentHealth)} del total activo sin saldo pendiente`, color: 'bg-emerald-50 text-emerald-600' },
                 ].map((kpi, i) => (
                   <div key={i} className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.05)]">

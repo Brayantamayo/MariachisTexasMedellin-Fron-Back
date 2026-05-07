@@ -5,10 +5,9 @@ node_modules/
 
 # variables de entorno
 .env
-.env.local
-.env.development
 .env.production
-
+.env.local
+.env.*
 # compilación de TypeScript
 dist/
 build/

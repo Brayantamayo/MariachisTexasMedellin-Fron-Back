@@ -119,7 +119,13 @@ export const EmployeeCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, on
   });
  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Prevent non-numeric characters for document and phone
+    if (name === 'documentNumber' || name === 'phone') {
+      value = value.replace(/\D/g, '');
+    }
+
     setFormData((prev: any) => ({ ...prev, [name]: value }));
     // Limpiar error del campo al escribir
     if (errors[name as keyof EmployeeFormErrors])

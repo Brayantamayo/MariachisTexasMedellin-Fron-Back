@@ -1,0 +1,65 @@
+# ════════════════════════════════════════════════════════════════
+# Etapa 1: dependencias
+# ════════════════════════════════════════════════════════════════
+FROM node:20-slim AS deps
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# ════════════════════════════════════════════════════════════════
+# Etapa 2: build TypeScript
+# ════════════════════════════════════════════════════════════════
+FROM node:20-slim AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
+RUN npx prisma generate
+RUN npm run build
+
+# ════════════════════════════════════════════════════════════════
+# Etapa 3: producción mínima CON Chrome para Puppeteer
+# ════════════════════════════════════════════════════════════════
+FROM node:20-slim AS production
+
+RUN apt-get update && apt-get install -y \
+    chromium \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    fonts-liberation \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/generated ./dist/src/generated
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+EXPOSE 3000
+
+ENTRYPOINT ["./entrypoint.sh"]

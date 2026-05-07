@@ -48,21 +48,18 @@ app.use(cors({
     const allowed = [
       'http://localhost:3001',
       'http://localhost:3002',
+      'http://localhost:5173',
+      'https://mariachistexasmedellin-fron-back-1.onrender.com',
+      process.env.FRONTEND_URL,
     ]
 
     if (!origin) return callback(null, true)
-
-    if (origin.startsWith('http://localhost:')) {
-      return callback(null, true)
-    }
-
-    if (allowed.includes(origin)) {
-      return callback(null, true)
-    }
+    if (origin.startsWith('http://localhost:')) return callback(null, true)
+    if (allowed.includes(origin)) return callback(null, true)
 
     callback(new Error('No permitido por CORS'))
   },
-  methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 

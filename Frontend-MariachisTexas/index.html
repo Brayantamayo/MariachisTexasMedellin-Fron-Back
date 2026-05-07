@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mariachis Texas Medellín</title>
-    <link rel="icon" href="/shared/assets/images/Logo.png" type="image/png">
+    <link rel="icon" href="/images/Logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,6 +124,18 @@
       .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+      }
+
+      /* Premium Icon Animations */
+      svg.lucide {
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      
+      button:hover svg.lucide,
+      a:hover svg.lucide,
+      .group:hover svg.lucide {
+        transform: translateY(-3px) scale(1.1);
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
       }
     </style>
   <script type="importmap">

@@ -170,7 +170,7 @@ return (
       {/* Hero */}
     <div className="relative overflow-hidden bg-[#121212] pt-32 pb-12 px-8">
         <div className="absolute inset-0 z-0">
-        <img src="shared/assets/images/Fiesta.jpg" className="w-full h-full object-cover opacity-20 blur-sm" />
+        <img src="/images/Fiesta.jpg" className="w-full h-full object-cover opacity-20 blur-sm" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-[#121212]/80 to-[#121212]"></div>
         </div>
         
@@ -180,7 +180,7 @@ return (
             animate={{ opacity: 1, scale: 1 }}
             className="w-52 h-52 md:w-64 md:h-64 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex-shrink-0 rounded-xl overflow-hidden group"
         >
-            <img src="shared/assets/images/Mariachis 10.jpeg" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <img src="/images/Mariachis 10.jpeg" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         </motion.div>
         
         <div className="flex flex-col gap-2 mb-2 flex-1 items-start text-left">
