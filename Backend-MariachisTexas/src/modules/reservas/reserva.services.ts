@@ -1,6 +1,5 @@
 import prisma from '../../config/prisma'
 import sendMail from '../../config/mailer'
-import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'

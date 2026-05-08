@@ -19,6 +19,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.6.0",
+    "@sendinblue/client": "^3.3.1",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.3.3",
     "axios": "^1.13.6",
