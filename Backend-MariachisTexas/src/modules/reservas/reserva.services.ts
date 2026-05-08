@@ -1,5 +1,5 @@
 import prisma from '../../config/prisma'
-import nodemailer from 'nodemailer'
+import sendMail from '../../config/mailer'
 import transporter from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
@@ -364,13 +364,12 @@ export const createReserva = async (data: ReservaCreateInput, isAdmin = false): 
     anticipo,
     loginUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/login`,
   })
-  await transporter.sendMail({ from: process.env.MAIL_FROM, to: cliente.email, ...mail })
-    .then(info => {
-      console.log('✅ Correo reserva creada enviado a:', cliente.email)
-      const previewUrl = (nodemailer as any).getTestMessageUrl?.(info)
-      if (previewUrl) console.log('📧 Preview URL:', previewUrl)
-    })
-    .catch(err => console.error('❌ Error enviando correo de reserva:', err))
+  try {
+  await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html })
+  console.log('Correo reserva enviado a:', cliente.email)
+  } catch (err) {
+  console.error('Error correo reserva:', err)
+  }
 
   return getReservaById(reserva.id)
 }

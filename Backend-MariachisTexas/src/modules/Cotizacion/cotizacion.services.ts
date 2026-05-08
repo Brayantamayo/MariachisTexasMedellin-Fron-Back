@@ -1,6 +1,5 @@
 import prisma from '../../config/prisma'
-import nodemailer from 'nodemailer'
-import transporter from '../../config/mailer'
+import sendMail from '../../config/mailer'
 import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
@@ -334,14 +333,12 @@ export const convertirCotizacion = async (id: number) => {
       totalEstimado: Number(cotizacion.totalEstimado),
       registerUrl,   loginUrl,
     })
-    await transporter.sendMail({ from: process.env.MAIL_FROM, to: emailDestino, ...mail })
-      .then(info => {
-        console.log('Correo cotización aprobada enviado a:', emailDestino)
-        // En Ethereal, muestra la URL de preview para ver el correo
-        const previewUrl = (nodemailer as any).getTestMessageUrl?.(info)
-        if (previewUrl) console.log('📧 Preview URL:', previewUrl)
-      })
-      .catch(err => console.error('❌ Error enviando correo cotización aprobada:', err))
+    try {
+  await sendMail({ to: emailDestino, subject: mail.subject, html: mail.html })
+  console.log('Correo cotización aprobada enviado a:', emailDestino)
+  } catch (err) {
+  console.error('❌ Error correo cotización:', err)
+  }
   }
 
   return { quotation: await getCotizacionById(id), reservationId: String(reserva.id) }

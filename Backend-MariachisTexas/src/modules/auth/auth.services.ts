@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import prisma from '../../config/prisma'
-import transporter from '../../config/mailer'
+import sendMail from '../../config/mailer'
 import { TipoDocumento, ZonaServicio } from '../../generated/prisma'
 import { RegistroSchema, ResetPasswordSchema, zodError } from '../schemas'
 import { vincularCotizacionesPorEmail } from '../Cotizacion/cotizacion.services'
@@ -90,7 +90,7 @@ export const registrarCliente = async (data: unknown) => {
     cotizacionesVinculadas,
   })
 
-  await transporter.sendMail({ from: process.env.MAIL_FROM, to: usuario.email, ...mail })
+  await sendMail({ to: usuario.email, subject: mail.subject, html: mail.html })
 
   // Retornar datos del usuario creado
   return {
@@ -191,7 +191,7 @@ export const recuperarPassword = async (email: string) => {
 
   // Enviar email
   const mail = emailOtp({ nombre: usuario.nombre, otp })
-  await transporter.sendMail({ from: process.env.MAIL_FROM, to: usuario.email, ...mail })
+  await sendMail({ to: usuario.email, subject: mail.subject, html: mail.html })
 
   return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
 }
