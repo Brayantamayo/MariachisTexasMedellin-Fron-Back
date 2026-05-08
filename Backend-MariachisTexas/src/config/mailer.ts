@@ -1,17 +1,29 @@
-import * as SibApiV3Sdk from '@sendinblue/client'
-
-const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
-apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY!)
-
+// Sin dependencias externas, usa fetch nativo de Node.js 18+
 export const sendMail = async ({ to, subject, html }: { to: string, subject: string, html: string }) => {
-  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': process.env.BREVO_API_KEY!,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: 'Mariachis Texas',
+        email: process.env.MAIL_FROM_ADDRESS,
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  })
 
-  sendSmtpEmail.sender = { name: 'Mariachis Texas', email: process.env.MAIL_FROM_ADDRESS }
-  sendSmtpEmail.to = [{ email: to }]
-  sendSmtpEmail.subject = subject
-  sendSmtpEmail.htmlContent = html
+  if (!response.ok) {
+    const error = await response.json()
+    console.error('❌ Error Brevo:', error)
+    throw new Error(`Brevo error: ${error.message}`)
+  }
 
-  return apiInstance.sendTransacEmail(sendSmtpEmail)
+  return response.json()
 }
 
 export default sendMail

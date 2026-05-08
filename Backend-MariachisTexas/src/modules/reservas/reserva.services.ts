@@ -624,12 +624,14 @@ export const getAbonos = async (usuarioId?: number) => {
 
 //  CREATE ABONO - 50% OR 100% ALLOWED 
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
+  
   const reserva = await prisma.reserva.findUnique({
     where: { id: reservaId },
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
   })
 
   if (!reserva) throw new AppError('Reserva no encontrada', 404)
+
   if (reserva.estado === 'ANULADA') throw new AppError('No se puede registrar abono en una reserva anulada', 400)
 
   const monto = Number(data.amount)
@@ -648,6 +650,7 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
         400
       )
     }
+
   } else {
     // Segundo abono: debe ser exactamente el saldo pendiente
     if (monto !== saldoActual) {
@@ -713,13 +716,16 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
   }
 }
 
+
+
+
 // ─── REPROGRAMAR ──────────────────────────────────────────────────────────────
 export const reprogramarReserva = async (
   id: number,
   data: { eventDate: string; startTime: string; endTime: string },
   isAdmin = false
 ): Promise<ReservationResponse> => {
- 
+
   // 1. Buscar la reserva con sus abonos
   const r = await prisma.reserva.findUnique({
     where: { id },
