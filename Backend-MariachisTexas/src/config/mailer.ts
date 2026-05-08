@@ -1,14 +1,17 @@
-import { Resend } from 'resend'
+import * as SibApiV3Sdk from '@sendinblue/client'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
+apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY!)
 
 export const sendMail = async ({ to, subject, html }: { to: string, subject: string, html: string }) => {
-  return resend.emails.send({
-    from: 'Mariachis Texas <onboarding@resend.dev>',
-    to,
-    subject,
-    html,
-  })
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+
+  sendSmtpEmail.sender = { name: 'Mariachis Texas', email: process.env.MAIL_FROM_ADDRESS }
+  sendSmtpEmail.to = [{ email: to }]
+  sendSmtpEmail.subject = subject
+  sendSmtpEmail.htmlContent = html
+
+  return apiInstance.sendTransacEmail(sendSmtpEmail)
 }
 
 export default sendMail
