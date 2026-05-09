@@ -140,19 +140,6 @@ return (
                 {errors?.location && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.location}</p>}
             </div>
 
-            <div className="flex-1">
-                <label className="label-form flex items-center gap-2 mb-3">
-                    <AlignLeft size={14} /> NOTAS O DETALLES
-                </label>
-                <textarea 
-                    name="notes"
-                    value={formData.notes}
-                    onChange={onChange}
-                    className="w-full p-4 rounded-xl border outline-none resize-none font-medium leading-relaxed min-h-[120px] transition-all bg-white border-slate-200 focus:ring-4 focus:ring-primary-50 focus:border-primary-300 text-slate-700"
-                    placeholder="Escribe detalles importantes para los músicos..."
-                />
-            </div>
-
         </div>
 
         {/* COLUMNA DERECHA: Selector de Canciones */}

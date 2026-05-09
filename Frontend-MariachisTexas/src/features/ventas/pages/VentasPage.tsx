@@ -7,6 +7,7 @@ import api from '@/shared/api/api';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { AbonoCreateModal } from '@/src/features/abonos/components/AbonoCreateModal.tsx';
 import { VentaCreateModal } from '../components/VentaCreateModal';
+import { VentaDetailModal } from '../components/VentaDetailModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SaleRecord {
@@ -196,182 +197,6 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
   );
 };
 
-const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: SaleRecord | null; onDownload: (id: string) => void }> = ({ isOpen, onClose, sale, onDownload }) => {
-  if (!isOpen || !sale) return null;
-  const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="px-6 py-5 flex items-center justify-between shrink-0 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-              <Eye className="text-red-600" size={18} />
-            </div>
-            <div>
-              <h3 className="text-base font-serif font-bold text-slate-800 uppercase tracking-wide">{sale.concept}</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-0.5">{sale.clientName}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
-
-          {/* Status */}
-          <div className={`flex items-center justify-between p-4 rounded-2xl border ${isFinalizado ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isFinalizado ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                <CheckCircle size={14} className={isFinalizado ? 'text-emerald-600' : 'text-red-500'} />
-              </div>
-              <span className={`text-xs font-bold uppercase tracking-widest ${isFinalizado ? 'text-emerald-700' : 'text-red-600'}`}>
-                {isFinalizado ? 'Pagado Completamente' : 'Venta Completa'}
-              </span>
-            </div>
-            <span className={`text-lg font-serif font-black ${isFinalizado ? 'text-emerald-800' : 'text-red-700'}`}>
-              ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
-            </span>
-          </div>
-
-          {/* Detalles del evento */}
-          {(sale.homenajeado || sale.eventTime || sale.eventLocation || sale.eventDate || sale.notes) && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Detalles del Evento</p>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2 text-xs">
-                {sale.eventDate && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 flex items-center gap-1"><Calendar size={11} /> Fecha</span>
-                    <span className="font-bold text-slate-700">{sale.eventDate}</span>
-                  </div>
-                )}
-                {sale.eventTime && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Horario</span>
-                    <span className="font-bold text-slate-700">
-                      {sale.eventTime}{sale.eventEndTime ? ` — ${sale.eventEndTime}` : ''}
-                    </span>
-                  </div>
-                )}
-                {sale.eventType && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Tipo de evento</span>
-                    <span className="font-bold text-slate-700">{sale.eventType}</span>
-                  </div>
-                )}
-                {sale.homenajeado && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Homenajeado</span>
-                    <span className="font-bold text-slate-700">{sale.homenajeado}</span>
-                  </div>
-                )}
-                {sale.eventLocation && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-slate-400 shrink-0">Dirección</span>
-                    <span className="font-bold text-slate-700 text-right">{sale.eventLocation}</span>
-                  </div>
-                )}
-                {sale.notes && (
-                  <div className="pt-1 border-t border-slate-200">
-                    <span className="text-slate-400 block mb-0.5">Notas</span>
-                    <span className="text-slate-600">{sale.notes}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Servicios */}
-          {sale.services && sale.services.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Servicios Contratados</p>
-              <div className="space-y-1.5">
-                {sale.services.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-xs text-slate-700">{s.nombre}{s.cantidad > 1 ? ` ×${s.cantidad}` : ''}</span>
-                    <span className="text-xs font-bold text-slate-800">${(s.precio * s.cantidad).toLocaleString('es-CO')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Repertorio */}
-          {sale.repertoire && sale.repertoire.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Repertorio ({sale.repertoire.length} canciones)
-              </p>
-              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                {sale.repertoire.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-[10px] text-slate-400 w-4 text-right shrink-0">{i + 1}</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-700 leading-none">{r.titulo}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{r.artista}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Historial de pagos */}
-          {sale.abonos && sale.abonos.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Historial de Pagos</p>
-              <div className="space-y-2">
-                {sale.abonos.map((abono, idx) => (
-                  <div key={abono.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div>
-                      <p className="text-xs font-bold text-slate-700">
-                        {idx === 0 ? '1er Abono' : '2do Abono'}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {new Date(abono.date).toLocaleDateString('es-CO')} · {metodoPagoLabel[abono.method] ?? abono.method}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-emerald-600">${abono.amount.toLocaleString('es-CO')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Saldo pendiente */}
-          {!isFinalizado && (sale.pendingAmount ?? 0) > 0 && (
-            <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-              <span className="text-xs font-bold text-red-700">Saldo Pendiente</span>
-              <span className="text-sm font-bold text-red-700">${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-5 pt-3 flex gap-3 shrink-0 border-t border-slate-100">
-          <button onClick={onClose}
-            className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors">
-            Cerrar
-          </button>
-          {sale.reservationId && (
-            <button
-              onClick={() => onDownload(sale.reservationId!)}
-              className="flex-[2] py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:-translate-y-0.5 transition-all"
-            >
-              <Download size={14} /> Descargar PDF
-            </button>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export const VentasPage: React.FC = () => {
@@ -654,11 +479,15 @@ const handleCreateSale = async (data: any) => {
       </div>
 
       {/* Modals */}
-      <SaleDetailModal
+      <VentaDetailModal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        sale={detailSale}
-        onDownload={handleDownloadPdf}
+        sale={detailSale as any}
+        onDownload={(idOrResId) => {
+            // Si el objeto tiene reservationId, usamos ese para el PDF como prefiere esta página
+            const targetId = detailSale?.reservationId || idOrResId;
+            handleDownloadPdf(targetId);
+        }}
     />
     <FinalPaymentModal
         isOpen={isFinalPayOpen}

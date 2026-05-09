@@ -7,6 +7,8 @@ export interface Sale {
     clientName: string;
     clientId?: string;
     clientEmail?: string;
+    clientPhone?: string;
+    secondaryPhone?: string;
     concept: string;
     method: string;
     amount: number;

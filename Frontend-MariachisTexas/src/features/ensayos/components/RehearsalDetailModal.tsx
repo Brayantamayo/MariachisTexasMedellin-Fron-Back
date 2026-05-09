@@ -79,10 +79,6 @@ export const RehearsalDetailModal: React.FC<Props> = ({ isOpen, onClose, rehears
                         <p className="text-sm font-medium text-slate-700">{rehearsal.location}</p>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-4">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><AlignLeft size={14}/> Notas</h4>
-                        <p className="text-sm text-slate-600 italic">{rehearsal.notes || "Sin notas adicionales."}</p>
-                    </div>
                 </div>
 
                 {/* Lista de canciones */}  
