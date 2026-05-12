@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../../types';
-import { 
+import {
   BarChart3, UserCircle, Settings, Users, ShoppingCart, LogOut,
   Calendar, Briefcase, Music, FileText, CreditCard, Bookmark,
-  ShieldCheck, LayoutGrid, Home, ChevronRight, ChevronLeft, Pin, PinOff
+  ShieldCheck, LayoutGrid, Home, ChevronRight, ChevronLeft, Pin, PinOff,
+  Image
 } from 'lucide-react';
+
 
 interface SidebarProps {
   currentPath: string;
@@ -39,9 +41,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
   const getCategories = (): Category[] => {
     if (!user) return [];
 
-    const isAdmin    = user.role === UserRole.ADMIN;
+    const isAdmin = user.role === UserRole.ADMIN;
     const isEmpleado = user.role === UserRole.EMPLEADO;
-    const isCliente  = user.role === UserRole.CLIENTE;
+    const isCliente = user.role === UserRole.CLIENTE;
 
     const categories: Category[] = [];
 
@@ -59,9 +61,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
     if (isAdmin) {
       categories.push({
         id: 'configuracion', label: 'Configuración', icon: Settings,
-        items: [{ label: 'Roles y Permisos', path: '/roles', icon: ShieldCheck }]
+        items: [
+          { label: 'Roles y Permisos', path: '/roles', icon: ShieldCheck },
+          { label: 'Galería', path: '/galeria', icon: Image }
+        ]
       });
     }
+
 
     // 3. USUARIO (Admin only)
     if (isAdmin) {
@@ -173,9 +179,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
                   }
                 `}
               >
-                <Icon 
-                  size={24} 
-                  strokeWidth={isActive ? 2.5 : 2} 
+                <Icon
+                  size={24}
+                  strokeWidth={isActive ? 2.5 : 2}
                   className="transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-110"
                 />
                 <span className="text-[10px] font-bold tracking-wide transition-opacity duration-300 group-hover:opacity-100 opacity-80">{category.label}</span>
@@ -229,10 +235,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
         {/* Menu Items */}
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 min-w-[16rem]">
           {activeCategoryData?.items.map(item => {
-            const isActive    = currentPath === item.path || item.subItems?.some(s => s.path === currentPath);
-            const Icon        = item.icon;
+            const isActive = currentPath === item.path || item.subItems?.some(s => s.path === currentPath);
+            const Icon = item.icon;
             const hasSubItems = item.subItems && item.subItems.length > 0;
-            const isExpanded  = expandedItems.includes(item.label) || (isActive && hasSubItems);
+            const isExpanded = expandedItems.includes(item.label) || (isActive && hasSubItems);
 
             return (
               <div key={item.path} className="space-y-1">

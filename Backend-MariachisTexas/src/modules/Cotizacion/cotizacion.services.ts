@@ -148,6 +148,7 @@ export const createCotizacion = async (data: CotizacionCreateInput): Promise<Quo
 
   const horaInicio = buildDateTime(d.eventDate, d.startTime)
   const horaFin    = buildDateTime(d.eventDate, d.endTime)
+  if (horaFin < horaInicio) horaFin.setDate(horaFin.getDate() + 1)
 
   await validarDisponibilidad(d.eventDate, horaInicio, horaFin)
 
@@ -200,6 +201,7 @@ export const updateCotizacion = async (id: number, data: CotizacionUpdateInput):
   const date       = d.eventDate ?? toLocalDate(exists.fechaEvento)
   const horaInicio = d.startTime ? buildDateTime(date, d.startTime) : exists.horaInicio
   const horaFin    = d.endTime   ? buildDateTime(date, d.endTime)   : exists.horaFin
+  if (horaFin < horaInicio) horaFin.setDate(horaFin.getDate() + 1)
 
   if (d.startTime || d.endTime || d.eventDate) {
     // ✅ Validar 6h si es hoy y se cambia la hora
@@ -337,7 +339,7 @@ export const convertirCotizacion = async (id: number) => {
   await sendMail({ to: emailDestino, subject: mail.subject, html: mail.html })
   console.log('Correo cotización aprobada enviado a:', emailDestino)
   } catch (err) {
-  console.error('❌ Error correo cotización:', err)
+  console.error(' Error correo cotización:', err)
   }
   }
 

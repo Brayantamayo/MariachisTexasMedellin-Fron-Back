@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, MapPin, User, Music, DollarSign, Mail, Phone, Tag, Package } from 'lucide-react';
+import { format12h } from '@/shared/utils/time';
 import { Quotation, Song, Service } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { servicesService } from '@/src/features/servicio/services/servicesService.ts';
@@ -183,7 +184,9 @@ export const CotizacionDetailModal: React.FC<Props> = ({ isOpen, onClose, quotat
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Horario</p>
-                      <p className="font-bold text-slate-800 flex items-center gap-2"><Clock size={12} /> {quotation.startTime} - {quotation.endTime}</p>
+                      <p className="font-bold text-slate-800 flex items-center gap-2">
+                        <Clock size={12} /> {format12h(quotation.startTime)} - {format12h(quotation.endTime)}
+                      </p>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-slate-50">

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, AlignLeft, Music, Search, Plus, Trash2, Check, ChevronDown, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Song } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+import { format12h } from '@/shared/utils/time';
 
 // Agrega errors a la interfaz Props:
 interface Props {
@@ -116,11 +117,11 @@ return (
                                 <>
                                     <option value="">Seleccionar</option>
                                     {availableHours.map(time => (
-                                        <option key={time} value={time}>{time}</option>
+                                        <option key={time} value={time}>{format12h(time)}</option>
                                     ))}
                                     {/* Si estamos editando y la hora actual ya no está libre (porque la ocupa este mismo evento), agregarla visualmente */}
                                     {formData.time && !availableHours.includes(formData.time) && !blockStatus.isBlocked && (
-                                        <option value={formData.time}>{formData.time} (Actual)</option>
+                                        <option value={formData.time}>{format12h(formData.time)} (Actual)</option>
                                     )}
                                 </>
                             )}

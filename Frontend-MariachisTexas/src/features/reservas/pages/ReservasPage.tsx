@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, List, Plus, Search, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, X, Lock, ShieldAlert, FileText, Clock, Phone, Zap } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, 
+  List, 
+  Plus, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight, 
+  CheckCircle, 
+  AlertCircle, 
+  X, 
+  Lock, 
+  ShieldAlert, 
+  FileText, 
+  Clock, 
+  Phone, 
+  Zap,
+  Info,
+  User as UserIcon,
+  MapPin as MapPinIcon
+} from 'lucide-react';
 import { UserRole } from '@/types';
 import { useReservasManager } from '../hooks/useReservasManager';
 
 import { ReservasTable } from '../components/ReservasTable';
+import { UpcomingReservationsBanner } from '../components/UpcomingReservationsBanner';
 import { ReservaCreateModal } from '../components/ReservaCreateModal';
 import { ReservaEditModal } from '../components/ReservaEditModal';
 import { ReservaDetailModal } from '../components/ReservaDetailModal';
@@ -12,7 +32,7 @@ import { DateDetailsModal } from '@/src/features/reservas/components/DateDetails
 import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
-import { ReprogramarReservaModal } from '../components/Reprogramarreservamodal .tsx';
+import { format12h } from '@/shared/utils/time';
 
 const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations }) => {
   const [now, setNow] = useState(new Date())
@@ -86,6 +106,7 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
   )
 }
 
+
 export const ReservasPage: React.FC = () => {
   const {
     view, setView, currentDate, setCurrentDate,
@@ -108,10 +129,6 @@ export const ReservasPage: React.FC = () => {
     handleCreate, handleUpdate, handleSaveBlock,
     handleConfirmDeleteBlock, handleConfirmDeleteTimeBlocks,
     handleSaveAbono, processFinalization, processCancel, handleTimeSlotBlock, handleViewReserva,
-    // ─── NUEVO ────────────────────────────────────────────────────────────────
-    isReprogramarOpen, setIsReprogramarOpen,
-    reprogramarReserva, setReprogramarReserva,
-    handleOpenReprogramar, handleReprogramar,
   } = useReservasManager();
 
   const handleDateMouseDown = (dateStr: string) => {
@@ -177,19 +194,17 @@ export const ReservasPage: React.FC = () => {
   };
 
   const filteredReservations = reservations.filter(r => {
-    const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || r.id.includes(searchTerm);
+    const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          r.id.toString().includes(searchTerm);
+    
     if (isClient) return matchesSearch;
-    const visibleStatuses = ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'];
-    const pendingBalance = Math.max(
-      0,
-      Number(r.pendingBalance ?? Number(r.totalAmount ?? 0) - Number(r.paidAmount ?? 0))
-    );
-    const shouldHidePaidReservation =
-      r.status !== 'ANULADA' &&
-      visibleStatuses.includes(r.status) &&
-      pendingBalance <= 0.01;
 
-    return matchesSearch && visibleStatuses.includes(r.status) && !shouldHidePaidReservation;
+    // Queremos ver solo las reservas activas (Pendientes, Confirmadas, Finalizadas)
+    // El usuario pidió que si se anula en ventas (o aquí) NO aparezca más en la lista de reservas.
+    const visibleStatuses = ['PENDIENTE', 'CONFIRMADA', 'FINALIZADO'];
+    
+    return matchesSearch && visibleStatuses.includes(r.status);
   });
 
   const renderCalendar = () => {
@@ -198,6 +213,7 @@ export const ReservasPage: React.FC = () => {
     const days = [];
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const nowTime = today.getTime();
 
     for (let i = 0; i < startDay; i++) {
       days.push(<div key={`empty-${i}`} className="h-32 bg-slate-50/50 border border-slate-100" />);
@@ -207,10 +223,31 @@ export const ReservasPage: React.FC = () => {
       const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isPast = dateStr < todayStr;
 
-      const dayEvents = calendarReservations.filter(r => r.eventDate === dateStr && r.status !== 'ANULADA');
+      const getPrevDay = (d: string) => {
+        const date = new Date(`${d}T00:00:00`);
+        date.setDate(date.getDate() - 1);
+        return date.toISOString().split('T')[0];
+      };
+      const prevDateStr = getPrevDay(dateStr);
+
+      const dayEvents = calendarReservations.filter(r => {
+        if (r.status === 'ANULADA') return false;
+        if (r.eventDate === dateStr) return true;
+        // Rollover: si empezó ayer y termina hoy después de las 00:00
+        if (r.eventDate === prevDateStr && r.endTime && r.endTime < (r.startTime || r.eventTime)) return true;
+        return false;
+      });
+      
       const dayBlocks = blocks.filter(b => b.startDate <= dateStr && b.endDate >= dateStr && b.isActive);
+      
       const dayRehearsals = rehearsals.filter(r => r.date === dateStr && r.status !== 'LISTO');
-      const dayQuotes = quotations.filter(q => q.eventDate === dateStr && q.status === 'EN_ESPERA');
+      
+      const dayQuotes = quotations.filter(q => {
+        if (q.status !== 'EN_ESPERA') return false;
+        if (q.eventDate === dateStr) return true;
+        if (q.eventDate === prevDateStr && q.endTime && q.endTime < q.startTime) return true;
+        return false;
+      });
 
       const isFullDayBlock = dayBlocks.some(b => b.type === 'FULL_DATE' || b.type === 'DATE_RANGE');
       const isToday = dateStr === todayStr;
@@ -218,12 +255,26 @@ export const ReservasPage: React.FC = () => {
 
       const totalItems = dayEvents.length + dayRehearsals.length + dayQuotes.length;
 
-      const s = (ev: any) => (ev.status ?? '').toUpperCase()
-      let dotColorClass = 'bg-slate-300'
-      if (totalItems > 0) dotColorClass = 'bg-orange-400'
-      if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
-      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
-      if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
+      const s = (ev: any) => (ev.status ?? '').toUpperCase();
+      
+      let dotColorClass = 'bg-slate-300';
+      if (totalItems > 0) {
+        dotColorClass = 'bg-emerald-400';
+        // Solo mostramos azul si hay algún evento finalizado y ya pasó el tiempo
+        const hasPassedFinalized = dayEvents.some(ev => {
+          if (s(ev) !== 'FINALIZADO') return false;
+          const evTime = ev.startTime || ev.eventTime || '23:59';
+          const evDateTime = new Date(`${ev.eventDate}T${evTime}`);
+          return !isNaN(evDateTime.getTime()) && nowTime > evDateTime.getTime();
+        });
+        if (hasPassedFinalized) {
+          dotColorClass = 'bg-blue-500';
+        } else if (dayEvents.some(e => s(e) === 'CONFIRMADA')) {
+          dotColorClass = 'bg-emerald-400';
+        } else if (dayEvents.some(e => s(e) === 'PENDIENTE')) {
+          dotColorClass = 'bg-amber-400';
+        }
+      }
 
       days.push(
         <div
@@ -239,6 +290,7 @@ export const ReservasPage: React.FC = () => {
           `}
           style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
         >
+          {/* Header del día */}
           <div className="flex justify-between items-start mb-3 pointer-events-none relative z-10">
             <div className="flex items-center gap-2">
               <span className={`text-[13px] font-black w-8 h-8 flex items-center justify-center rounded-xl transition-all
@@ -255,69 +307,77 @@ export const ReservasPage: React.FC = () => {
             )}
           </div>
 
-          <div className="space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar relative z-10 pointer-events-none">
-            {dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
-              <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
-                <ShieldAlert size={11} />
-                <span className="truncate">{b.startTime} BLOQUEO</span>
+          {/* Lista de eventos del día */}
+          <div className="space-y-1 overflow-hidden h-[76px] relative z-10 pointer-events-none">
+            {[
+              ...dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
+                <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
+                  <ShieldAlert size={11} />
+                  <span className="truncate">{format12h(b.startTime || '00:00')} BLOQUEO</span>
+                </div>
+              )),
+              ...dayQuotes.map((quote, index) => (
+                <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
+                  {isClient ? <Lock size={11} /> : <FileText size={11} />}
+                  <span>{format12h(quote.startTime)}</span>
+                  <span className="opacity-70">{isClient ? 'RESERVADO' : 'COTIZACIÓN'}</span>
+                </div>
+              )),
+              ...dayRehearsals.map((reh, index) => (
+                <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-purple-500 bg-purple-50 text-purple-700'}`}>
+                  {isClient ? <Lock size={11} /> : <Zap size={11} />}
+                  <span>{format12h(reh.time)}</span> 
+                  <span className="opacity-70">{isClient ? 'RESERVADO' : 'ENSAYO'}</span>
+                </div>
+              )),
+              ...dayEvents
+                .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
+                .map(ev => {
+                  const st = s(ev);
+                  const isMine = user?.email === ev.clientEmail || reservations.some(r => r.id === ev.id);
+
+                  const evTime = ev.eventTime || '23:59';
+                  const evDateTime = new Date(`${ev.eventDate}T${evTime}`);
+                  const hasPassed = !isNaN(evDateTime.getTime()) && nowTime > evDateTime.getTime();
+
+                  let statusStyle = 'bg-emerald-50 border-emerald-500 text-emerald-800';
+                  let timeStyle = 'text-emerald-600';
+
+                  if (st === 'PENDIENTE') {
+                    statusStyle = 'bg-amber-50 border-amber-500 text-amber-800';
+                    timeStyle = 'text-amber-600';
+                  } else if (st === 'FINALIZADO' && hasPassed) {
+                    statusStyle = 'bg-blue-50 border-blue-500 text-blue-800';
+                    timeStyle = 'text-blue-600';
+                  } else if (st === 'ANULADA') {
+                    statusStyle = 'bg-slate-50 border-slate-300 text-slate-400';
+                    timeStyle = 'text-slate-400';
+                  }
+
+                  if (isPast || (isClient && !isMine)) {
+                    statusStyle = 'bg-slate-50 border-slate-300 text-slate-400';
+                    timeStyle = 'text-slate-400';
+                  }
+
+                  const label = isClient
+                    ? (isMine ? `TU RESERVA - ${ev.clientName || ''}` : 'RESERVADO')
+                    : (canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType);
+
+                  return (
+                    <div key={ev.id} title={label} 
+                      className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md truncate flex items-center gap-2 mb-1 shadow-sm transition-all hover:brightness-95 hover:shadow-md cursor-pointer ${statusStyle}`}>
+                      <span className={`font-black shrink-0 ${timeStyle}`}>{format12h(ev.eventTime)}</span>
+                      <span className="font-black uppercase tracking-tight truncate flex-1">{label}</span>
+                    </div>
+                  );
+                })
+            ].slice(0, 2)}
+            
+            {totalItems > 2 && (
+              <div className="text-[9px] font-bold text-slate-400 text-center uppercase mt-1">
+                 + {totalItems - 2} más
               </div>
-            ))}
-
-            {dayQuotes.map((quote, index) => (
-              <div key={quote.id || `cot-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
-                {isClient ? <Lock size={11} /> : <FileText size={11} />}
-                <span>{quote.startTime}</span>
-                <span className="opacity-70">{isClient ? 'RESERVADO' : 'COTIZACIÓN'}</span>
-              </div>
-            ))}
-
-            {dayRehearsals.map((reh, index) => (
-              <div key={reh.id || `reh-${dateStr}-${index}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${ (isPast || isClient) ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-purple-500 bg-purple-50 text-purple-700'}`}>
-                {isClient ? <Lock size={11} /> : <Zap size={11} />}
-                <span>{reh.time}</span> 
-                <span className="opacity-70">{isClient ? 'RESERVADO' : 'ENSAYO'}</span>
-              </div>
-            ))}
-
-            {dayEvents
-              .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
-              .map(ev => {
-                const st = (ev.status ?? '').toUpperCase()
-                const isMine = user?.email === ev.clientEmail || reservations.some(r => r.id === ev.id)
-
-                let statusStyle = 'bg-amber-50 border-amber-500 text-amber-800'
-                let timeStyle = 'text-amber-600'
-
-                if (st === 'CONFIRMADA') {
-                  statusStyle = 'bg-emerald-50 border-emerald-500 text-emerald-800'
-                  timeStyle = 'text-emerald-600'
-                }
-                if (st === 'REPROGRAMADA') {
-                  statusStyle = 'bg-teal-50 border-teal-500 text-teal-800'
-                  timeStyle = 'text-teal-600'
-                }
-                if (st === 'FINALIZADO') {
-                  statusStyle = 'bg-blue-50 border-blue-500 text-blue-800'
-                  timeStyle = 'text-blue-600'
-                }
-
-                if (isPast || (isClient && !isMine)) {
-                  statusStyle = 'bg-slate-50 border-slate-300 text-slate-400'
-                  timeStyle = 'text-slate-400'
-                }
-
-                const label = isClient
-                  ? (isMine ? `TU RESERVA - ${ev.clientName || ''}` : 'RESERVADO')
-                  : (canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType)
-
-                return (
-                  <div key={ev.id} title={label} 
-                    className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md truncate flex items-center gap-2 mb-1 shadow-sm transition-all hover:brightness-95 hover:shadow-md cursor-pointer ${statusStyle}`}>
-                    <span className={`font-black shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
-                    <span className="font-black uppercase tracking-tight truncate flex-1">{label}</span>
-                  </div>
-                )
-              })}
+            )}
           </div>
 
           {isFullDayBlock && (
@@ -384,6 +444,12 @@ export const ReservasPage: React.FC = () => {
       </div>
 
       {isClient && <PendingPaymentBanner reservations={reservations} />}
+      {!isClient && canManage && (
+        <UpcomingReservationsBanner 
+          reservations={calendarReservations} 
+          onView={handleViewReserva} 
+        />
+      )}
 
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
         {view === 'list' ? (
@@ -406,8 +472,6 @@ export const ReservasPage: React.FC = () => {
               onFinalize={(id) => setFinalizeModal({ isOpen: true, id })}
               onCancel={processCancel}
               onDelete={(id) => setDeleteReservaModal({ isOpen: true, id })}
-              // ─── NUEVO ──────────────────────────────────────────────────
-              onReprogramar={handleOpenReprogramar}
             />
           </div>
         ) : (
@@ -450,10 +514,34 @@ export const ReservasPage: React.FC = () => {
 
       <DateDetailsModal
         isOpen={isDateDetailsOpen} onClose={() => setIsDateDetailsOpen(false)} date={selectedDateForDetails}
-        reservations={calendarReservations.filter(r => r.eventDate === selectedDateForDetails && r.status !== 'ANULADA')}
+        reservations={calendarReservations.filter(r => {
+          if (r.status === 'ANULADA') return false;
+          if (r.eventDate === selectedDateForDetails) return true;
+          const getPrevDay = (d: string) => {
+            if (!d) return '';
+            const date = new Date(`${d}T00:00:00`);
+            date.setDate(date.getDate() - 1);
+            return date.toISOString().split('T')[0];
+          };
+          const prevDateStr = getPrevDay(selectedDateForDetails || '');
+          if (r.eventDate === prevDateStr && r.endTime && r.endTime < (r.startTime || r.eventTime)) return true;
+          return false;
+        })}
         blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails || '') && b.endDate >= (selectedDateForDetails || '') && b.isActive)}
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
-        quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
+        quotations={quotations.filter(q => {
+          if (q.status !== 'EN_ESPERA') return false;
+          if (q.eventDate === selectedDateForDetails) return true;
+          const getPrevDay = (d: string) => {
+            if (!d) return '';
+            const date = new Date(`${d}T00:00:00`);
+            date.setDate(date.getDate() - 1);
+            return date.toISOString().split('T')[0];
+          };
+          const prevDateStr = getPrevDay(selectedDateForDetails || '');
+          if (q.eventDate === prevDateStr && q.endTime && q.endTime < q.startTime) return true;
+          return false;
+        })}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
         onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time || null); setIsCreateOpen(true); }}
         onBlockTime={handleTimeSlotBlock}
@@ -466,14 +554,6 @@ export const ReservasPage: React.FC = () => {
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
       <ConfirmationModal isOpen={deleteTimeBlocksModal.isOpen} onClose={() => setDeleteTimeBlocksModal({ ...deleteTimeBlocksModal, isOpen: false })} onConfirm={handleConfirmDeleteTimeBlocks} title="¿Liberar Horarios?" message="Se eliminarán todos los bloqueos de horas en este día." confirmText="Liberar Todo" />
       <ConfirmationModal isOpen={deleteReservaModal.isOpen} onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })} onConfirm={handleDeleteReserva} title="¿Eliminar Reserva?" message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado." confirmText="Sí, eliminar" />
-
-      {/* ─── NUEVO: Modal de Reprogramación ─────────────────────────────────── */}
-      <ReprogramarReservaModal
-        isOpen={isReprogramarOpen}
-        onClose={() => { setIsReprogramarOpen(false); setReprogramarReserva(null); }}
-        reservation={reprogramarReserva}
-        onSave={handleReprogramar}
-      />
     </div>
   );
 };

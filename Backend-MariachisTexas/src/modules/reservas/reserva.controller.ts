@@ -110,14 +110,7 @@ export const remove = asyncHandler(async (req: Request, res: Response) => {
   res.json(await reservaService.deleteReserva(Number(id)))
 })
 
-// ─── REPROGRAMAR ───────────────────────────────────────────────────────────────
-export const reprogramar = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const id      = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-  const isAdmin = ['ADMIN', 'EMPLEADO'].includes(req.user?.rol ?? '')
-  const { eventDate, startTime, endTime } = req.body
- 
-  res.json(await reservaService.reprogramarReserva(Number(id), { eventDate, startTime, endTime }, isAdmin))
-})
+
 
 // ─── FINALIZAR ────────────────────────────────────────────────────────────────
 export const finalize = asyncHandler(async (req: AuthRequest, res: Response) => {

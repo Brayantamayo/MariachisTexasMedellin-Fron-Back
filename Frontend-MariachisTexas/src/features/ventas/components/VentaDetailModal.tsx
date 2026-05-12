@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, MapPin, User, Music, DollarSign, Mail, Phone, Tag, Package, CreditCard, Download } from 'lucide-react';
 import { Sale } from '../services/ventaService';
+import { format12h } from '@/shared/utils/time';
 
 interface Props {
   isOpen: boolean;
@@ -158,7 +159,7 @@ export const VentaDetailModal: React.FC<Props> = ({ isOpen, onClose, sale, onDow
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Horario</p>
                       <p className="font-bold text-slate-800 flex items-center gap-2">
-                        <Clock size={12} /> {sale.eventTime || '00:00'} - {sale.eventEndTime || '00:00'}
+                        <Clock size={12} /> {format12h(sale.eventTime || '00:00')} - {format12h(sale.eventEndTime || '00:00')}
                       </p>
                     </div>
                   </div>

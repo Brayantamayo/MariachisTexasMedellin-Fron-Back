@@ -12,8 +12,8 @@ export const reservaService = {
     const { data } = await api.get('/reservas/calendario')
     return data
   },
-  
-/////posible error 
+
+  /////posible error 
   // excludeReservaId — excluye la reserva actual al editar para liberar sus horas
   getAvailableHours: async (date: string, excludeReservaId?: string): Promise<string[]> => {
     const params = excludeReservaId ? { excludeId: excludeReservaId } : {}
@@ -58,14 +58,6 @@ export const reservaService = {
   finalizeReservation: async (id: string): Promise<Reservation> => {
     const { data } = await api.patch(`/reservas/${id}/confirmar`)
     return data
-  },
-
-  reprogramarReservation: async (
-    id: string,
-    data: { eventDate: string; startTime: string; endTime: string }
-  ): Promise<Reservation> => {
-    const { data: res } = await api.patch(`/reservas/${id}/reprogramar`, data)
-    return res
   },
 
   checkAndProcessPastEvents: async (): Promise<void> => Promise.resolve(),

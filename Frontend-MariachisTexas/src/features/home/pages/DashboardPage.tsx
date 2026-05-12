@@ -217,7 +217,6 @@ const normalizeReservationStatus = (status: string) => {
   const normalized = (status || '').trim().toUpperCase();
   if (normalized === 'CONFIRMADO' || normalized === 'FINALIZADO') return 'CONFIRMADA';
   if (normalized === 'ANULADO') return 'ANULADA';
-  if (normalized === 'REPROGRAMADO') return 'REPROGRAMADA';
   return normalized || 'PENDIENTE';
 };
 
@@ -704,8 +703,6 @@ const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' |
       ? 'bg-emerald-50 text-emerald-700'
       : normalized === 'ANULADA'
       ? 'bg-slate-100 text-slate-500'
-      : normalized === 'REPROGRAMADA'
-      ? 'bg-teal-50 text-teal-700'
       : normalized === 'PENDIENTE' || normalized === 'EN_ESPERA'
       ? 'bg-amber-50 text-amber-700'
       : 'bg-slate-100 text-slate-500';
@@ -713,7 +710,6 @@ const StatusPill: React.FC<{ status: string; kind: 'reservation' | 'quotation' |
   const label =
     normalized === 'CONFIRMADA' ? 'Confirmada'
     : normalized === 'CONVERTIDA' ? 'Convertida'
-    : normalized === 'REPROGRAMADA' ? 'Reprogramada'
     : normalized === 'ANULADA' ? 'Anulada'
     : normalized === 'EN_ESPERA' ? 'En espera'
     : normalized === 'LISTO' ? 'Listo'
@@ -891,7 +887,7 @@ export const DashboardPage: React.FC = () => {
   }));
 
   const activeReservations = reservations.filter(r =>
-    ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'].includes(r.normalizedStatus)
+    ['PENDIENTE', 'CONFIRMADA'].includes(r.normalizedStatus)
   );
   const futureReservations = activeReservations
     .filter(r => r.eventDateTime >= today)
@@ -955,7 +951,6 @@ export const DashboardPage: React.FC = () => {
   const reservationStatusData = [
     { name: 'Confirmadas', value: reservations.filter(r => r.normalizedStatus === 'CONFIRMADA').length },
     { name: 'Pendientes', value: reservations.filter(r => r.normalizedStatus === 'PENDIENTE').length },
-    { name: 'Reprogramadas', value: reservations.filter(r => r.normalizedStatus === 'REPROGRAMADA').length },
     { name: 'Anuladas', value: reservations.filter(r => r.normalizedStatus === 'ANULADA').length },
   ].filter(i => i.value > 0);
 

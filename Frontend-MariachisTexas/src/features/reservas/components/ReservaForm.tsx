@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock } from 'lucide-react';
 import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+import { format12h } from '@/shared/utils/time';
 
 interface SelectedService {
   serviceId: string;
@@ -399,10 +400,10 @@ export const ReservaForm: React.FC<Props> = ({
                       className={`${isPublic ? `${inputClass} ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}` : `w-full bg-white border ${fieldErrors?.startTime ? 'border-red-400 bg-red-50 ring-2 ring-red-100' : 'border-orange-200'} text-sm rounded-lg p-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 cursor-pointer text-slate-700 appearance-none font-medium`}`}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
-                        <option key={`start-${time}`} value={time}>{time}</option>
+                        <option key={`start-${time}`} value={time}>{format12h(time)}</option>
                       ))}
                       {(formData.startTime || formData.eventTime) && !availableHours.includes(formData.startTime || formData.eventTime || '') && (
-                        <option value={formData.startTime || formData.eventTime}>{formData.startTime || formData.eventTime} (Actual)</option>
+                        <option value={formData.startTime || formData.eventTime}>{format12h(formData.startTime || formData.eventTime)} (Actual)</option>
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
@@ -413,7 +414,7 @@ export const ReservaForm: React.FC<Props> = ({
                   <label className={labelClass}>HORA FIN</label>
                   <div className={`flex items-center justify-between rounded-xl px-4 border ${isPublic ? 'bg-white border-slate-200 h-[50px]' : 'bg-white border-orange-200 h-[42px]'}`}>
                     <span className={`font-mono font-bold ${isPublic ? 'text-slate-800 text-lg' : 'text-slate-700 text-sm'}`}>
-                      {formData.endTime || '--:--'}
+                      {formData.endTime ? format12h(formData.endTime) : '--:--'}
                     </span>
                   </div>
                 </div>

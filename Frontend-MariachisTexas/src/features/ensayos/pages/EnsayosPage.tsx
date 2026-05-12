@@ -159,7 +159,6 @@ export const EnsayosPage: React.FC = () => {
       let dotColorClass = 'bg-slate-300'
       if (totalItems > 0) dotColorClass = 'bg-purple-400'
       if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
-      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
       if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
@@ -241,7 +240,6 @@ export const EnsayosPage: React.FC = () => {
                   timeStyle = 'text-slate-400';
                 } else {
                   if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-500 text-emerald-800 border-l-4'; timeStyle = 'text-emerald-600'; }
-                  if (s === 'REPROGRAMADA') { style = 'bg-teal-50 border-teal-500 text-teal-800 border-l-4'; timeStyle = 'text-teal-600'; }
                   if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-500 text-blue-800 border-l-4'; timeStyle = 'text-blue-600'; }
                 }
 
@@ -423,10 +421,6 @@ export const EnsayosPage: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reserva confirmada</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#0c808b]" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reprogramada</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400" />

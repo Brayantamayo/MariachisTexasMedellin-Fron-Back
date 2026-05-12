@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Role } from '@/types';
 import { Eye, Edit2, Trash2, Shield, LayoutGrid, Check } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 interface Props {
   roles: Role[];
@@ -13,25 +14,13 @@ interface Props {
   onToggleStatus: (role: Role) => void;
 }
 
+
 export const RolesTable: React.FC<Props> = ({ roles, loading, onView, onEdit, onDelete, onToggleStatus }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const isSystemRole = (role: Role) => Boolean(role.isSystem);
   
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, disabled?: boolean }> = ({ icon: Icon, onClick, tooltip, disabled = false }) => (
-    <button
-        onClick={onClick}
-        title={tooltip}
-        disabled={disabled}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
-            disabled
-              ? 'cursor-not-allowed bg-slate-100 text-slate-300 opacity-70'
-              : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-        }`}
-    >
-        <Icon size={16} strokeWidth={2} />
-    </button>
-  );
+
 
   const getAvatarStyle = (name: string) => {
       const isSuperAdmin = name.toLowerCase().includes('admin');

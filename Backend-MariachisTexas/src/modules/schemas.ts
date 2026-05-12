@@ -309,14 +309,12 @@ export const CotizacionCreateSchema = z.object({
   .refine(d => d.clientId || d.clientName?.trim(), {
     message: 'El nombre del cliente es requerido', path: ['clientName']
   })
-  .refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-    message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
-  })
   .refine(d => {
     const [sh, sm] = d.startTime.split(':').map(Number)
     const [eh, em] = d.endTime.split(':').map(Number)
     const diffMin = (eh * 60 + em) - (sh * 60 + sm)
-    return diffMin >= 60 || diffMin < 0
+    const duracion = diffMin >= 0 ? diffMin : 1440 + diffMin
+    return duracion >= 60
   }, { message: 'El evento debe durar al menos 1 hora', path: ['endTime'] })
   .refine(d => {
     const ids = d.selectedServices.map(s => String(s.serviceId))
@@ -328,7 +326,7 @@ export const CotizacionCreateSchema = z.object({
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
     const [sh, sm] = d.startTime.split(':').map(Number)
     return sh * 60 + sm > currentMinutes
-  }, { message: 'Si el evento es hoy, la hora de inicio debe ser posterior a la hora actual', path: ['startTime'] })
+  }, { message: 'Esta hora ya no está disponible porque ya pasó', path: ['startTime'] })
 
 export const CotizacionUpdateSchema = z.object({
   clientId: z.string().optional().nullable(),
@@ -373,14 +371,12 @@ export const ReservaCreateSchema = z.object({
   selectedServices: z.array(servicioSeleccionado).max(10).optional(),
   repertoireIds: z.array(repertorioId).max(20).optional(),
 })
-  .refine(d => d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime), {
-    message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime']
-  })
   .refine(d => {
     const [sh, sm] = d.startTime.split(':').map(Number)
     const [eh, em] = d.endTime.split(':').map(Number)
     const diffMin = (eh * 60 + em) - (sh * 60 + sm)
-    return diffMin >= 60 || diffMin < 0
+    const duracion = diffMin >= 0 ? diffMin : 1440 + diffMin
+    return duracion >= 60
   }, { message: 'La reserva debe durar al menos 1 hora', path: ['endTime'] })
   .refine(d => {
     if (d.eventDate !== localDateStr()) return true
@@ -388,7 +384,7 @@ export const ReservaCreateSchema = z.object({
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
     const [sh, sm] = d.startTime.split(':').map(Number)
     return sh * 60 + sm > currentMinutes
-  }, { message: 'Si el evento es hoy, la hora de inicio debe ser posterior a la hora actual', path: ['startTime'] })
+  }, { message: 'Esta hora ya no está disponible porque ya pasó', path: ['startTime'] })
 
 export const ReservaUpdateSchema = z.object({
   eventDate: fechaFutura.optional(),
@@ -403,10 +399,15 @@ export const ReservaUpdateSchema = z.object({
   repertoireIds: z.array(repertorioId).max(20).optional(),
 })
   .refine(d => {
-    if (d.startTime && d.endTime)
-      return d.startTime < d.endTime || ['00:00', '00:30'].includes(d.endTime)
+    if (d.startTime && d.endTime) {
+      const [sh, sm] = d.startTime.split(':').map(Number)
+      const [eh, em] = d.endTime.split(':').map(Number)
+      const diffMin = (eh * 60 + em) - (sh * 60 + sm)
+      const duracion = diffMin >= 0 ? diffMin : 1440 + diffMin
+      return duracion >= 60
+    }
     return true
-  }, { message: 'La hora de fin debe ser posterior a la hora de inicio', path: ['endTime'] })
+  }, { message: 'La reserva debe durar al menos 1 hora', path: ['endTime'] })
 
 
 // ─── SERVICIO ─────────────────────────────────────────────────────────────────

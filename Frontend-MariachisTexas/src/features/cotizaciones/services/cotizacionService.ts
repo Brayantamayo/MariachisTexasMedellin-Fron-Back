@@ -47,16 +47,16 @@ export const cotizacionService = {
 
   // PDF generado en el backend con Puppeteer
   downloadPdf: async (id: string): Promise<void> => {
-    const token    = localStorage.getItem('token')
+    const token = localStorage.getItem('token')
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/cotizaciones/${id}/pdf`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     if (!response.ok) throw new Error('Error al generar el PDF')
     const blob = await response.blob()
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
     a.download = `Cotizacion-${id}-MariachisTexas.pdf`
     a.click()
     URL.revokeObjectURL(url)
@@ -65,19 +65,19 @@ export const cotizacionService = {
 
 // ─── MAPPER ───────────────────────────────────────────────────────────────────
 const mapToBackend = (form: any) => ({
-  clientId:         form.clientId         || null,
-  clientName:       form.clientName       || '',
-  clientPhone:      form.clientPhone      || '',
-  secondaryPhone:   form.secondaryPhone   || '',
-  clientEmail:      form.clientEmail      || '',
-  homenajeado:      form.homenajeado      || '',
-  eventDate:        form.eventDate,
-  eventType:        form.eventType,
-  startTime:        form.startTime,
-  endTime:          form.endTime,
-  location:         form.location         || '',
-  notes:            form.repertoireNotes  || form.notes || '',
-  totalAmount:      Number(form.totalAmount) || 0,
+  clientId: form.clientId || null,
+  clientName: form.clientName || '',
+  clientPhone: form.clientPhone || '',
+  secondaryPhone: form.secondaryPhone || '',
+  clientEmail: form.clientEmail || '',
+  homenajeado: form.homenajeado || '',
+  eventDate: form.eventDate,
+  eventType: form.eventType,
+  startTime: form.startTime,
+  endTime: form.endTime,
+  location: form.location || '',
+  notes: form.repertoireNotes || form.notes || '',
+  totalAmount: Number(form.totalAmount) || 0,
   selectedServices: form.selectedServices || [],
-  repertoireIds:    form.repertoireIds    || [],
+  repertoireIds: form.repertoireIds || [],
 })

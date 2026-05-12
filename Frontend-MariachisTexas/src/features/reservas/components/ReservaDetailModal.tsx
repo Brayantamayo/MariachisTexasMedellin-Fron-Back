@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Clock, MapPin, User, Wallet, FileText, Mail, Phone, Music, Star, Package, Check, Ban, CalendarClock } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, User, Wallet, FileText, Mail, Phone, Music, Star, Package, Check, Ban } from 'lucide-react';
 import { Reservation, Song, UserRole } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
 import { servicesService } from '@/src/features/servicio/services/servicesService';
 import { useAuth } from '@/shared/contexts/AuthContext';
-
+import { format12h } from '@/shared/utils/time';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -24,26 +24,26 @@ const limpiarNotas = (notas: string | null | undefined): string => {
 // Estados del backend en mayúsculas → label y estilo
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case 'PENDIENTE': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'PENDIENTE':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'CONFIRMADA': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
-    case 'ANULADA': return 'bg-red-50 text-red-600 border-red-100'
-    case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30'
-    // Legacy por si acaso
-    case 'Pendiente': return 'bg-yellow-50 text-yellow-600 border-yellow-100'
+    case 'ANULADA':    return 'bg-red-50 text-red-600 border-red-100'
+    case 'FINALIZADO': return 'bg-blue-50 text-blue-600 border-blue-100'
+    // Legacy
+    case 'Pendiente':  return 'bg-yellow-50 text-yellow-600 border-yellow-100'
     case 'Confirmado': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
     case 'Finalizado': return 'bg-blue-50 text-blue-600 border-blue-100'
-    case 'Anulado': return 'bg-red-50 text-red-600 border-red-100'
-    default: return 'bg-slate-50 text-slate-600'
+    case 'Anulado':    return 'bg-red-50 text-red-600 border-red-100'
+    default:           return 'bg-slate-50 text-slate-600'
   }
 }
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'PENDIENTE': return 'Pendiente'
+    case 'PENDIENTE':  return 'Pendiente'
     case 'CONFIRMADA': return 'Confirmada'
-    case 'ANULADA': return 'Anulada'
-    case 'REPROGRAMADA': return 'Reprogramada'
-    default: return status
+    case 'ANULADA':    return 'Anulada'
+    case 'FINALIZADO': return 'Finalizado'
+    default:           return status
   }
 }
 
@@ -69,7 +69,17 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
   const paidAmount = reservation.paidAmount || 0
   const remainingBalance = totalAmount - paidAmount
   const progressPercent = totalAmount > 0 ? Math.min((paidAmount / totalAmount) * 100, 100) : 0
-  const isActive = !['ANULADA', 'Anulado', 'Finalizado'].includes(reservation.status)
+  const eventDateStr = reservation.eventDate;
+  const eventTimeStr = reservation.startTime || reservation.eventTime || '23:59';
+  const now = new Date();
+  let hasPassed = false;
+  if (eventDateStr) {
+    const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+    hasPassed = now > eventDateTime;
+  }
+
+  const isActive = !['ANULADA', 'Anulado'].includes(reservation.status) && 
+                   (!['FINALIZADO', 'Finalizado'].includes(reservation.status) || !hasPassed);
   const isClient = user?.role === UserRole.CLIENTE
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLEADO
   const canActOnReservation = isActive && isAdmin;
@@ -132,9 +142,9 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
                       {reservation.eventDate}
                       <span className="text-slate-300">|</span>
                       <Clock size={14} className="text-slate-400" />
-                      {reservation.startTime || reservation.eventTime}
+                      {format12h(reservation.startTime || reservation.eventTime)}
                       {(reservation.endTime) && (
-                        <><span className="text-slate-300">→</span>{reservation.endTime}</>
+                        <><span className="text-slate-300">→</span>{format12h(reservation.endTime)}</>
                       )}
                     </p>
                   </div>
@@ -346,22 +356,6 @@ export const ReservaDetailModal: React.FC<Props> = ({ isOpen, onClose, reservati
           ) : (
             <>
               <div className="flex gap-3 flex-wrap">
-                {canActOnReservation && onCancel && (
-                  <button
-                    onClick={() => setShowCancelConfirm(true)}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
-                  >
-                    <Ban size={14} /> Cancelar Serenata
-                  </button>
-                )}
-                {canActOnReservation && onReschedule && (
-                  <button
-                    onClick={() => { onReschedule(reservation); onClose(); }}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
-                  >
-                    <CalendarClock size={14} /> Reprogramar
-                  </button>
-                )}
               </div>
               <button
                 onClick={onClose}

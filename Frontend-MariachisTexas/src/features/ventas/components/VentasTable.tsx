@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Sale } from '../services/ventaService';
-import { Eye, Download, User, FileText, Calendar, CreditCard, Edit2 } from 'lucide-react';
+import { Eye, Download, User, FileText, Calendar, CreditCard, Edit2, Ban, CalendarClock } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 interface Props {
   sales: Sale[];
@@ -12,25 +12,13 @@ interface Props {
   onEdit: (sale: Sale) => void;
   onAddPayment: (reservationId: string) => void;
   onDownload: (id: string) => void;
+  onCancel?: (id: string, motivo: string) => void;
 }
 
-export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView, onEdit, onAddPayment, onDownload }) => {
+export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView, onEdit, onAddPayment, onDownload, onCancel }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, variant?: 'default' | 'danger' }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => (
-    <button 
-        onClick={onClick}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 
-            ${variant === 'danger' 
-                ? 'bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-600' 
-                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-            }`}
-        title={tooltip}
-    >
-        <Icon size={16} strokeWidth={2} />
-    </button>
-  );
 
   if (loading) {
       return <div className="text-center py-20 text-slate-400">Cargando registros...</div>;
@@ -132,13 +120,25 @@ export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView,
                           <td className="py-5 px-8">
                               <div className="flex items-center justify-center gap-2">
                                   <ActionButton icon={Eye} onClick={() => onView(sale)} tooltip="Ver Detalle" />
-                                  {!isClient && sale.reservationStatus === 'Confirmado' && sale.reservationId && (
-                                      <ActionButton icon={CreditCard} onClick={() => onAddPayment(sale.reservationId!)} tooltip="Registrar Abono" />
-                                  )}
-                                  {!isClient && !sale.reservationStatus && (
-                                      <ActionButton icon={Edit2} onClick={() => onEdit(sale)} tooltip="Editar Venta" />
-                                  )}
-                                  <ActionButton icon={Download} onClick={() => onDownload(sale.id)} tooltip="Descargar Factura" variant="danger" />
+                                   {!isClient && sale.reservationId && (sale.reservationStatus?.toUpperCase() === 'CONFIRMADO' || sale.reservationStatus?.toUpperCase() === 'CONFIRMADA') && (
+                                       <ActionButton icon={CreditCard} onClick={() => onAddPayment(sale.reservationId!)} tooltip="Registrar Abono" />
+                                   )}
+                                   {!isClient && !sale.reservationStatus && (
+                                       <ActionButton icon={Edit2} onClick={() => onEdit(sale)} tooltip="Editar Venta" />
+                                   )}
+                                   {!isClient && sale.reservationId && sale.reservationStatus?.toUpperCase() !== 'ANULADA' && sale.reservationStatus?.toUpperCase() !== 'FINALIZADO' && (
+                                       <ActionButton 
+                                           icon={Ban} 
+                                           tooltip="Anular Reserva" 
+                                           variant="danger"
+                                           onClick={() => {
+                                               if (window.confirm('¿Estás seguro de anular esta reserva?')) {
+                                                   onCancel?.(sale.reservationId!, 'Anulado desde tabla de ventas');
+                                               }
+                                           }} 
+                                       />
+                                   )}
+                                   <ActionButton icon={Download} onClick={() => onDownload(sale.id)} tooltip="Descargar Factura"  />
                               </div>
                           </td>
                       </tr>

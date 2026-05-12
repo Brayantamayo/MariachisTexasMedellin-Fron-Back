@@ -198,6 +198,15 @@ export interface Service {
   estado: boolean
 }
 
+export interface GaleriaItem {
+  id: number
+  url: string
+  titulo?: string
+  descripcion?: string
+  publicId?: string
+  orden: number
+}
+
 // ─── MÓDULOS Y RUTAS ──────────────────────────────────────────────────────────
 export type ModuleName =
   | 'home'
@@ -216,6 +225,8 @@ export type ModuleName =
   | 'perfil'
   | 'bloqueos'
   | 'servicios'
+  | 'galeria'
+
 
 export interface AppRoute {
   path: string

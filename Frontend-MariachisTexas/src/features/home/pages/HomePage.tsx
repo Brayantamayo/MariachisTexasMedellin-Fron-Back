@@ -117,11 +117,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const WelcomeToast = () =>
     createPortal(
       <div
-        className={`fixed top-6 right-6 z-[200] transition-all duration-500 transform ${
-          showWelcomeToast
+        className={`fixed top-6 right-6 z-[200] transition-all duration-500 transform ${showWelcomeToast
             ? 'translate-y-0 opacity-100'
             : '-translate-y-4 opacity-0 pointer-events-none'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border border-emerald-100 bg-white/95 backdrop-blur-md min-w-[320px]">
           <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
@@ -775,13 +774,12 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     <div className="flex items-center justify-between md:flex-col md:items-end gap-4 border-t md:border-t-0 border-amber-500/10 pt-6 md:pt-0">
                       <div className="flex flex-col items-end">
                         <span
-                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${
-                            event.status === 'Confirmado'
+                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${event.status === 'Confirmado'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : event.status === 'Pendiente'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-slate-800 text-slate-400 border border-amber-500/10'
-                          }`}
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-slate-800 text-slate-400 border border-amber-500/10'
+                            }`}
                         >
                           {event.status}
                         </span>

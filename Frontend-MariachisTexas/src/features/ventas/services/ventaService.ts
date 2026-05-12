@@ -111,4 +111,9 @@ export const ventaService = {
         a.remove()
         window.URL.revokeObjectURL(url)
     },
+
+    updateReservationFromSale: async (saleId: string, data: any): Promise<any> => {
+        const { data: res } = await api.put(`/ventas/${saleId}/reserva`, data)
+        return res
+    }
 }

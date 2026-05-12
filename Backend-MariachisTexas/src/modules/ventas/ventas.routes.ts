@@ -86,4 +86,14 @@ router.get('/:id', ventaController.getById)
  */
 router.get('/:id/download/pdf', ventaController.downloadVentaPdf)
 
+/**
+ * PUT /ventas/:id/reserva
+ * Editar la reserva asociada a una venta (solo ADMIN y EMPLEADO).
+ */
+router.put(
+  '/:id/reserva',
+  requireRole(['ADMIN', 'EMPLEADO']),
+  ventaController.updateReservaFromVenta
+)
+
 export default router
