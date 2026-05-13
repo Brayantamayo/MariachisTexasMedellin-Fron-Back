@@ -75,6 +75,37 @@ export const useReservasManager = () => {
       const blocksData = await blockService.getBlocks();
       setBlocks(blocksData);
 
+      const applyDynamicStatus = (data: any[]) => {
+        const now = new Date();
+        const nowTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const nowDateStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+        return data.map(r => {
+          if (!r.eventDate) return r;
+          const eventDateStr = r.eventDate;
+          const startTimeStr = r.startTime || r.eventTime || '00:00';
+          const endTimeStr = r.endTime || '23:59';
+          
+          const isPastStart = eventDateStr < nowDateStr || (eventDateStr === nowDateStr && startTimeStr < nowTimeStr);
+          const isPastEnd = eventDateStr < nowDateStr || (eventDateStr === nowDateStr && endTimeStr < nowTimeStr);
+          
+          let isExpired24h = false;
+          if (r.createdAt) {
+            const createdAtDate = new Date(r.createdAt);
+            const limitDate = new Date(createdAtDate.getTime() + 24 * 60 * 60 * 1000);
+            isExpired24h = now > limitDate;
+          }
+
+          if (r.status === 'PENDIENTE' && (isPastStart || isExpired24h)) {
+            return { ...r, status: 'ANULADA' };
+          }
+          if (r.status === 'CONFIRMADA' && isPastEnd) {
+            return { ...r, status: 'FINALIZADO' };
+          }
+          return r;
+        });
+      };
+
       if (!isClient) {
         const [resData, calendarData, rehData, quoteData] = await Promise.all([
           reservaService.getReservations(),
@@ -83,12 +114,12 @@ export const useReservasManager = () => {
           cotizacionService.getQuotations()
         ]);
         const filteredCalendar = calendarData.filter((r: any) => {
-          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
-          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
-          return !isVentaDirecta && !isClienteDirecto;
+          const isVentaDirectaSinReserva = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          // Permitimos ventas directas si el usuario las quiere ver, pero por ahora seguimos el patrón de filtrar solo las que no tienen datos de evento
+          return !isVentaDirectaSinReserva && r.eventType !== 'ENSAYO' && r.eventType !== 'COTIZACION';
         });
-        setReservations(resData);
-        setCalendarReservations(filteredCalendar);
+        setReservations(applyDynamicStatus(resData) as any);
+        setCalendarReservations(applyDynamicStatus(filteredCalendar) as any);
         setRehearsals(rehData);
         setQuotations(quoteData);
       } else {
@@ -99,14 +130,13 @@ export const useReservasManager = () => {
           cotizacionService.getDisponibilidad(),
         ]);
 
-        setReservations(misReservas);
+        setReservations(applyDynamicStatus(misReservas) as any);
 
         const filteredPublicCalendar = todasReservas.filter((r: any) => {
-          const isVentaDirecta = r.id?.startsWith('VENTA-') && !r.cotizacionId;
-          const isClienteDirecto = r.clientName === 'Cliente Directa' || r.clientName === 'Cliente Directa Directa';
-          return !isVentaDirecta && !isClienteDirecto;
+          const isVentaDirectaSinReserva = r.id?.startsWith('VENTA-') && !r.cotizacionId;
+          return !isVentaDirectaSinReserva && r.eventType !== 'ENSAYO' && r.eventType !== 'COTIZACION';
         });
-        setCalendarReservations(filteredPublicCalendar);
+        setCalendarReservations(applyDynamicStatus(filteredPublicCalendar) as any);
 
         setRehearsals(
           (ensayosDisp as any[]).map((e, i) => ({
@@ -229,7 +259,12 @@ export const useReservasManager = () => {
   }, [loading, canManage]);
 
   useEffect(() => {
-    if (user) fetchData();
+    if (user) {
+      fetchData();
+      // Refrescar cada 2 minutos para asegurar estados actualizados (anulación/finalización)
+      const interval = setInterval(fetchData, 120000);
+      return () => clearInterval(interval);
+    }
   }, [user]);
 
   const handleViewReserva = async (res: Reservation) => {
@@ -377,10 +412,15 @@ export const useReservasManager = () => {
       }
 
       const updated = await reservaService.cancelReservation(id, motivo || 'Cancelación manual por usuario');
+      // Actualizar la reserva con estado ANULADA en la lista
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      // Remover la reserva del calendario para liberar la fecha/hora inmediatamente
+      setCalendarReservations(prev => prev.filter(r => r.id !== updated.id));
       if (selectedReserva?.id === id) setSelectedReserva(updated);
-      showNotification('Reserva anulada.');
+      showNotification('Reserva anulada. La fecha ha sido liberada en el calendario.');
+      
+      // Refrescar datos del backend para asegurar sincronización completa
+      await fetchData();
     } catch (error: any) {
       showNotification(error?.response?.data?.message || 'Error al anular.', 'error');
     }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sale } from '../services/ventaService';
-import { Eye, Download, User, FileText, Calendar, CreditCard, Edit2, Ban, CalendarClock } from 'lucide-react';
+import { Eye, Download, User, FileText, Calendar, CreditCard, Edit2, Ban, CalendarClock, Clock } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { ActionButton } from '@/shared/components/ActionButton';
 
@@ -93,21 +93,25 @@ export const VentasTable: React.FC<Props> = ({ sales, loading, isClient, onView,
 
                           {/* Monto */}
                           <td className="py-5 px-6">
-                              <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-slate-700">
-                                      ${sale.amount.toLocaleString()}
-                                  </span>
-                                  {sale.totalAmount && sale.totalAmount !== sale.amount && (
-                                      <span className="text-[10px] text-slate-400">
-                                          Total Reserva: ${sale.totalAmount.toLocaleString()}
+                                  <div className="flex flex-col">
+                                      {/* Monto Abonado (Principal) */}
+                                      <span className="text-sm font-bold text-slate-800">
+                                          ${(sale.paidAmount ?? 0).toLocaleString()}
                                       </span>
-                                  )}
-                                  {sale.pendingAmount !== undefined && (
-                                      <span className={`text-[10px] font-bold flex items-center gap-1 ${sale.pendingAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                          <CreditCard size={10} /> 
-                                          {sale.pendingAmount > 0 ? `Saldo: $${sale.pendingAmount.toLocaleString()}` : 'Pagado'}
+                                      
+                                      {/* Saldo Pendiente */}
+                                      {sale.pendingAmount !== undefined && sale.pendingAmount > 0 && (
+                                          <span className="text-[10px] font-bold flex items-center gap-1 text-red-500 mt-0.5">
+                                              <Clock size={10} /> 
+                                              Pendiente: ${sale.pendingAmount.toLocaleString()}
+                                          </span>
+                                      )}
+
+                                      {/* Total de la operación */}
+                                      <span className="text-[9px] text-slate-400 font-medium mt-1">
+                                          Total: ${sale.amount.toLocaleString()}
                                       </span>
-                                  )}
+                                  </div>
                                   {!sale.reservationId && (
                                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
                                           <CreditCard size={10} /> {sale.method}

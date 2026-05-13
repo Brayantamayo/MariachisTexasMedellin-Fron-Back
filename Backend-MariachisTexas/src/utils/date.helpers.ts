@@ -1,7 +1,11 @@
 ///aqui van todos los buffers de tiempo para reservas y ensayos, validaciones de fechas, etc.
 
-export const toLocalDate = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export const toLocalDate = (d: Date): string => {
+  // Usamos el offset para obtener la fecha "local" real que se guardó, 
+  // evitando que el cambio a UTC mueva la fecha un día antes o después.
+  const date = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return date.toISOString().split('T')[0];
+}
 
 export const toLocalTime = (d: Date): string =>
   `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`

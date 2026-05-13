@@ -214,6 +214,7 @@ export const VentasPage: React.FC = () => {
   const [loading,       setLoading]       = useState(true);
   const [searchTerm,    setSearchTerm]    = useState('');
   const [currentPage,   setCurrentPage]   = useState(1);
+  const [statusFilter,   setStatusFilter]  = useState<'TODOS' | 'CONFIRMADO' | 'FINALIZADO' | 'ANULADO'>('TODOS');
   const [notification,  setNotification]  = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [detailSale,    setDetailSale]    = useState<SaleRecord | null>(null);
   const [isDetailOpen,  setIsDetailOpen]  = useState(false);
@@ -355,19 +356,8 @@ const handleCreateSale = async (data: any) => {
     }
   };
 
-  const filtered = sales.filter(s =>
-    (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages   = Math.ceil(filtered.length / itemsPerPage);
-  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  ///pendiente de revision
   const getStatusBadge = (sale: SaleRecord) => {
     const now = new Date();
-    // Intentamos construir la fecha y hora del evento
     const eventDateStr = sale.eventDate;
     const eventTimeStr = sale.eventTime || '23:59';
     
@@ -377,28 +367,50 @@ const handleCreateSale = async (data: any) => {
       hasPassed = now > eventDateTime;
     }
 
-    // Si está anulada o cancelada (prioridad alta)
     if (sale.status?.toUpperCase() === 'CANCELADA' || sale.reservationStatus?.toUpperCase() === 'ANULADA') {
       return { label: 'Anulada', cls: 'bg-red-50 text-red-700 border-red-200' };
     }
 
-    // Si tiene reserva
     if (sale.reservationId) {
-      // SOLO si ya pasó la fecha/hora Y el estado es Finalizado, mostramos Finalizado
       if (hasPassed && (sale.reservationStatus === 'FINALIZADO' || sale.status === 'Finalizado')) {
         return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
       }
-      // En cualquier otro caso, sigue Confirmado
       return { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     }
 
-    // Para ventas directas que no vienen de reserva
     if (sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0) {
       return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
     }
     
     return { label: 'Venta Directa', cls: 'bg-slate-50 text-slate-500 border-slate-200' };
   };
+
+  // Resetear página al filtrar
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm]);
+
+  const filtered = sales.filter(s => {
+    const matchesSearch = 
+      (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.concept ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.id ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (statusFilter === 'TODOS') return matchesSearch;
+    
+    const badge = getStatusBadge(s);
+    const badgeLabel = badge.label.toUpperCase();
+    
+    // Normalizar ANULADA/ANULADO
+    if (statusFilter === 'ANULADO') {
+      return matchesSearch && (badgeLabel === 'ANULADO' || badgeLabel === 'ANULADA');
+    }
+    
+    return matchesSearch && badgeLabel === statusFilter;
+  });
+
+  const totalPages   = Math.ceil(filtered.length / itemsPerPage);
+  const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
@@ -448,16 +460,37 @@ const handleCreateSale = async (data: any) => {
 
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[500px]">
-        <div className="p-8 pb-4">
-          <div className="relative max-w-sm">
+        <div className="p-8 pb-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="relative max-w-sm w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Buscar por cliente"
+              placeholder="Buscar por cliente o ID"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all text-sm"
+              className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-red-100 focus:border-red-400 outline-none transition-all text-sm"
             />
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            {[
+              { id: 'TODOS', label: 'Todos' },
+              { id: 'CONFIRMADO', label: 'Confirmados' },
+              { id: 'FINALIZADO', label: 'Finalizados' },
+              { id: 'ANULADO', label: 'Anulados' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setStatusFilter(f.id as any)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${
+                  statusFilter === f.id 
+                    ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-200' 
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -521,17 +554,28 @@ const handleCreateSale = async (data: any) => {
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          <p className="text-sm font-bold text-slate-700">
-                            ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
-                          </p>
-                          {!isPagado && !isAnulada && (sale.pendingAmount ?? 0) > 0 && (
-                            <p className="text-[10px] font-bold text-red-500 flex items-center gap-1">
-                              <Clock size={10} /> Pendiente: ${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}
+                          <div className="flex flex-col">
+                            {/* Monto Abonado (Principal) */}
+                            <p className="text-sm font-bold text-slate-800">
+                              ${(sale.paidAmount ?? 0).toLocaleString('es-CO')}
                             </p>
-                          )}
-                          {isPagado && !isAnulada && (
-                            <p className="text-[10px] font-bold text-emerald-500">✓ Pagado</p>
-                          )}
+                            
+                            {/* Saldo Pendiente */}
+                            {!isPagado && !isAnulada && (sale.pendingAmount ?? 0) > 0 && (
+                              <p className="text-[10px] font-bold text-red-500 flex items-center gap-1 mt-0.5">
+                                <Clock size={10} /> Pendiente: ${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}
+                              </p>
+                            )}
+
+                            {/* Total de la Operación */}
+                            <p className="text-[9px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">
+                              Total: ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
+                            </p>
+
+                            {isPagado && !isAnulada && (
+                              <p className="text-[9px] font-bold text-emerald-500 mt-1 uppercase">✓ Pagado</p>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-2">
