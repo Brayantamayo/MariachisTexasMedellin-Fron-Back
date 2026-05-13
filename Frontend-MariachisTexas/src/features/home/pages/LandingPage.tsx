@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award, Users, Mic2, Phone, Music, Zap, Camera } from 'lucide-react';
+import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award, Users, Mic2, Phone, Music, Zap, Camera, X, ChevronLeft } from 'lucide-react';
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
@@ -46,8 +46,9 @@ const InfiniteMarquee: React.FC<{ items: string[] }> = ({ items }) => {
 };
 
 export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [dynamicGallery, setDynamicGallery] = useState<string[]>([]);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
 
     useEffect(() => {
         const fetchGallery = async () => {
@@ -68,14 +69,20 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
         fetchGallery();
     }, []);
 
-    // Gallery Autoplay Effect
-    useEffect(() => {
-        if (dynamicGallery.length === 0) return;
-        const interval = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % dynamicGallery.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, [dynamicGallery]);
+    const openLightbox = (idx: number) => {
+        setLightboxIndex(idx);
+        setLightboxOpen(true);
+    };
+
+    const closeLightbox = () => setLightboxOpen(false);
+
+    const goToNext = () => {
+        setLightboxIndex((prev) => (prev + 1) % dynamicGallery.length);
+    };
+
+    const goToPrev = () => {
+        setLightboxIndex((prev) => (prev - 1 + dynamicGallery.length) % dynamicGallery.length);
+    };
 
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
@@ -98,7 +105,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                         initial={{ scale: 1 }}
                         animate={{ scale: 1.1 }}
                         transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
-                        src={dynamicGallery.length > 0 ? dynamicGallery[currentImageIndex] : "/images/Mariachis 16.jpeg"}
+                        src="/images/Mariachis 16.jpeg"
                         alt="Mariachis Texas"
                         className="w-full h-full object-cover object-[75%_center]"
                     />
@@ -474,6 +481,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                                 whileInView={{ opacity: 1, scale: 1 }}
                                 viewport={{ once: true, margin: "-50px" }}
                                 transition={{ duration: 0.5, delay: idx * 0.1 }}
+                                onClick={() => openLightbox(idx)}
                                 className="group relative overflow-hidden rounded-2xl aspect-[4/3] border border-white/10 hover:border-[#f1bf00] transition-all duration-500 hover:shadow-[0_0_30px_rgba(241,191,0,0.3)] cursor-pointer"
                             >
                                 <img
@@ -483,7 +491,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-8">
                                     <span className="text-[#f1bf00] font-serif font-bold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-500 flex items-center gap-2">
-                                        <Camera size={20} /> Nuestros Momentos
+                                        <Camera size={20} /> Ver Foto
                                     </span>
                                 </div>
                             </motion.div>
@@ -608,6 +616,71 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
             
       `}</style>
             <AIAdvisorWidget />
+
+            {/* --- LIGHTBOX MODAL --- */}
+            {lightboxOpen && dynamicGallery.length > 0 && (
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center"
+                    onClick={closeLightbox}
+                >
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/95 backdrop-blur-xl"
+                    />
+
+                    {/* Close Button */}
+                    <button
+                        onClick={closeLightbox}
+                        className="absolute top-6 right-6 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 hover:rotate-90 border border-white/20"
+                    >
+                        <X size={24} />
+                    </button>
+
+                    {/* Image Counter */}
+                    <div className="absolute top-6 left-6 z-50 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white text-sm font-bold border border-white/20">
+                        {lightboxIndex + 1} / {dynamicGallery.length}
+                    </div>
+
+                    {/* Previous Arrow */}
+                    {dynamicGallery.length > 1 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+                            className="absolute left-4 md:left-8 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 border border-white/20 hover:scale-110"
+                        >
+                            <ChevronLeft size={28} />
+                        </button>
+                    )}
+
+                    {/* Next Arrow */}
+                    {dynamicGallery.length > 1 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                            className="absolute right-4 md:right-8 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 border border-white/20 hover:scale-110"
+                        >
+                            <ChevronRight size={28} />
+                        </button>
+                    )}
+
+                    {/* Main Image */}
+                    <motion.div
+                        key={lightboxIndex}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="relative z-40 max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={dynamicGallery[lightboxIndex]}
+                            alt={`Galería ${lightboxIndex + 1}`}
+                            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] border border-white/10"
+                        />
+                    </motion.div>
+                </div>
+            )}
 
         </div>
     );

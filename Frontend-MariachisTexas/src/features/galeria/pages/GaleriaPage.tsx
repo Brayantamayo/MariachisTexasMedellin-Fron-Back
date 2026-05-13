@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Trash2, Plus, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Camera, Trash2, Plus, Upload, X, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Eye, AlertTriangle } from 'lucide-react';
 import { galeriaService } from '../services/galeria.service';
 import { GaleriaItem } from '@/types';
-import { ActionButton } from '@/shared/components/ActionButton';
 
 import toast from 'react-hot-toast';
 
@@ -15,6 +14,10 @@ export const GaleriaPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchImages();
@@ -67,15 +70,33 @@ export const GaleriaPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar esta imagen?')) return;
+  const openLightbox = (idx: number) => {
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+  };
 
+  const closeLightbox = () => setLightboxOpen(false);
+
+  const goToNext = () => {
+    setLightboxIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const goToPrev = () => {
+    setLightboxIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleDelete = async () => {
+    if (deleteConfirmId === null) return;
     try {
-      await galeriaService.delete(id);
-      setImages(prev => prev.filter(img => img.id !== id));
-      toast.success('Imagen eliminada');
+      setIsDeleting(true);
+      await galeriaService.delete(deleteConfirmId);
+      setImages(prev => prev.filter(img => img.id !== deleteConfirmId));
+      toast.success('Imagen eliminada correctamente');
+      setDeleteConfirmId(null);
     } catch (error) {
       toast.error('Error al eliminar la imagen');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -147,7 +168,8 @@ export const GaleriaPage: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                   transition={{ duration: 0.3, delay: idx * 0.05 }}
-                  className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-zinc-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+                  onClick={() => openLightbox(idx)}
+                  className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-zinc-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
                 >
                   <img 
                     src={img.url} 
@@ -158,14 +180,17 @@ export const GaleriaPage: React.FC = () => {
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Imagen {idx + 1}</span>
                     </div>
-                    <ActionButton 
-                      icon={Trash2}
-                      onClick={() => handleDelete(img.id)}
-                      tooltip="Eliminar Imagen"
-                      variant="danger"
-                      size={18}
-                    />
-
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors">
+                        <Eye size={18} />
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(img.id); }}
+                        className="p-2 bg-red-500/80 backdrop-blur-sm rounded-full text-white hover:bg-red-600 transition-all duration-200 hover:scale-110"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -257,6 +282,161 @@ export const GaleriaPage: React.FC = () => {
                       <>
                         <Upload size={20} />
                         Confirmar Subida
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Lightbox Preview */}
+      <AnimatePresence>
+        {lightboxOpen && images.length > 0 && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+            onClick={closeLightbox}
+          >
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+
+            {/* Close Button */}
+            <button
+              onClick={closeLightbox}
+              className="absolute top-6 right-6 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 hover:rotate-90 border border-white/20"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Image Counter */}
+            <div className="absolute top-6 left-6 z-50 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white text-sm font-bold border border-white/20">
+              {lightboxIndex + 1} / {images.length}
+            </div>
+
+            {/* Previous Arrow */}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+                className="absolute left-4 md:left-8 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 border border-white/20 hover:scale-110"
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
+            {/* Next Arrow */}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                className="absolute right-4 md:right-8 z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all duration-300 border border-white/20 hover:scale-110"
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+
+            {/* Main Image */}
+            <motion.div
+              key={lightboxIndex}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="relative z-40 max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={images[lightboxIndex]?.url}
+                alt={`Galería ${lightboxIndex + 1}`}
+                className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] border border-white/10"
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmId !== null && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isDeleting && setDeleteConfirmId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 30 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              {/* Red accent top bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-red-500 via-red-600 to-orange-500" />
+
+              <div className="p-8 flex flex-col items-center text-center">
+                {/* Warning Icon */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -20 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', damping: 12, delay: 0.1 }}
+                  className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-6 border-2 border-red-100"
+                >
+                  <AlertTriangle size={40} className="text-red-500" />
+                </motion.div>
+
+                {/* Title */}
+                <h3 className="text-2xl font-bold text-zinc-900 mb-2">¿Eliminar imagen?</h3>
+
+                {/* Description */}
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-xs mb-6">
+                  Esta acción no se puede deshacer. La imagen será eliminada permanentemente de la galería.
+                </p>
+
+                {/* Preview of image to delete */}
+                {(() => {
+                  const imgToDelete = images.find(img => img.id === deleteConfirmId);
+                  return imgToDelete ? (
+                    <div className="w-full h-32 rounded-xl overflow-hidden mb-8 border border-zinc-100 shadow-inner">
+                      <img
+                        src={imgToDelete.url}
+                        alt="Preview"
+                        className="w-full h-full object-cover opacity-70"
+                      />
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Buttons */}
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setDeleteConfirmId(null)}
+                    disabled={isDeleting}
+                    className="flex-1 py-3.5 rounded-xl font-bold text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-all duration-200 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex-1 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg shadow-red-500/25 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Eliminando...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={18} />
+                        Eliminar
                       </>
                     )}
                   </button>
