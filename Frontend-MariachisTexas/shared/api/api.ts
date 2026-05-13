@@ -16,11 +16,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Sesión expirada → redirigir
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      // Si el error es en el login, NO redirigir (dejar que el componente maneje el error)
+      const isLoginRequest = error.config?.url?.includes('/auth/login')
+      
+      if (!isLoginRequest) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+      }
       return Promise.reject(error)
     }
 

@@ -216,7 +216,12 @@ export const EnsayosPage: React.FC = () => {
             {dayRehearsals.map(r => (
               <div
                 key={r.id}
-                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRehearsal(r);
+                  setIsDetailOpen(true);
+                }}
+                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors cursor-pointer
                   ${isPast 
                     ? 'border-slate-300 bg-slate-50 text-slate-400' 
                     : 'border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
@@ -454,6 +459,7 @@ export const EnsayosPage: React.FC = () => {
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
         quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
+        onViewRehearsal={(reh) => { setIsDateDetailsOpen(false); setSelectedRehearsal(reh); setIsDetailOpen(true); }}
         onCreateNew={(time) => { 
           setIsDateDetailsOpen(false); 
           setSelectedDateForCreate(selectedDateForDetails); 

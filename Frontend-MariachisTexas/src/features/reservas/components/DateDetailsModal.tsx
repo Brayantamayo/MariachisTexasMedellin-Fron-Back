@@ -14,6 +14,7 @@ interface Props {
   rehearsals?: Rehearsal[];
   quotations?: Quotation[];
   onViewReservation: (reservation: Reservation) => void;
+  onViewRehearsal?: (rehearsal: Rehearsal) => void;
   onCreateNew: (time?: string) => void;
   onBlockTime: (date: string, time: string) => void;
   onDeleteBlock: (blockId: string) => void;
@@ -33,7 +34,7 @@ const addOneHour = (t: string): string => {
 export const DateDetailsModal: React.FC<Props> = ({
   isOpen, onClose, date,
   reservations, blocks = [], rehearsals = [], quotations = [],
-  onViewReservation, onCreateNew, onBlockTime, onDeleteBlock
+  onViewReservation, onViewRehearsal, onCreateNew, onBlockTime, onDeleteBlock
 }) => {
   const { user } = useAuth();
   const isAdmin  = user?.role === UserRole.ADMIN;
@@ -71,15 +72,32 @@ export const DateDetailsModal: React.FC<Props> = ({
       }
     };
 
-    // 1. Reserva — hora exacta de inicio
-    const reservation = reservations.find(r => (r.startTime || r.eventTime) === time && r.eventDate === date)
+    // 1. Ensayo (Prioridad para que coincida con la grilla del calendario)
+    const rehearsal = rehearsals.find(r => {
+      const rTime = r.time ?? (r as any).hora;
+      if (!rTime) return false;
+      // Normalizar formato (ej: "8:00" -> "08:00")
+      const [h, m] = rTime.split(':').map(Number);
+      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      return normalizedRTime === time;
+    });
+    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
+
+    // 2. Reserva — hora exacta de inicio
+    const reservation = reservations.find(r => {
+      const rTime = r.startTime || r.eventTime;
+      if (!rTime) return false;
+      const [h, m] = rTime.split(':').map(Number);
+      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      return normalizedRTime === time && r.eventDate === date;
+    });
     if (reservation) return { status: 'reserved', data: reservation }
 
-    // 2. Horas intermedias de una reserva
+    // 3. Horas intermedias de una reserva
     const reservaEnRango = reservations.find(r => checkReservaEnRango(hMin, r))
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Buffer POST-reserva: la hora exacta de fin
+    // 4. Buffer POST-reserva: la hora exacta de fin
     const bufferPostReserva = reservations.find(r => {
       if (r.endTime !== time) return false;
       const s = timeToMinutes(r.startTime || r.eventTime || '00:00');
@@ -89,7 +107,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
-    // 4. Buffer PRE-reserva: la hora anterior al inicio
+    // 5. Buffer PRE-reserva: la hora anterior al inicio
     const nextHour = addOneHour(time)
     const prevReservation = reservations.find(r => {
       if ((r.startTime || r.eventTime) !== nextHour) return false;
@@ -98,11 +116,11 @@ export const DateDetailsModal: React.FC<Props> = ({
     })
     if (prevReservation) return { status: 'buffer', data: prevReservation }
 
-    // 5. Cotización — rango completo (sin incluir fin)
+    // 6. Cotización — rango completo (sin incluir fin)
     const quote = quotations.find(q => checkReservaEnRango(hMin, q))
     if (quote) return { status: 'quote', data: quote }
 
-    // 6. Buffer POST-cotización: hora exacta de fin
+    // 7. Buffer POST-cotización: hora exacta de fin
     const bufferPostCotizacion = quotations.find(q => {
       if (q.endTime !== time) return false;
       const s = timeToMinutes(q.startTime || '00:00');
@@ -111,10 +129,6 @@ export const DateDetailsModal: React.FC<Props> = ({
       return q.eventDate !== date;
     })
     if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
-
-    // 7. Ensayo
-    const rehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === time)
-    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
     // 8. Buffer ensayo (hora siguiente al ensayo)
     const prevRehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === prevTime)
@@ -155,6 +169,8 @@ export const DateDetailsModal: React.FC<Props> = ({
       const res = slotData.data as Reservation;
       if (isClient && user?.email !== res.clientEmail) return;
       onViewReservation(slotData.data);
+    } else if (slotData.status === 'rehearsal' && onViewRehearsal) {
+      onViewRehearsal(slotData.data);
     }
   };
 
@@ -350,7 +366,8 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const reh      = data as Rehearsal;
                 const rehTime  = reh.time ?? (reh as any).hora ?? ''
                 const rangeLabel = `${format12h(rehTime)} → ${format12h(addOneHour(rehTime))}`
-                containerClass   = "border-slate-200 bg-slate-100 cursor-not-allowed";
+                const canViewReh = !isClient && onViewRehearsal;
+                containerClass   = `border-purple-400 bg-purple-50 ${canViewReh ? 'cursor-pointer hover:bg-purple-100/80 shadow-inner' : 'cursor-not-allowed'}`;
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
                     <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
@@ -358,14 +375,15 @@ export const DateDetailsModal: React.FC<Props> = ({
                 ) : (
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
-                        <Music size={13} className="text-blue-600" />
+                      <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center shrink-0">
+                        <Music size={13} className="text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-blue-800">Ensayo Programado</p>
-                        <p className="text-[10px] font-mono text-blue-500 mt-0.5">{rangeLabel}</p>
+                        <p className="text-sm font-bold text-purple-900">Ensayo Programado</p>
+                        <p className="text-[10px] font-mono text-purple-600 mt-0.5">{rangeLabel}</p>
                       </div>
                     </div>
+                    <Music size={16} className="text-purple-300 opacity-50" />
                   </div>
                 );
 

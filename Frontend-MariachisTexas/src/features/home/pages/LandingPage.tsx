@@ -4,8 +4,7 @@ import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award,
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
-
-import { AIAdvisorWidget } from './Aiadvisorwidget'
+import { AIAdvisorWidget } from './AIAdvisorWidget'
 
 
 interface Props {
@@ -330,7 +329,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                                     muted
                                     playsInline
                                     className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity duration-700 transform scale-105"
-                                    src="/images/videos/Mariachis18.mp4"
+                                    src="/videos/Mariachis18.mp4"
                                 ////link para video
                                 ></video>
                             </div>
@@ -468,27 +467,27 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dynamicGallery.slice(0, 9).map((img, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            viewport={{ once: true, margin: "-50px" }}
-                            transition={{ duration: 0.5, delay: idx * 0.1 }}
-                            className="group relative overflow-hidden rounded-2xl aspect-[4/3] border border-white/10 hover:border-[#f1bf00] transition-all duration-500 hover:shadow-[0_0_30px_rgba(241,191,0,0.3)] cursor-pointer"
-                        >
-                            <img
-                                src={img}
-                                alt={`Gallery ${idx + 1}`}
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-8">
-                                <span className="text-[#f1bf00] font-serif font-bold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-500 flex items-center gap-2">
-                                    <Camera size={20} /> Nuestros Momentos
-                                </span>
-                            </div>
-                        </motion.div>
-                    ))}
+                        {dynamicGallery.slice(0, 9).map((img, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true, margin: "-50px" }}
+                                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                                className="group relative overflow-hidden rounded-2xl aspect-[4/3] border border-white/10 hover:border-[#f1bf00] transition-all duration-500 hover:shadow-[0_0_30px_rgba(241,191,0,0.3)] cursor-pointer"
+                            >
+                                <img
+                                    src={img}
+                                    alt={`Gallery ${idx + 1}`}
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-8">
+                                    <span className="text-[#f1bf00] font-serif font-bold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-500 flex items-center gap-2">
+                                        <Camera size={20} /> Nuestros Momentos
+                                    </span>
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
 
                 </div>
@@ -533,7 +532,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                             poster=""
                             controls
                             className="w-full h-full object-cover"
-                            src="/images/videos/Mariachis20.mp4"
+                            src="/videos/Mariachis20.mp4"
                         ></video>
                     </motion.div>
                 </div>

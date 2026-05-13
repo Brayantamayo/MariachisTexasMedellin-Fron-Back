@@ -94,10 +94,11 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
       return;
     }
 
-    const success = await login(email, password);
-
-    if (!success) {
-      setError('Correo o contrasena incorrectos. Verifica tus datos e intenta de nuevo.');
+    try {
+      await login(email, password);
+      // El éxito se maneja por la redirección automática del AuthProvider o el router
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error al iniciar sesión.');
     }
   };
 
@@ -424,7 +425,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3" noValidate>
             <div>
               <label className="block text-[10px] font-bold text-white uppercase tracking-widest mb-1 ml-1">
                 Correo Electronico
@@ -435,7 +436,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
                   size={16}
                 />
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -443,7 +444,6 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
                   }}
                   className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/45 focus:ring-2 focus:ring-green-500/30 focus:border-green-500/50 outline-none transition-all text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                   placeholder="usuario@texas.com"
-                  required
                 />
               </div>
             </div>
@@ -476,7 +476,6 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
                   }}
                   className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/80 placeholder:tracking-[0.18em] focus:ring-2 focus:ring-red-500/30 focus:border-red-500/50 outline-none transition-all text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                   placeholder="••••••"
-                  required
                 />
               </div>
             </div>

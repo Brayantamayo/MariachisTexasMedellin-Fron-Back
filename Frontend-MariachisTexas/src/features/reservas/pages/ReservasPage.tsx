@@ -28,6 +28,7 @@ import { UpcomingReservationsBanner } from '../components/UpcomingReservationsBa
 import { ReservaCreateModal } from '../components/ReservaCreateModal';
 import { ReservaEditModal } from '../components/ReservaEditModal';
 import { ReservaDetailModal } from '../components/ReservaDetailModal';
+import { RehearsalDetailModal } from '../../ensayos/components/RehearsalDetailModal';
 import { DateDetailsModal } from '@/src/features/reservas/components/DateDetailsModal';
 import { AbonoCreateModal } from '../../abonos/components/AbonoCreateModal';
 import { BlockFormModal } from '../../bloqueos/components/BlockFormModal';
@@ -108,6 +109,9 @@ const PendingPaymentBanner: React.FC<{ reservations: any[] }> = ({ reservations 
 
 
 export const ReservasPage: React.FC = () => {
+  const [isRehearsalDetailOpen, setIsRehearsalDetailOpen] = useState(false);
+  const [selectedRehearsal, setSelectedRehearsal] = useState<any>(null);
+
   const {
     view, setView, currentDate, setCurrentDate,
     reservations, calendarReservations, blocks, setBlocks,
@@ -543,6 +547,11 @@ export const ReservasPage: React.FC = () => {
           return false;
         })}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
+        onViewRehearsal={(reh) => { 
+          setIsDateDetailsOpen(false); 
+          setSelectedRehearsal(reh); 
+          setIsRehearsalDetailOpen(true); 
+        }}
         onCreateNew={(time) => { setIsDateDetailsOpen(false); setSelectedDateForForm(selectedDateForDetails); setSelectedTimeForForm(time || null); setIsCreateOpen(true); }}
         onBlockTime={handleTimeSlotBlock}
         onDeleteBlock={(id) => setDeleteBlockModal({ isOpen: true, blockId: id })}
@@ -554,6 +563,12 @@ export const ReservasPage: React.FC = () => {
       <ConfirmationModal isOpen={deleteBlockModal.isOpen} onClose={() => setDeleteBlockModal({ ...deleteBlockModal, isOpen: false })} onConfirm={handleConfirmDeleteBlock} title="¿Eliminar Bloqueo?" message="Liberará la fecha en el calendario." />
       <ConfirmationModal isOpen={deleteTimeBlocksModal.isOpen} onClose={() => setDeleteTimeBlocksModal({ ...deleteTimeBlocksModal, isOpen: false })} onConfirm={handleConfirmDeleteTimeBlocks} title="¿Liberar Horarios?" message="Se eliminarán todos los bloqueos de horas en este día." confirmText="Liberar Todo" />
       <ConfirmationModal isOpen={deleteReservaModal.isOpen} onClose={() => setDeleteReservaModal({ ...deleteReservaModal, isOpen: false })} onConfirm={handleDeleteReserva} title="¿Eliminar Reserva?" message="Estás a punto de eliminar esta reserva permanentemente. Esta acción no se puede deshacer y se perderá el historial asociado." confirmText="Sí, eliminar" />
+      
+      <RehearsalDetailModal 
+        isOpen={isRehearsalDetailOpen} 
+        onClose={() => setIsRehearsalDetailOpen(false)} 
+        rehearsal={selectedRehearsal} 
+      />
     </div>
   );
 };
