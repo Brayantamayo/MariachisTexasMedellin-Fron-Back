@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, CheckCircle, AlertCircle, X, Eye, Download, CreditCard, Calendar, User, CheckSquare, Clock, Plus } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, X, Eye, Download, CreditCard, Calendar, User, CheckSquare, Clock, Plus, CalendarClock, Ban } from 'lucide-react';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { UserRole } from '@/types';
 import api from '@/shared/api/api';
 import { TablePagination } from '@/shared/components/TablePagination';
-import { AbonoCreateModal } from '@/src/features/abonos/components/AbonoCreateModal.tsx';
+import { AbonoCreateModal } from '@/src/features/abonos/components/AbonoCreateModal';
 import { VentaCreateModal } from '../components/VentaCreateModal';
+import { VentaDetailModal } from '../components/VentaDetailModal';
+import { ReservaEditModal } from '../../reservas/components/ReservaEditModal';
+import { reservaService } from '../../reservas/services/reservaService';
+import { ventaService } from '../services/ventaService';
+import { useReservasManager } from '../../reservas/hooks/useReservasManager';
+import { UpcomingReservationsBanner } from '../../reservas/components/UpcomingReservationsBanner';
+import { ReservaDetailModal } from '../../reservas/components/ReservaDetailModal';
+import { AnularReservaModal } from '@/shared/components/AnularReservaModal';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SaleRecord {
@@ -196,184 +205,9 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
   );
 };
 
-const SaleDetailModal: React.FC<{ isOpen: boolean; onClose: () => void; sale: SaleRecord | null; onDownload: (id: string) => void }> = ({ isOpen, onClose, sale, onDownload }) => {
-  if (!isOpen || !sale) return null;
-  const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="px-6 py-5 flex items-center justify-between shrink-0 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-              <Eye className="text-red-600" size={18} />
-            </div>
-            <div>
-              <h3 className="text-base font-serif font-bold text-slate-800 uppercase tracking-wide">{sale.concept}</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-0.5">{sale.clientName}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-lg transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
-
-          {/* Status */}
-          <div className={`flex items-center justify-between p-4 rounded-2xl border ${isFinalizado ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isFinalizado ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                <CheckCircle size={14} className={isFinalizado ? 'text-emerald-600' : 'text-red-500'} />
-              </div>
-              <span className={`text-xs font-bold uppercase tracking-widest ${isFinalizado ? 'text-emerald-700' : 'text-red-600'}`}>
-                {isFinalizado ? 'Pagado Completamente' : 'Venta Completa'}
-              </span>
-            </div>
-            <span className={`text-lg font-serif font-black ${isFinalizado ? 'text-emerald-800' : 'text-red-700'}`}>
-              ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
-            </span>
-          </div>
-
-          {/* Detalles del evento */}
-          {(sale.homenajeado || sale.eventTime || sale.eventLocation || sale.eventDate || sale.notes) && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Detalles del Evento</p>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2 text-xs">
-                {sale.eventDate && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 flex items-center gap-1"><Calendar size={11} /> Fecha</span>
-                    <span className="font-bold text-slate-700">{sale.eventDate}</span>
-                  </div>
-                )}
-                {sale.eventTime && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Horario</span>
-                    <span className="font-bold text-slate-700">
-                      {sale.eventTime}{sale.eventEndTime ? ` — ${sale.eventEndTime}` : ''}
-                    </span>
-                  </div>
-                )}
-                {sale.eventType && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Tipo de evento</span>
-                    <span className="font-bold text-slate-700">{sale.eventType}</span>
-                  </div>
-                )}
-                {sale.homenajeado && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Homenajeado</span>
-                    <span className="font-bold text-slate-700">{sale.homenajeado}</span>
-                  </div>
-                )}
-                {sale.eventLocation && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-slate-400 shrink-0">Dirección</span>
-                    <span className="font-bold text-slate-700 text-right">{sale.eventLocation}</span>
-                  </div>
-                )}
-                {sale.notes && (
-                  <div className="pt-1 border-t border-slate-200">
-                    <span className="text-slate-400 block mb-0.5">Notas</span>
-                    <span className="text-slate-600">{sale.notes}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Servicios */}
-          {sale.services && sale.services.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Servicios Contratados</p>
-              <div className="space-y-1.5">
-                {sale.services.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-xs text-slate-700">{s.nombre}{s.cantidad > 1 ? ` ×${s.cantidad}` : ''}</span>
-                    <span className="text-xs font-bold text-slate-800">${(s.precio * s.cantidad).toLocaleString('es-CO')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Repertorio */}
-          {sale.repertoire && sale.repertoire.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Repertorio ({sale.repertoire.length} canciones)
-              </p>
-              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                {sale.repertoire.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-[10px] text-slate-400 w-4 text-right shrink-0">{i + 1}</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-700 leading-none">{r.titulo}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{r.artista}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Historial de pagos */}
-          {sale.abonos && sale.abonos.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Historial de Pagos</p>
-              <div className="space-y-2">
-                {sale.abonos.map((abono, idx) => (
-                  <div key={abono.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div>
-                      <p className="text-xs font-bold text-slate-700">
-                        {idx === 0 ? '1er Abono' : '2do Abono'}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {new Date(abono.date).toLocaleDateString('es-CO')} · {metodoPagoLabel[abono.method] ?? abono.method}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-emerald-600">${abono.amount.toLocaleString('es-CO')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Saldo pendiente */}
-          {!isFinalizado && (sale.pendingAmount ?? 0) > 0 && (
-            <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-              <span className="text-xs font-bold text-red-700">Saldo Pendiente</span>
-              <span className="text-sm font-bold text-red-700">${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-5 pt-3 flex gap-3 shrink-0 border-t border-slate-100">
-          <button onClick={onClose}
-            className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors">
-            Cerrar
-          </button>
-          {sale.reservationId && (
-            <button
-              onClick={() => onDownload(sale.reservationId!)}
-              className="flex-[2] py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:-translate-y-0.5 transition-all"
-            >
-              <Download size={14} /> Descargar PDF
-            </button>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+
 export const VentasPage: React.FC = () => {
   const { user }        = useAuth();
   const [sales,         setSales]         = useState<SaleRecord[]>([]);
@@ -387,9 +221,22 @@ export const VentasPage: React.FC = () => {
     const [isFinalPayOpen,setIsFinalPayOpen]= useState(false);
     const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
     
+    // ─── Edición de reserva desde ventas ─────────────────────────────────────
+    const [isEditReservaOpen,    setIsEditReservaOpen]    = useState(false);
+    const [selectedReservaEdit,  setSelectedReservaEdit]  = useState<any>(null);
+    const [activeSaleForEdit,    setActiveSaleForEdit]    = useState<SaleRecord | null>(null);
+    const [isAnularModalOpen,   setIsAnularModalOpen]   = useState(false);
+    const [selectedReservaForAnular, setSelectedReservaForAnular] = useState<any>(null);
 
   const isClient = user?.role === UserRole.CLIENTE;
   const itemsPerPage = 10;
+
+  const { 
+    reservations, calendarReservations, handleViewReserva, 
+    isDetailOpen: isResDetailOpen, setIsDetailOpen: setIsResDetailOpen, 
+    selectedReserva, setSelectedReserva,
+    processFinalization, processCancel
+  } = useReservasManager();
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -420,7 +267,7 @@ export const VentasPage: React.FC = () => {
       method: data.method,
       notes:  data.notes,
     });
-    showNotification('Pago final registrado. ¡Reserva finalizada!');
+    showNotification('Pago final registrado. La reserva sigue Confirmada hasta la fecha del evento.');
     setIsFinalPayOpen(false);
     await fetchSales();
   };
@@ -467,6 +314,47 @@ const handleCreateSale = async (data: any) => {
     }
   };
 
+  const handleOpenEditReserva = async (sale: SaleRecord) => {
+    if (!sale.reservationId) return;
+    try {
+      setLoading(true);
+      const res = await reservaService.getReservationById(sale.reservationId);
+      setSelectedReservaEdit(res);
+      setActiveSaleForEdit(sale);
+      setIsEditReservaOpen(true);
+    } catch {
+      showNotification('Error al obtener los detalles de la reserva.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenAnularModal = async (sale: SaleRecord) => {
+    if (!sale.reservationId) return;
+    try {
+      setLoading(true);
+      const res = await reservaService.getReservationById(sale.reservationId);
+      setSelectedReservaForAnular(res);
+      setIsAnularModalOpen(true);
+    } catch {
+      showNotification('Error al obtener los detalles de la reserva.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEditReserva = async (formData: any) => {
+    if (!activeSaleForEdit) return;
+    try {
+      await ventaService.updateReservationFromSale(activeSaleForEdit.id, formData);
+      showNotification('Reserva actualizada correctamente desde ventas.');
+      setIsEditReservaOpen(false);
+      await fetchSales();
+    } catch (err: any) {
+      throw err; // El modal maneja el error internamente si lo lanzamos
+    }
+  };
+
   const filtered = sales.filter(s =>
     (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -478,19 +366,49 @@ const handleCreateSale = async (data: any) => {
 
   ///pendiente de revision
   const getStatusBadge = (sale: SaleRecord) => {
-    const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
-    if (isFinalizado) return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
-    if (sale.reservationId) return { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    const now = new Date();
+    // Intentamos construir la fecha y hora del evento
+    const eventDateStr = sale.eventDate;
+    const eventTimeStr = sale.eventTime || '23:59';
+    
+    let hasPassed = false;
+    if (eventDateStr) {
+      const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+      hasPassed = now > eventDateTime;
+    }
+
+    // Si está anulada o cancelada (prioridad alta)
+    if (sale.status?.toUpperCase() === 'CANCELADA' || sale.reservationStatus?.toUpperCase() === 'ANULADA') {
+      return { label: 'Anulada', cls: 'bg-red-50 text-red-700 border-red-200' };
+    }
+
+    // Si tiene reserva
+    if (sale.reservationId) {
+      // SOLO si ya pasó la fecha/hora Y el estado es Finalizado, mostramos Finalizado
+      if (hasPassed && (sale.reservationStatus === 'FINALIZADO' || sale.status === 'Finalizado')) {
+        return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+      }
+      // En cualquier otro caso, sigue Confirmado
+      return { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    }
+
+    // Para ventas directas que no vienen de reserva
+    if (sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0) {
+      return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+    
     return { label: 'Venta Directa', cls: 'bg-slate-50 text-slate-500 border-slate-200' };
   };
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10">
+      
+      {!isClient && <UpcomingReservationsBanner reservations={calendarReservations} onView={handleViewReserva} />}
 
       {/* Toast */}
       {notification && createPortal(
         <div className="fixed top-6 right-6 z-[200] animate-fade-in-up">
-          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] bg-white/95 ${notification.type === 'success' ? 'border-emerald-100' : 'border-red-100'}`}>
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md min-w-[320px] bg-white/95 ${notification.type === 'success' ? 'border-emerald-100' : 'border-red-100'} `}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
               {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
             </div>
@@ -563,8 +481,20 @@ const handleCreateSale = async (data: any) => {
                 <tbody className="divide-y divide-slate-50">
                   {currentItems.map(sale => {
                     const badge       = getStatusBadge(sale);
-                    const isFinalizado = sale.status === 'Finalizado' || (sale.pendingAmount ?? 0) <= 0;
-                    const hasPending   = !isFinalizado && (sale.pendingAmount ?? 0) > 0 && !!sale.reservationId;
+                    // Lógica idéntica al badge: solo es finalizado si ya pasó la fecha/hora
+                    const eventDateStr = sale.eventDate;
+                    const eventTimeStr = sale.eventTime || '23:59';
+                    const now = new Date();
+                    let hasPassed = false;
+                    if (eventDateStr) {
+                      const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+                      hasPassed = now > eventDateTime;
+                    }
+
+                    const isFinalizadoStatus = (sale.status?.toUpperCase() === 'FINALIZADO' || sale.reservationStatus?.toUpperCase() === 'FINALIZADO') && hasPassed;
+                    const isPagado           = (sale.pendingAmount ?? 0) <= 0;
+                    const isAnulada          = sale.status?.toUpperCase() === 'CANCELADA' || sale.reservationStatus?.toUpperCase() === 'ANULADA';
+                    const hasPending         = !isFinalizadoStatus && !isAnulada && !isPagado && !!sale.reservationId;
 
                     return (
                       <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">
@@ -594,45 +524,54 @@ const handleCreateSale = async (data: any) => {
                           <p className="text-sm font-bold text-slate-700">
                             ${(sale.totalAmount ?? sale.amount).toLocaleString('es-CO')}
                           </p>
-                          {!isFinalizado && (sale.pendingAmount ?? 0) > 0 && (
+                          {!isPagado && !isAnulada && (sale.pendingAmount ?? 0) > 0 && (
                             <p className="text-[10px] font-bold text-red-500 flex items-center gap-1">
                               <Clock size={10} /> Pendiente: ${(sale.pendingAmount ?? 0).toLocaleString('es-CO')}
                             </p>
                           )}
-                          {isFinalizado && (
+                          {isPagado && !isAnulada && (
                             <p className="text-[10px] font-bold text-emerald-500">✓ Pagado</p>
                           )}
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-2">
-                            <button
+                            <ActionButton
+                              icon={Eye}
                               onClick={() => { setDetailSale(sale); setIsDetailOpen(true); }}
-                              title="Ver detalle"
-                              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all"
-                            >
-                              <Eye size={14} />
-                            </button>
+                              tooltip="Ver detalle"
+                            />
 
-                            {/* Pay final balance - only for admin/employee on confirmed reservations */}
-                            {!isClient && hasPending && (
-                              <button
-                                onClick={() => { setFinalPaySale(sale); setIsFinalPayOpen(true); }}
-                                title="Registrar pago final"
-                                className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all"
-                              >
-                                <CreditCard size={14} />
-                              </button>
+                            {!isClient && sale.reservationId && !isAnulada && !isFinalizadoStatus && (
+                              <>
+                                <ActionButton
+                                  icon={CalendarClock}
+                                  onClick={() => handleOpenEditReserva(sale)}
+                                  tooltip="Editar reserva"
+                                />
+
+                                {hasPending && (
+                                  <ActionButton
+                                    icon={CreditCard}
+                                    onClick={() => { setFinalPaySale(sale); setIsFinalPayOpen(true); }}
+                                    tooltip="Registrar pago final"
+                                  />
+                                )}
+
+                                <ActionButton
+                                  icon={Ban}
+                                  tooltip="Anular Reserva"
+                                  onClick={() => handleOpenAnularModal(sale)}
+                                />
+                              </>
                             )}
 
                             {/* Download PDF */}
                             {sale.reservationId && (
-                              <button
-                                onClick={() => handleDownloadPdf(sale.reservationId!)}
-                                title="Descargar PDF"
-                                className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 flex items-center justify-center transition-all"
-                              >
-                                <Download size={14} />
-                              </button>
+                            <ActionButton
+                              icon={Download}
+                              onClick={() => handleDownloadPdf(sale.reservationId!)}
+                              tooltip="Descargar PDF"
+                            />
                             )}
                           </div>
                         </td>
@@ -654,23 +593,62 @@ const handleCreateSale = async (data: any) => {
       </div>
 
       {/* Modals */}
-      <SaleDetailModal
+      <VentaDetailModal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        sale={detailSale}
-        onDownload={handleDownloadPdf}
-    />
-    <FinalPaymentModal
+        sale={detailSale as any}
+        onDownload={(idOrResId) => {
+          const targetId = detailSale?.reservationId || idOrResId;
+          handleDownloadPdf(targetId);
+        }}
+      />
+
+      <FinalPaymentModal
         isOpen={isFinalPayOpen}
         onClose={() => setIsFinalPayOpen(false)}
         sale={finalPaySale}
         onSave={handleFinalPayment}
-    />
+      />
+
       <VentaCreateModal
-  isOpen={isNewSaleOpen}
-  onClose={() => setIsNewSaleOpen(false)}
-  onSave={handleCreateSale}
-/>
+        isOpen={isNewSaleOpen}
+        onClose={() => setIsNewSaleOpen(false)}
+        onSave={handleCreateSale}
+      />
+
+      <ReservaEditModal
+        isOpen={isEditReservaOpen}
+        onClose={() => { setIsEditReservaOpen(false); setSelectedReservaEdit(null); }}
+        onSave={async (data) => {
+          await reservaService.updateReservation(data.id, data);
+          await fetchSales();
+          setIsEditReservaOpen(false);
+        }}
+        reservation={selectedReservaEdit}
+      />
+
+      <ReservaDetailModal
+        isOpen={isResDetailOpen}
+        onClose={() => setIsResDetailOpen(false)}
+        reservation={selectedReserva}
+        onFinalize={processFinalization}
+        onCancel={processCancel}
+        onReschedule={(res) => {
+          setSelectedReservaEdit(res);
+          setIsResDetailOpen(false);
+          setIsEditReservaOpen(true);
+        }}
+      />
+
+      <AnularReservaModal
+        isOpen={isAnularModalOpen}
+        reservation={selectedReservaForAnular}
+        onClose={() => setIsAnularModalOpen(false)}
+        onConfirm={async (id, motivo) => {
+          await processCancel(id, motivo);
+          await fetchSales();
+        }}
+      />
     </div>
   );
 };

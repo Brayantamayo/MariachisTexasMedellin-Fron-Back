@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { X, Save, Lock, Calendar, Clock, AlignLeft, AlertCircle, Type, ChevronDown } from 'lucide-react';
 import { CalendarBlock } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+import { format12h } from '@/shared/utils/time';
 
 interface Props {
   isOpen: boolean;
@@ -27,9 +28,9 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
 
   const [formData, setFormData] = useState<any>(emptyBlock);
 
-  // Generar opciones de hora (08:00 AM - 12:30 AM)
+  // Generar opciones de hora (01:00 AM - 12:00 AM)
   const timeOptions = [];
-  for (let i = 8; i <= 23; i++) {
+  for (let i = 1; i <= 23; i++) {
       const hour = i.toString().padStart(2, '0');
       timeOptions.push(`${hour}:00`);
       timeOptions.push(`${hour}:30`);
@@ -195,7 +196,7 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
                                         className="input-form input-icon-padding cursor-pointer appearance-none"
                                     >
                                         <option value="">--:--</option>
-                                        {timeOptions.map(t => <option key={`start-${t}`} value={t}>{t}</option>)}
+                                        {timeOptions.map(t => <option key={`start-${t}`} value={t}>{format12h(t)}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                                 </div>
@@ -213,7 +214,7 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
                                         className="input-form input-icon-padding cursor-pointer appearance-none"
                                     >
                                         <option value="">--:--</option>
-                                        {timeOptions.map(t => <option key={`end-${t}`} value={t}>{t}</option>)}
+                                        {timeOptions.map(t => <option key={`end-${t}`} value={t}>{format12h(t)}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                                 </div>

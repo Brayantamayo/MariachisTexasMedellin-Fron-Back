@@ -6,11 +6,11 @@ import { ventaService } from '../../ventas/services/ventaService';
 
 // Extendemos Payment para incluir datos visuales en la tabla (Cliente, Reserva ID)
 export interface EnrichedPayment extends Payment {
-    reservationId: string;
-    clientId?: string;
-    clientEmail?: string;
-    clientName: string;
-    reservationTotal: number;
+  reservationId: string;
+  clientId?: string;
+  clientEmail?: string;
+  clientName: string;
+  reservationTotal: number;
 }
 
 // Mock inicial vacío o con datos que no choquen con IDs bajos de reservas nuevas
@@ -50,45 +50,45 @@ export const abonoService = {
 
   // Obtener reservas activas para el dropdown del formulario
   getPayableReservations: async (): Promise<Reservation[]> => {
-      const all = await reservaService.getReservations();
-      // Solo mostramos reservas que no estén anuladas ni pagadas al 100%
-      return all.filter(r => r.status !== 'Anulado' && r.paidAmount < r.totalAmount);
+    const all = await reservaService.getReservations();
+    // Solo mostramos reservas que no estén anuladas ni pagadas al 100%
+    return all.filter(r => r.status !== 'Anulado' && r.paidAmount < r.totalAmount);
   },
 
   // Registrar nuevo abono
   createAbono: async (data: { reservationId: string, amount: number, date: string, method: string, notes?: string }): Promise<EnrichedPayment> => {
-      const methodMap: Record<string, string> = {
-        transferencia: 'TRANSFERENCIA',
-        efectivo: 'EFECTIVO',
-        nequi: 'NEQUI',
-        daviplata: 'DAVIPLATA',
-        otro: 'OTRO'
-      };
-      const methodKey = String(data.method ?? '').trim().toLowerCase();
-      const normalizedMethod = methodMap[methodKey] || 'OTRO';
+    const methodMap: Record<string, string> = {
+      transferencia: 'TRANSFERENCIA',
+      efectivo: 'EFECTIVO',
+      nequi: 'NEQUI',
+      daviplata: 'DAVIPLATA',
+      otro: 'OTRO'
+    };
+    const methodKey = String(data.method ?? '').trim().toLowerCase();
+    const normalizedMethod = methodMap[methodKey] || 'OTRO';
 
-      // 1. Crear ab ono a través del nuevo endpoint de módulo abonos
-      const { data: updatedReserva } = await api.post(`/abonos`, {
-          reservaId: data.reservationId,
-          amount: data.amount,
-          method: normalizedMethod,
-          date: data.date,
-          notes: data.notes
-      });
+    // 1. Crear ab ono a través del nuevo endpoint de módulo abonos
+    const { data: updatedReserva } = await api.post(`/abonos`, {
+      reservaId: data.reservationId,
+      amount: data.amount,
+      method: normalizedMethod,
+      date: data.date,
+      notes: data.notes
+    });
 
-      // 2. Obtener el último pago agregado para retornar
-      const lastPayment = updatedReserva.payments[updatedReserva.payments.length - 1];
+    // 2. Obtener el último pago agregado para retornar
+    const lastPayment = updatedReserva.payments[updatedReserva.payments.length - 1];
 
-      const newPayment: EnrichedPayment = {
-          ...lastPayment,
-          reservationId: updatedReserva.id,
-          clientId: updatedReserva.clientId,
-          clientEmail: updatedReserva.clientEmail,
-          clientName: updatedReserva.clientName,
-          reservationTotal: updatedReserva.totalAmount
-      };
+    const newPayment: EnrichedPayment = {
+      ...lastPayment,
+      reservationId: updatedReserva.id,
+      clientId: updatedReserva.clientId,
+      clientEmail: updatedReserva.clientEmail,
+      clientName: updatedReserva.clientName,
+      reservationTotal: updatedReserva.totalAmount
+    };
 
-      return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
+    return new Promise((resolve) => setTimeout(() => resolve(newPayment), 600));
   },
 
   // Descargar comprobante de abono

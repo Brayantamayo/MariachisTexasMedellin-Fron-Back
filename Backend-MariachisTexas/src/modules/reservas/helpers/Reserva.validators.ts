@@ -19,35 +19,44 @@ export const verificarDisponibilidadReserva = async (
   excludeReservaId?:    number,
   excludeCotizacionId?: number,   // ← NUEVO: excluye la cot. propia de la reserva
 ): Promise<void> => {
-  const { dayStart, dayEnd } = dayRange(dateStr)
-  const bufferInicio         = new Date(inicio.getTime() - 60 * 60 * 1000)
+  const bufferInicio = new Date(inicio.getTime() - 60 * 60 * 1000)
+  const bufferFin    = new Date(fin.getTime() + 60 * 60 * 1000)
 
-const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
-  prisma.bloqueoCalendario.findFirst({
-    where: { fechaInicio: { lte: fin }, fechaFin: { gte: inicio } },
-  }),
-  prisma.cotizacion.findMany({
-    where: {
-      fechaEvento: { gte: dayStart, lte: dayEnd },
-      estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] }, // ANULADA queda excluida automáticamente
-      ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {}),
-    },
-  }),
-  prisma.reserva.findMany({
-    where: {
-      estado:     { in: ['PENDIENTE', 'CONFIRMADA'] }, // ANULADA queda excluida automáticamente
-      cotizacion: { fechaEvento: parseLocalDate(dateStr), horaInicio: { lt: fin }, horaFin: { gt: bufferInicio } },
-      ...(excludeReservaId ? { id: { not: excludeReservaId } } : {}),
-    },
-    include: { cotizacion: true },
-  }),
-  prisma.ensayo.findMany({
-  where: {
-    fechaHora: { gte: dayStart, lte: dayEnd },
-    estado:    { not: EstadoEnsayo.LISTO }, // ← era 'Completado', el enum real es LISTO
-  },
-}),
-])
+  const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
+    // 1. Bloqueos manuales
+    prisma.bloqueoCalendario.findFirst({
+      where: { fechaInicio: { lt: fin }, fechaFin: { gt: inicio } },
+    }),
+    // 2. Cotizaciones activas (con buffer de 1h antes y después)
+    prisma.cotizacion.findMany({
+      where: {
+        estado:     { in: ['EN_ESPERA', 'CONVERTIDA'] },
+        horaInicio: { lt: bufferFin },
+        horaFin:    { gt: bufferInicio },
+        ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {}),
+        reserva:    null, // Ignorar las que ya son reservas para no duplicar
+      },
+    }),
+    // 3. Reservas activas (con buffer de 1h antes y después)
+    prisma.reserva.findMany({
+      where: {
+        estado:     { in: ['PENDIENTE', 'CONFIRMADA'] },
+        cotizacion: {
+          horaInicio: { lt: bufferFin },
+          horaFin:    { gt: bufferInicio }
+        },
+        ...(excludeReservaId ? { id: { not: excludeReservaId } } : {}),
+      },
+      include: { cotizacion: true },
+    }),
+    // 4. Ensayos (con buffer de 1h antes y después)
+    prisma.ensayo.findMany({
+      where: {
+        estado:    { not: EstadoEnsayo.LISTO },
+        fechaHora: { lt: bufferFin, gt: bufferInicio }, // Los ensayos son una hora puntual, el buffer los cubre
+      },
+    }),
+  ])
 
   if (bloqueo)
     throw new AppError(
@@ -55,12 +64,14 @@ const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
       409
     )
 
-  for (const cot of cotizaciones)
-    if (inicio < cot.horaFin && fin > cot.horaInicio)
+  for (const cot of cotizaciones) {
+    const realFin = cot.horaFin < cot.horaInicio ? new Date(cot.horaFin.getTime() + 24 * 60 * 60 * 1000) : cot.horaFin
+    if (inicio < realFin && fin > cot.horaInicio)
       throw new AppError(
         `Conflicto con cotización activa (${toLocalTime(cot.horaInicio)} - ${toLocalTime(cot.horaFin)})`,
         409
       )
+  }
 
   if (reservas.length > 0)
     throw new AppError('Ya existe una reserva en ese horario. Por favor elige otro horario.', 409)
@@ -76,57 +87,90 @@ const [bloqueo, cotizaciones, reservas, ensayos] = await Promise.all([
 // ─── getAvailableHours ────────────────────────────────────────────────────────
 export const getAvailableHours = async (dateStr: string, excludeId?: number): Promise<string[]> => {
   const allHours: string[] = []
-  for (let i = 8; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
-  allHours.push('00:00')
+  for (let i = 0; i <= 23; i++) allHours.push(`${i.toString().padStart(2, '0')}:00`)
 
   const { dayStart, dayEnd } = dayRange(dateStr)
-  const blocked              = new Set<string>()
+  // Expandir el rango de búsqueda 3 horas antes y después para capturar solapamientos de días vecinos (duración + buffers)
+  const searchStart = new Date(dayStart.getTime() - 4 * 60 * 60 * 1000)
+  const searchEnd   = new Date(dayEnd.getTime() + 4 * 60 * 60 * 1000)
+
+  const blocked = new Set<string>()
 
   const [bloqueos, cotizaciones, reservas, ensayos] = await Promise.all([
-  prisma.bloqueoCalendario.findMany({
-    where: { fechaInicio: { lte: dayEnd }, fechaFin: { gte: dayStart } },
-  }),
-  prisma.cotizacion.findMany({
-    where: {
-      fechaEvento: { gte: dayStart, lte: dayEnd },
-      estado:      { in: ['EN_ESPERA', 'CONVERTIDA'] }, // ANULADA excluida
-    },
-  }),
-  prisma.reserva.findMany({
-    where: {
-      estado:     { in: ['PENDIENTE', 'CONFIRMADA'] }, // ANULADA excluida
-      cotizacion: { fechaEvento: { gte: dayStart, lte: dayEnd } },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    include: { cotizacion: true },
-  }),
-   prisma.ensayo.findMany({
-  where: {
-    fechaHora: { gte: dayStart, lte: dayEnd },
-    estado:    { not: EstadoEnsayo.LISTO }, // ← era 'Completado', el enum real es LISTO
-  },
-}),
-])
+    prisma.bloqueoCalendario.findMany({
+      where: { fechaInicio: { lt: searchEnd }, fechaFin: { gt: searchStart } },
+    }),
+    prisma.cotizacion.findMany({
+      where: {
+        estado:     { in: ['EN_ESPERA', 'CONVERTIDA'] },
+        horaInicio: { lt: searchEnd },
+        horaFin:    { gt: searchStart },
+        reserva:    null,
+      },
+    }),
+    prisma.reserva.findMany({
+      where: {
+        estado:     { in: ['PENDIENTE', 'CONFIRMADA'] },
+        cotizacion: { horaInicio: { lt: searchEnd }, horaFin: { gt: searchStart } },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      include: { cotizacion: true },
+    }),
+    prisma.ensayo.findMany({
+      where: {
+        estado:    { not: EstadoEnsayo.LISTO },
+        fechaHora: { lt: searchEnd, gt: searchStart },
+      },
+    }),
+  ])
 
-  for (const b of bloqueos) {
-    if (!b.motivo?.startsWith('TIME_RANGE:')) return []
-    const start = toLocalTime(b.fechaInicio)
-    const end   = toLocalTime(b.fechaFin)
-    allHours.forEach(h => { if (h >= start && h < end) blocked.add(h) })
-  }
+  // Bloquear horas que se solapen con cualquier evento encontrado
+  allHours.forEach(h => {
+    const hourDate = new Date(`${dateStr}T${h}:00`)
+    
+    // Check bloqueos manuales
+    for (const b of bloqueos) {
+      if (hourDate >= b.fechaInicio && hourDate < b.fechaFin) {
+        blocked.add(h)
+        break
+      }
+    }
+    if (blocked.has(h)) return
 
-  for (const c of cotizaciones)
-    bloquearRango(allHours, blocked, toLocalTime(c.horaInicio), toLocalTime(c.horaFin))
+    // Check cotizaciones y reservas (con buffer 1h antes y 1h después)
+    const checkOverlap = (start: Date, end: Date) => {
+      const realEnd = end < start ? new Date(end.getTime() + 24 * 60 * 60 * 1000) : end;
+      const bufferStart = new Date(start.getTime() - 60 * 60 * 1000)
+      const bufferEnd   = new Date(realEnd.getTime() + 60 * 60 * 1000)
+      return hourDate >= bufferStart && hourDate < bufferEnd
+    }
 
-  for (const r of reservas)
-    bloquearRango(allHours, blocked, toLocalTime(r.cotizacion.horaInicio), toLocalTime(r.cotizacion.horaFin))
+    for (const c of cotizaciones) {
+      if (checkOverlap(c.horaInicio, c.horaFin)) {
+        blocked.add(h)
+        break
+      }
+    }
+    if (blocked.has(h)) return
 
-  for (const e of ensayos) {
-    const time = toLocalTime(e.fechaHora)
-    const [h]  = time.split(':').map(Number)
-    blocked.add(time)
-    blocked.add(`${((h - 1 + 24) % 24).toString().padStart(2, '0')}:00`)
-  }
+    for (const r of reservas) {
+      if (r.cotizacion && checkOverlap(r.cotizacion.horaInicio, r.cotizacion.horaFin)) {
+        blocked.add(h)
+        break
+      }
+    }
+    if (blocked.has(h)) return
+
+    // Check ensayos (buffer 1h antes y 1h después)
+    for (const e of ensayos) {
+      const bStart = new Date(e.fechaHora.getTime() - 60 * 60 * 1000)
+      const bEnd   = new Date(e.fechaHora.getTime() + 60 * 60 * 1000)
+      if (hourDate >= bStart && hourDate < bEnd) {
+        blocked.add(h)
+        break
+      }
+    }
+  })
 
   const hoy = new Date().toISOString().split('T')[0]
   if (dateStr === hoy) {

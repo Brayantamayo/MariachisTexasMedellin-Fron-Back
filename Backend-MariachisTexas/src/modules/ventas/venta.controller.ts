@@ -5,6 +5,7 @@ import { AuthRequest } from '../../middlewares/Auth.middleware'
 import { asyncHandler } from '../../middlewares/Asynchandler'
 import prisma from '../../config/prisma'
 import { buildClientName } from '../../utils/date.helpers'
+import { updateReserva } from '../reservas/reserva.services'
 import {
   generateReservaReceiptPdf,
   generateVentaDetailPdf,
@@ -291,5 +292,36 @@ export const downloadVentaPdf = asyncHandler(async (req: AuthRequest, res: Respo
     res.send(pdfBuffer)
   } catch (err) {
     return handleServiceError(err, res, 'Error al generar la factura PDF')
+  }
+})
+
+// ─── EDITAR RESERVA DESDE VENTAS ──────────────────────────────────────────────
+export const updateReservaFromVenta = asyncHandler(async (req: AuthRequest, res: Response) => {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    // El ID puede venir como "RES-123" o "123" (numérico de venta)
+    let reservaId: number
+
+    if (rawId.startsWith('RES-')) {
+      reservaId = Number(rawId.replace('RES-', ''))
+    } else {
+      // Es un ID de venta numérico, buscar la reserva asociada
+      const venta = await prisma.venta.findUnique({ where: { id: Number(rawId) } })
+      if (!venta?.reservaId) {
+        return res.status(404).json({ ok: false, message: 'No se encontró la reserva asociada a esta venta' })
+      }
+      reservaId = venta.reservaId
+    }
+
+    if (isNaN(reservaId) || reservaId <= 0) {
+      return res.status(400).json({ ok: false, message: 'ID de reserva inválido' })
+    }
+
+    const isAdmin = ['ADMIN', 'EMPLEADO'].includes(req.user?.rol ?? '')
+    const updated = await updateReserva(reservaId, req.body, isAdmin)
+    return res.json({ ok: true, data: updated })
+  } catch (err) {
+    return handleServiceError(err, res, 'Error al editar la reserva desde ventas')
   }
 })

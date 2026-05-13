@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { User, Calendar, MapPin, Search, ChevronDown, DollarSign, ShieldAlert, AlertTriangle, Calculator, Plus, Minus, Package, Music, X, Check, ArrowLeft, Lock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import { User as UserType, Song, Service, TIPOS_EVENTO } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+import { format12h } from '@/shared/utils/time';
 
 export interface CotizacionFormErrors {
   clientName?: string
@@ -423,10 +424,10 @@ export const CotizacionForm: React.FC<Props> = ({
                       ref={el => registerFieldRef?.('startTime', el)}>
                       <option value="">Seleccionar</option>
                       {availableHours.map(time => (
-                        <option key={`start-${time}`} value={time}>{time}</option>
+                        <option key={`start-${time}`} value={time}>{format12h(time)}</option>
                       ))}
                       {formData.startTime && !availableHours.includes(formData.startTime) && (
-                        <option value={formData.startTime}>{formData.startTime} (Actual)</option>
+                        <option value={formData.startTime}>{format12h(formData.startTime)} (Actual)</option>
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
@@ -440,7 +441,7 @@ export const CotizacionForm: React.FC<Props> = ({
                 <div className="flex-1">
                   <label className={labelClass}>HORA FIN</label>
                   <div className="flex items-center justify-between rounded-xl px-4 border bg-white border-orange-200 h-[42px]">
-                    <span className="font-mono font-bold text-slate-700 text-sm">{formData.endTime || '--:--'}</span>
+                    <span className="font-mono font-bold text-slate-700 text-sm">{formData.endTime ? format12h(formData.endTime) : '--:--'}</span>
                   </div>
                 </div>
               </div>

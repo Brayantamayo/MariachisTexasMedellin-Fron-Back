@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '@/types';
 import { Briefcase, MapPin, Phone, Eye, Edit2, Trash2, Music } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 interface Props {
   employees: User[];
@@ -13,15 +14,12 @@ interface Props {
   onToggleStatus: (employee: User) => void;
 }
 
+
 export const EmployeesTable: React.FC<Props> = ({ employees, loading, onView, onEdit, onDelete, onToggleStatus }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string }> = ({ icon: Icon, onClick, tooltip }) => (
-    <button onClick={onClick} title={tooltip} className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all duration-200">
-        <Icon size={16} strokeWidth={2} />
-    </button>
-  );
+
 
   if (loading) {
       return <div className="text-center py-20 text-slate-400">Cargando empleados...</div>;

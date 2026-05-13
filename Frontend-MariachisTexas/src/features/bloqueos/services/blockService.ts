@@ -11,11 +11,11 @@ export const blockService = {
   // ✅ FIX: usaba axios.get() directo con URL hardcodeada
   // Ahora usa el cliente centralizado igual que el resto
   checkDateStatus: async (dateStr: string): Promise<{
-    isBlocked:        boolean
-    reason?:          string
-    type?:            string
+    isBlocked: boolean
+    reason?: string
+    type?: string
     hasPartialBlocks?: boolean
-    blockedRanges?:   { start: string; end: string; reason: string }[]
+    blockedRanges?: { start: string; end: string; reason: string }[]
   }> => {
     const { data } = await api.get(`/bloqueos/check/${dateStr}`)
     return data

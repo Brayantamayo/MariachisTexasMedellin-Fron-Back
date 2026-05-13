@@ -1,19 +1,21 @@
 
 import { AppRoute, UserRole } from './types';
-import { 
-  Users, 
-  Music, 
-  Calendar, 
-  DollarSign, 
-  FileText, 
-  CreditCard, 
-  Bookmark, 
+import {
+  Users,
+  Music,
+  Calendar,
+  DollarSign,
+  FileText,
+  CreditCard,
+  Bookmark,
   UserCircle,
   Briefcase,
   Shield,
   ShieldCheck,
-  Wrench
+  Wrench,
+  Image
 } from 'lucide-react';
+
 
 // Configuración centralizada de rutas y permisos
 // Aquí organizamos qué rol puede ver qué módulo
@@ -34,7 +36,15 @@ export const APP_ROUTES: AppRoute[] = [
     icon: 'ShieldCheck'
   },
   {
+    path: '/galeria',
+    label: 'Galería',
+    module: 'galeria',
+    roles: [UserRole.ADMIN],
+    icon: 'Image'
+  },
+  {
     path: '/empleados',
+
     label: 'Empleados',
     module: 'empleados',
     roles: [UserRole.ADMIN],
@@ -47,7 +57,7 @@ export const APP_ROUTES: AppRoute[] = [
     roles: [UserRole.ADMIN], // El cliente ve su perfil, pero el admin gestiona la lista
     icon: 'Users'
   },
-  
+
   // Módulos Operativos (Admin + Empleado + Cliente en algunos casos)
   {
     path: '/repertorio',
@@ -70,7 +80,7 @@ export const APP_ROUTES: AppRoute[] = [
     roles: [UserRole.ADMIN],
     icon: 'Wrench'
   },
-  
+
   // Módulos Comerciales
   {
     path: '/reservas',
@@ -100,7 +110,7 @@ export const APP_ROUTES: AppRoute[] = [
     roles: [UserRole.ADMIN], // Generalmente admin gestiona, cliente ve en Ventas
     icon: 'CreditCard'
   },
-  
+
   // Perfil General
   {
     path: '/perfil',

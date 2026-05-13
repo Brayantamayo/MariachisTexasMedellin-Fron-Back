@@ -407,3 +407,17 @@ model RegistroToken {
 
   @@map("registro_token")
 }
+
+model Galeria {
+  id          Int      @id @default(autoincrement())
+  url         String
+  publicId    String?
+  titulo      String?
+  descripcion String?
+  orden       Int      @default(0)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("galeria")
+}

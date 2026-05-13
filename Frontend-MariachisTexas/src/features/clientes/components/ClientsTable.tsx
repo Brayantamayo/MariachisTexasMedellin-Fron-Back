@@ -3,6 +3,8 @@ import React from 'react';
 import { User } from '@/types';
 import { User as UserIcon, MapPin, Phone, Eye, Edit2, Trash2, Mail, Hash } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
+
 
 interface Props {
   clients: User[];
@@ -15,21 +17,10 @@ interface Props {
   onPageChange: (page: number) => void;
 }
 
+
 export const ClientsTable: React.FC<Props> = ({ clients, loading, pagination, onView, onEdit, onDelete, onToggleStatus, onPageChange }) => {
   
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string, variant?: 'default' | 'danger' }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => (
-    <button 
-        onClick={onClick}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 
-            ${variant === 'danger' 
-                ? 'bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-600' 
-                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-            }`}
-        title={tooltip}
-    >
-        <Icon size={16} strokeWidth={2} />
-    </button>
-  );
+
 
   if (loading) {
       return <div className="text-center py-20 text-slate-400">Cargando clientes...</div>;

@@ -159,7 +159,6 @@ export const EnsayosPage: React.FC = () => {
       let dotColorClass = 'bg-slate-300'
       if (totalItems > 0) dotColorClass = 'bg-purple-400'
       if (dayEvents.some(e => s(e) === 'CONFIRMADA')) dotColorClass = 'bg-emerald-400'
-      if (dayEvents.some(e => s(e) === 'REPROGRAMADA')) dotColorClass = 'bg-[#0c808b]'
       if (dayEvents.some(e => s(e) === 'FINALIZADO')) dotColorClass = 'bg-blue-500'
 
       days.push(
@@ -217,7 +216,12 @@ export const EnsayosPage: React.FC = () => {
             {dayRehearsals.map(r => (
               <div
                 key={r.id}
-                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRehearsal(r);
+                  setIsDetailOpen(true);
+                }}
+                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors cursor-pointer
                   ${isPast 
                     ? 'border-slate-300 bg-slate-50 text-slate-400' 
                     : 'border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
@@ -241,7 +245,6 @@ export const EnsayosPage: React.FC = () => {
                   timeStyle = 'text-slate-400';
                 } else {
                   if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-500 text-emerald-800 border-l-4'; timeStyle = 'text-emerald-600'; }
-                  if (s === 'REPROGRAMADA') { style = 'bg-teal-50 border-teal-500 text-teal-800 border-l-4'; timeStyle = 'text-teal-600'; }
                   if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-500 text-blue-800 border-l-4'; timeStyle = 'text-blue-600'; }
                 }
 
@@ -425,10 +428,6 @@ export const EnsayosPage: React.FC = () => {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reserva confirmada</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#0c808b]" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reprogramada</span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cotización</span>
               </div>
@@ -460,6 +459,7 @@ export const EnsayosPage: React.FC = () => {
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
         quotations={quotations.filter(q => q.eventDate === selectedDateForDetails && q.status === 'EN_ESPERA')}
         onViewReservation={(res) => { setIsDateDetailsOpen(false); handleViewReserva(res); }}
+        onViewRehearsal={(reh) => { setIsDateDetailsOpen(false); setSelectedRehearsal(reh); setIsDetailOpen(true); }}
         onCreateNew={(time) => { 
           setIsDateDetailsOpen(false); 
           setSelectedDateForCreate(selectedDateForDetails); 

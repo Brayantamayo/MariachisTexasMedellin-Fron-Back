@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, AlignLeft, Music, Search, Plus, Trash2, Check, ChevronDown, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Song } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
+import { format12h } from '@/shared/utils/time';
 
 // Agrega errors a la interfaz Props:
 interface Props {
@@ -116,11 +117,11 @@ return (
                                 <>
                                     <option value="">Seleccionar</option>
                                     {availableHours.map(time => (
-                                        <option key={time} value={time}>{time}</option>
+                                        <option key={time} value={time}>{format12h(time)}</option>
                                     ))}
                                     {/* Si estamos editando y la hora actual ya no está libre (porque la ocupa este mismo evento), agregarla visualmente */}
                                     {formData.time && !availableHours.includes(formData.time) && !blockStatus.isBlocked && (
-                                        <option value={formData.time}>{formData.time} (Actual)</option>
+                                        <option value={formData.time}>{format12h(formData.time)} (Actual)</option>
                                     )}
                                 </>
                             )}
@@ -138,19 +139,6 @@ return (
                     <input type="text" name="location" required value={formData.location} onChange={onChange} className="input-form input-icon-padding" placeholder="Ej: Sala de Ensayos A" />
                 </div>
                 {errors?.location && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{errors.location}</p>}
-            </div>
-
-            <div className="flex-1">
-                <label className="label-form flex items-center gap-2 mb-3">
-                    <AlignLeft size={14} /> NOTAS O DETALLES
-                </label>
-                <textarea 
-                    name="notes"
-                    value={formData.notes}
-                    onChange={onChange}
-                    className="w-full p-4 rounded-xl border outline-none resize-none font-medium leading-relaxed min-h-[120px] transition-all bg-white border-slate-200 focus:ring-4 focus:ring-primary-50 focus:border-primary-300 text-slate-700"
-                    placeholder="Escribe detalles importantes para los músicos..."
-                />
             </div>
 
         </div>

@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Quotation, UserRole } from '@/types';
+import { ActionButton } from '@/shared/components/ActionButton';
 import { User, FileText, Calendar, Eye, Download, Edit2, CheckSquare, Ban, Trash2 } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
+import { format12h } from '@/shared/utils/time';
+
+
 
 interface Props {
   quotations: Quotation[];
@@ -16,6 +20,7 @@ interface Props {
   onDelete: (id: string) => void; 
 }
 
+
 export const CotizacionesTable: React.FC<Props> = ({
   quotations, loading, userRole,
   onView, onEdit, onConvert, onCancel, onDownload, onDelete
@@ -28,23 +33,7 @@ export const CotizacionesTable: React.FC<Props> = ({
     open: false, id: ''
   });
 
-  const ActionButton: React.FC<{
-    icon: React.ElementType;
-    onClick: () => void;
-    tooltip?: string;
-    variant?: 'default' | 'danger'
-  }> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => {
-    const styles = {
-      default: 'bg-white text-slate-400 hover:bg-slate-100 hover:text-slate-600 border border-slate-200',
-      danger:  'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 border border-red-100',
-    };
-    return (
-      <button onClick={onClick} title={tooltip}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-sm ${styles[variant]}`}>
-        <Icon size={14} strokeWidth={2} />
-      </button>
-    );
-  };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -118,8 +107,15 @@ export const CotizacionesTable: React.FC<Props> = ({
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                           <FileText size={12} className="text-orange-500" /> {quote.eventType}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium whitespace-nowrap">
-                          <Calendar size={10} /> {quote.eventDate}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={10} /> {quote.eventDate}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-500">
+                              {format12h(quote.startTime)} - {format12h(quote.endTime)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>

@@ -334,3 +334,48 @@ export const emailReservaCreada = (p: EmailReservaCreadaParams) => ({
     ${button('Consultar mi reserva', p.loginUrl)}
   `),
 })
+
+interface EmailReservaAnuladaParams {
+  nombreCliente: string
+  reservaId: string
+  motivo: string
+}
+
+///Email de reserva anulada 
+export const emailReservaAnulada = (p: EmailReservaAnuladaParams) => ({
+  subject: 'Tu reserva ha sido anulada - Mariachis Texas',
+  html: wrapper(`
+    ${intro(
+      'Notificacion de anulacion',
+      `Hola ${p.nombreCliente}, te informamos que tu reserva <b>#${p.reservaId}</b> ha sido anulada.`
+    )}
+
+    ${panel(
+      `
+        <p style="margin:0 0 10px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Motivo de la anulacion
+        </p>
+        <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
+          ${p.motivo}
+        </p>
+      `,
+      'accent'
+    )}
+
+    ${panel(
+      `
+        <p style="margin:0 0 10px;color:${colors.heading};font-size:15px;font-weight:800;">
+          ¿Tienes dudas?
+        </p>
+        <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
+          Si consideras que esto es un error o deseas reprogramar tu servicio, por favor comunicate con nosotros a la mayor brevedad posible.
+        </p>
+      `,
+      'default'
+    )}
+
+    <p style="margin:24px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;text-align:center;">
+      Mariachis Texas agradece tu preferencia. Esperamos poder servirte en el futuro.
+    </p>
+  `),
+})

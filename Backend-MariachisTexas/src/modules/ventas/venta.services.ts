@@ -158,7 +158,7 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
 
   const reservasSinVenta = await prisma.reserva.findMany({
     where: {
-      estado: { in: ['CONFIRMADA', 'REPROGRAMADA'] },
+      estado: { in: ['CONFIRMADA'] },
       id: { notIn: reservaConVentaIds },
       ...(usuarioId
         ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
@@ -436,7 +436,7 @@ export const addAbonoFromVentas = async (
 export const getPayableReservations = async (): Promise<any[]> => {
   const reservas = await prisma.reserva.findMany({
     where: {
-      estado: { in: ['CONFIRMADA', 'REPROGRAMADA'] },
+      estado: { in: ['CONFIRMADA'] },
       saldoPendiente: { gt: 0 },
       venta: null,
     },

@@ -3,20 +3,21 @@ import sendMail from '../../config/mailer'
 import { ReservaCreateSchema, ReservaUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
-import { emailReservaCreada } from '../../utils/email.templates'
+import { emailReservaCreada, emailReservaAnulada } from '../../utils/email.templates'
 import { AppError } from '../../utils/AppError'
 import { mapToReservation, mapToPublicReservation } from './helpers/Reserva.mappers'
 import { verificarDisponibilidadReserva, getAvailableHours, validarServiciosReserva } from './helpers/Reserva.validators'
 import type { ReservaConRelaciones, ReservaPublica } from './helpers/Reserva.mappers'
 import type { ReservaCreateInput, ReservaUpdateInput, ServicioSeleccionado, ReservationResponse } from '../../types/interfaces'
 import type { EstadoReserva } from '../../generated/prisma'
+import cron from 'node-cron'
 
 // ─── QUERY ─────────────────────────────────────────────────────
 const reservaInclude = {
   cotizacion: {
     include: {
       cliente: { include: { usuario: true } },
-      servicios: { include: { servicio: true } },       
+      servicios: { include: { servicio: true } },
       repertorios: { include: { repertorio: true } },
     },
   },
@@ -27,7 +28,7 @@ const reservaInclude = {
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
   const where = usuarioId
     ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
-    : { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'ANULADA', 'REPROGRAMADA'] as EstadoReserva[] } }
+    : { estado: { in: ['PENDIENTE', 'ANULADA'] as EstadoReserva[] } }
 
   const reservas = await prisma.reserva.findMany({
     where,
@@ -39,7 +40,7 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
 
 ///Obtener reservas para el calendario
 export const getReservasCalendario = async () => {
-  const reservaWhere = { estado: { in: ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'] as EstadoReserva[] } }
+  const reservaWhere = { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
 
   const [reservas, ensayos, cotizaciones, ventasFinalizadas] = await Promise.all([
     prisma.reserva.findMany({
@@ -289,6 +290,7 @@ export const createReserva = async (data: ReservaCreateInput, isAdmin = false): 
   const usuario = cliente.usuario
   const nuevaInicio = new Date(`${d.eventDate}T${d.startTime}:00`)
   const nuevaFin = new Date(`${d.eventDate}T${d.endTime}:00`)
+  if (nuevaFin < nuevaInicio) nuevaFin.setDate(nuevaFin.getDate() + 1)
 
   // 5. Verificar disponibilidad (sin excludes porque es nueva)
   await verificarDisponibilidadReserva(d.eventDate, nuevaInicio, nuevaFin)
@@ -364,10 +366,10 @@ export const createReserva = async (data: ReservaCreateInput, isAdmin = false): 
     loginUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/login`,
   })
   try {
-  await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html })
-  console.log('Correo reserva enviado a:', cliente.email)
+    await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html })
+    console.log('Correo reserva enviado a:', cliente.email)
   } catch (err) {
-  console.error('Error correo reserva:', err)
+    console.error('Error correo reserva:', err)
   }
 
   return getReservaById(reserva.id)
@@ -397,6 +399,7 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput, isAdmi
   const date = d.eventDate ?? toLocalDate(r.cotizacion.fechaEvento)
   const horaInicio = d.startTime ? new Date(`${date}T${d.startTime}:00`) : r.cotizacion.horaInicio
   const horaFin = d.endTime ? new Date(`${date}T${d.endTime}:00`) : r.cotizacion.horaFin
+  if (horaFin < horaInicio) horaFin.setDate(horaFin.getDate() + 1)
 
   // ── Validar servicios si se envían ────────────────────────────────────────
   if (d.selectedServices?.length) {
@@ -553,6 +556,21 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
     }
   })
 
+  // 4. Enviar correo de notificación
+  try {
+    const cliente = r.cotizacion.cliente as any;
+    if (cliente) {
+      const mail = emailReservaAnulada({
+        nombreCliente: buildClientName(cliente.usuario?.nombre, cliente.apellido),
+        reservaId: String(r.id),
+        motivo: motivo || 'Anulada por solicitud del administrador o cliente.'
+      });
+      await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html });
+    }
+  } catch (err) {
+    console.error(`Error enviando correo de anulacion para reserva ${id}:`, err);
+  }
+
   return getReservaById(id)
 }
 
@@ -624,7 +642,7 @@ export const getAbonos = async (usuarioId?: number) => {
 
 //  CREATE ABONO - 50% OR 100% ALLOWED 
 export const createAbono = async (reservaId: number, data: { amount: number; date: string; method: string; notes?: string }) => {
-  
+
   const reserva = await prisma.reserva.findUnique({
     where: { id: reservaId },
     include: { cotizacion: { include: { cliente: true } }, abonos: true, venta: true }
@@ -684,26 +702,50 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
   // Actualizar saldo
   await prisma.reserva.update({ where: { id: reservaId }, data: { saldoPendiente: nuevoSaldo } })
 
-  // Si queda saldo > 0 despues del primer abono (50%)  confirmar reserva
+  // Si queda saldo > 0 despues del primer abono (50%)  confirmar reserva y crear venta
   if (pagadoActual === 0 && nuevoSaldo > 0.01) {
     await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'CONFIRMADA' } })
+
+    // Crear venta CONFIRMADO — la reserva pasa automáticamente al módulo Ventas
+    if (!reserva.venta) {
+      const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
+      await prisma.venta.create({
+        data: {
+          reservaId,
+          clienteId,
+          tipo: 'RESERVA',
+          estado: 'CONFIRMADO',
+          montoTotal: totalValor,
+          montoPagado: totalAbonos,
+          fechaVenta: new Date(),
+          metodoPago: metodoPagoRaw as any
+        }
+      })
+    }
   }
 
-  // Si saldo = 0  crear venta FINALIZADO
-  if (nuevoSaldo <= 0.01 && !reserva.venta) {
+  // Si saldo = 0  crear venta FINALIZADO o actualizar existente
+  if (nuevoSaldo <= 0.01) {
     const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
-    await prisma.venta.create({
-      data: {
-        reservaId,
-        clienteId,
-        tipo: 'RESERVA',
-        estado: 'FINALIZADO',
-        montoTotal: totalValor,
-        montoPagado: totalAbonos,
-        fechaVenta: new Date(),
-        metodoPago: metodoPagoRaw as any
-      }
-    })
+    if (!reserva.venta) {
+      await prisma.venta.create({
+        data: {
+          reservaId,
+          clienteId,
+          tipo: 'RESERVA',
+          estado: 'FINALIZADO',
+          montoTotal: totalValor,
+          montoPagado: totalAbonos,
+          fechaVenta: new Date(),
+          metodoPago: metodoPagoRaw as any
+        }
+      })
+    } else {
+      await prisma.venta.update({
+        where: { id: reserva.venta.id },
+        data: { estado: 'FINALIZADO', montoPagado: totalAbonos },
+      })
+    }
     // Marcar reserva como FINALIZADO (si vino de pago 100% directo estaba PENDIENTE)
     await prisma.reserva.update({ where: { id: reservaId }, data: { estado: 'FINALIZADO' } })
   }
@@ -719,73 +761,7 @@ export const createAbono = async (reservaId: number, data: { amount: number; dat
 
 
 
-// ─── REPROGRAMAR ──────────────────────────────────────────────────────────────
-export const reprogramarReserva = async (
-  id: number,
-  data: { eventDate: string; startTime: string; endTime: string },
-  isAdmin = false
-): Promise<ReservationResponse> => {
 
-  // 1. Buscar la reserva con sus abonos
-  const r = await prisma.reserva.findUnique({
-    where: { id },
-    include: {
-      cotizacion: true,
-      abonos: true,
-    },
-  })
- 
-  if (!r) throw new AppError('Reserva no encontrada', 404)
-  if (r.estado === 'ANULADA') throw new AppError('No se puede reprogramar una reserva anulada', 409)
- 
-  // 2. Debe tener al menos un abono para poder reprogramar
-  if (r.abonos.length === 0)
-    throw new AppError('Solo se pueden reprogramar reservas que tengan al menos un abono registrado', 400)
- 
-  // 3. Validar formato de los datos recibidos
-  if (!data.eventDate || !data.startTime || !data.endTime)
-    throw new AppError('Debes proporcionar fecha, hora de inicio y hora de fin', 400)
- 
-  // 4. Validar anticipación mínima si es el mismo día (solo para clientes)
-  validarAnticipacionMismoDia(data.eventDate, data.startTime, isAdmin)
- 
-  // 5. Construir fechas nuevas
-  const nuevaInicio = new Date(`${data.eventDate}T${data.startTime}:00`)
-  const nuevaFin    = new Date(`${data.eventDate}T${data.endTime}:00`)
- 
-  // 6. Verificar disponibilidad — excluir la reserva propia y su cotización
-  await verificarDisponibilidadReserva(
-    data.eventDate,
-    nuevaInicio,
-    nuevaFin,
-    id,               // excludeReservaId
-    r.cotizacionId,   // excludeCotizacionId
-  )
- 
-  // 7. Verificar que la hora esté disponible
-  const horas = await getAvailableHours(data.eventDate, id)
-  if (!horas.includes(data.startTime))
-    throw new AppError(`La hora ${data.startTime} no está disponible en esa fecha`, 409)
- 
-  // 8. Actualizar cotización (solo fecha y horas) y estado de reserva
-  await prisma.$transaction(async (tx) => {
-    await tx.cotizacion.update({
-      where: { id: r.cotizacionId },
-      data: {
-        fechaEvento: parseLocalDate(data.eventDate),
-        horaInicio:  nuevaInicio,
-        horaFin:     nuevaFin,
-      },
-    })
- 
-    await tx.reserva.update({
-      where: { id },
-      data: { estado: 'REPROGRAMADA' as any },
-    })
-  })
- 
-  return getReservaById(id)
-}
 
 // ─── FINALIZAR (MANUAL) ──────────────────────────────────────────────────────
 export const finalizeReserva = async (id: number): Promise<ReservationResponse> => {
@@ -854,4 +830,147 @@ export const finalizeReserva = async (id: number): Promise<ReservationResponse> 
   })
 
   return getReservaById(id)
+}
+
+// ─── CRON: ANULAR RESERVAS VENCIDAS (24h sin pago) ───────────────────────────
+export const anularReservasVencidas = async (): Promise<number> => {
+  const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+  const reservasPendientes = await prisma.reserva.findMany({
+    where: {
+      estado: 'PENDIENTE',
+      createdAt: { lt: hace24h },
+    },
+    include: { abonos: true, cotizacion: true },
+  })
+
+  let count = 0
+  for (const r of reservasPendientes) {
+    // Solo anular si no tiene abonos
+    if (r.abonos.length === 0) {
+      await prisma.$transaction(async (tx) => {
+        await tx.reserva.update({ where: { id: r.id }, data: { estado: 'ANULADA' } })
+        await tx.cotizacion.update({
+          where: { id: r.cotizacionId },
+          data: { estado: 'ANULADA', notasAdicionales: `${r.cotizacion.notasAdicionales ?? ''} [Anulada automáticamente: sin pago en 24h]`.trim() },
+        })
+      })
+      count++
+
+      // Enviar correo de anulación automática
+      try {
+        const c = r.cotizacion as any;
+        const cliente = await prisma.cliente.findUnique({ where: { id: c.clienteId }, include: { usuario: true } });
+        if (cliente) {
+          const mail = emailReservaAnulada({
+            nombreCliente: buildClientName(cliente.usuario?.nombre, cliente.apellido),
+            reservaId: String(r.id),
+            motivo: 'No se registro el pago del anticipo dentro de las 24 horas posteriores a la creacion de la reserva.'
+          });
+          await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html });
+        }
+      } catch (err) {
+        console.error(`[Scheduler] Error enviando correo de anulacion para reserva ${r.id}:`, err);
+      }
+    }
+  }
+
+  if (count > 0) console.log(`[Scheduler] ${count} reserva(s) anulada(s) por vencimiento de 24h`)
+  return count
+}
+
+// ─── CRON: FINALIZAR RESERVAS POR HORA DE EVENTO ─────────────────────────────
+export const finalizarReservasPorHoraEvento = async (): Promise<number> => {
+  const ahora = new Date()
+
+  // Buscar reservas CONFIRMADA cuya fecha+hora de fin ya pasó
+  const reservasConfirmadas = await prisma.reserva.findMany({
+    where: {
+      estado: 'CONFIRMADA',
+    },
+    include: {
+      cotizacion: { include: { cliente: true } },
+      abonos: true,
+      venta: true,
+    },
+  })
+
+  let count = 0
+  for (const r of reservasConfirmadas) {
+    const horaFin = r.cotizacion.horaFin
+    if (!horaFin || horaFin > ahora) continue  // Aún no ha pasado la hora del evento
+
+    const saldoPendiente = Number(r.saldoPendiente)
+    const totalValor = Number(r.totalValor)
+    const clienteId = r.cotizacion?.clienteId
+    if (!clienteId) continue
+
+    await prisma.$transaction(async (tx) => {
+      // Generar abono del saldo restante si hay pendiente
+      if (saldoPendiente > 0) {
+        await tx.abono.create({
+          data: {
+            reservaId: r.id,
+            clienteId,
+            monto: saldoPendiente,
+            fechaPago: ahora,
+            metodoPago: 'EFECTIVO',
+            notas: 'Saldo completado automáticamente al finalizar evento',
+            nuevoSaldo: 0,
+          },
+        })
+      }
+
+      // Marcar reserva como finalizada
+      await tx.reserva.update({
+        where: { id: r.id },
+        data: { estado: 'FINALIZADO', saldoPendiente: 0 },
+      })
+
+      // Actualizar o crear venta como FINALIZADO
+      const totalAbonos = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + saldoPendiente
+      if (r.venta) {
+        await tx.venta.update({
+          where: { id: r.venta.id },
+          data: { estado: 'FINALIZADO', montoPagado: totalAbonos },
+        })
+      } else {
+        await tx.venta.create({
+          data: {
+            reservaId: r.id,
+            clienteId,
+            tipo: 'RESERVA',
+            estado: 'FINALIZADO',
+            montoTotal: totalValor,
+            montoPagado: totalAbonos,
+            fechaVenta: ahora,
+            metodoPago: r.abonos[0]?.metodoPago ?? 'EFECTIVO',
+          },
+        })
+      }
+    })
+    count++
+  }
+
+  if (count > 0) console.log(`[Scheduler] ${count} reserva(s) finalizada(s) automáticamente por hora de evento`)
+  return count
+}
+
+// ─── INICIAR SCHEDULER ───────────────────────────────────────────────────────
+export const startScheduler = () => {
+  // Ejecutar cada 5 minutos
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      await anularReservasVencidas()
+      await finalizarReservasPorHoraEvento()
+    } catch (err) {
+      console.error('[Scheduler] Error en tareas automáticas:', err)
+    }
+  })
+
+  console.log('[Scheduler] Tareas automáticas iniciadas (cada 5 minutos)')
+
+  // Ejecutar inmediatamente al iniciar
+  anularReservasVencidas().catch(console.error)
+  finalizarReservasPorHoraEvento().catch(console.error)
 }

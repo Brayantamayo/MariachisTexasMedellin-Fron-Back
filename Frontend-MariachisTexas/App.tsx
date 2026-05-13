@@ -22,7 +22,9 @@ import { AbonosPage } from './src/features/abonos/pages/AbonosPage';
 import { VentasPage } from './src/features/ventas/pages/VentasPage';
 import { CotizacionesPage } from './src/features/cotizaciones/pages/CotizacionesPage';
 import { DashboardPage } from './src/features/home/pages/DashboardPage';
+import { GaleriaPage } from './src/features/galeria/pages/GaleriaPage';
 import { ProfilePage } from './src/features/home/pages/ProfilePage';
+
 import { ModuleName, UserRole } from './types';
 import { PublicLayout } from './shared/components/PublicLayout';
 import { LoadingScreen } from './shared/components/LoadingScreen';
@@ -124,7 +126,9 @@ const MainLayout: React.FC = () => {
       case 'clientes': return <ClientsPage />;
       case 'usuarios': return <UsersPage />;
       case 'roles': return <RolesPage />;
+      case 'galeria': return <GaleriaPage />;
       case 'empleados': return <EmployeesPage />;
+
       case 'repertorio': return <RepertoirePage />;
       case 'servicios': return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
       case 'ensayos': return <EnsayosPage />;

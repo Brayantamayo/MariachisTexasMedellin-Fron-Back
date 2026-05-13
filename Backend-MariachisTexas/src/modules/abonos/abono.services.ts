@@ -20,7 +20,7 @@ export const createAbono = async (
 
   // ─── 2. Validar que la reserva existe ─────────────────────────────────────
   const reserva = await prisma.reserva.findUnique({
-    where:   { id: d.reservaId },
+    where: { id: d.reservaId },
     include: { abonos: true, cotizacion: { include: { cliente: true } }, venta: true }
   })
 
@@ -39,11 +39,11 @@ export const createAbono = async (
     throw new AppError('La reserva no tiene un cliente asociado', 400)
 
   // ─── 5. Calcular montos y validar regla de negocio 50% ───────────────────
-  const totalValor   = Number(reserva.totalValor)
-  const saldoActual  = Number(reserva.saldoPendiente)
+  const totalValor = Number(reserva.totalValor)
+  const saldoActual = Number(reserva.saldoPendiente)
   const pagadoActual = totalValor - saldoActual
-  const anticipo50   = Math.ceil(totalValor / 2)
-  const monto        = Number(d.amount)
+  const anticipo50 = Math.ceil(totalValor / 2)
+  const monto = Number(d.amount)
 
   // Validar que el monto no exceda el saldo pendiente
   if (monto > saldoActual + 0.01)
@@ -75,17 +75,17 @@ export const createAbono = async (
   // ─── 7. Normalizar método de pago ─────────────────────────────────────────
   const metodoPago = d.method.toUpperCase() as any
   const nuevoSaldo = Number((saldoActual - monto).toFixed(2))
-  const clienteId  = reserva.cotizacion.clienteId
+  const clienteId = reserva.cotizacion.clienteId
 
   // ─── 8. Crear abono ───────────────────────────────────────────────────────
   await prisma.abono.create({
     data: {
-      reservaId:  d.reservaId,
+      reservaId: d.reservaId,
       clienteId,
       monto,
-      fechaPago:  new Date(d.date),
+      fechaPago: new Date(d.date),
       metodoPago,
-      notas:      d.notes ?? null,
+      notas: d.notes ?? null,
       nuevoSaldo
     }
   })
@@ -93,14 +93,14 @@ export const createAbono = async (
   // ─── 9. Actualizar saldo de la reserva ────────────────────────────────────
   await prisma.reserva.update({
     where: { id: d.reservaId },
-    data:  { saldoPendiente: nuevoSaldo }
+    data: { saldoPendiente: nuevoSaldo }
   })
 
   // ─── 10. Confirmar reserva tras el primer abono (50%) ─────────────────────
   if (pagadoActual === 0 && nuevoSaldo > 0) {
     await prisma.reserva.update({
       where: { id: d.reservaId },
-      data:  { estado: 'CONFIRMADA' }
+      data: { estado: 'CONFIRMADA' }
     })
   }
 
@@ -109,13 +109,13 @@ export const createAbono = async (
     const totalAbonos = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0) + monto
     await prisma.venta.create({
       data: {
-        reservaId:   d.reservaId,
+        reservaId: d.reservaId,
         clienteId,
-        tipo:        'RESERVA',
-        estado:      'FINALIZADO',
-        montoTotal:  totalValor,
+        tipo: 'RESERVA',
+        estado: 'FINALIZADO',
+        montoTotal: totalValor,
         montoPagado: totalAbonos,
-        fechaVenta:  new Date(),
+        fechaVenta: new Date(),
         metodoPago
       }
     })
@@ -124,7 +124,7 @@ export const createAbono = async (
   // ─── 12. Retornar mensaje de éxito con resumen ────────────────────────────
   const esUltimoPago = nuevoSaldo <= 0.01
   return {
-    message:  esUltimoPago
+    message: esUltimoPago
       ? 'Pago final registrado. Reserva completamente pagada y venta generada.'
       : 'Anticipo del 50% registrado. Reserva confirmada.',
   }
@@ -135,8 +135,8 @@ export const convertAbonosToVenta = async (reservaId: number): Promise<any> => {
     where: { id: reservaId },
     include: {
       cotizacion: { include: { cliente: true } },
-      abonos:     true,
-      venta:      true
+      abonos: true,
+      venta: true
     }
   })
 
@@ -148,7 +148,7 @@ export const convertAbonosToVenta = async (reservaId: number): Promise<any> => {
     throw new AppError('Reserva sin cliente asociado', 400)
 
   const saldoPendiente = Number(reserva.saldoPendiente)
-  const totalValor     = Number(reserva.totalValor)
+  const totalValor = Number(reserva.totalValor)
 
   if (saldoPendiente > 0.01)
     throw new AppError(
@@ -160,16 +160,16 @@ export const convertAbonosToVenta = async (reservaId: number): Promise<any> => {
 
   const montoPagado = reserva.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
   const ultimoAbono = reserva.abonos[reserva.abonos.length - 1]
-  const metodoPago  = ultimoAbono?.metodoPago || 'OTRO'
+  const metodoPago = ultimoAbono?.metodoPago || 'OTRO'
 
   const venta = await ventaService.createVenta({
     reservaId,
-    clienteId:   reserva.cotizacion.cliente.id,
-    tipo:        'RESERVA',
-    estado:      'FINALIZADO',
-    montoTotal:  totalValor,
+    clienteId: reserva.cotizacion.cliente.id,
+    tipo: 'RESERVA',
+    estado: 'FINALIZADO',
+    montoTotal: totalValor,
     montoPagado,
-    fechaVenta:  new Date().toISOString().split('T')[0],
+    fechaVenta: new Date().toISOString().split('T')[0],
     metodoPago: metodoPago
   })
 

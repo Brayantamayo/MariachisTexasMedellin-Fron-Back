@@ -30,6 +30,7 @@ export const useReservasManager = () => {
 
   const longPressTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressAction = useRef(false);
+  const hasCheckedAutoFinalize = useRef(false);
 
   const [isCreateOpen,      setIsCreateOpen]      = useState(false);
   const [isEditOpen,        setIsEditOpen]        = useState(false);
@@ -38,9 +39,6 @@ export const useReservasManager = () => {
   const [isDateDetailsOpen, setIsDateDetailsOpen] = useState(false);
   const [isBlockModalOpen,  setIsBlockModalOpen]  = useState(false);
 
-  // ─── NUEVO: modal de reprogramación ────────────────────────────────────────
-  const [isReprogramarOpen,    setIsReprogramarOpen]    = useState(false);
-  const [reprogramarReserva,   setReprogramarReserva]   = useState<Reservation | null>(null);
 
   const [editingReserva,         setEditingReserva]         = useState<Reservation | null>(null);
   const [selectedReserva,        setSelectedReserva]        = useState<Reservation | null>(null);
@@ -155,8 +153,80 @@ export const useReservasManager = () => {
       showNotification('Error cargando datos.', 'error');
     } finally {
       setLoading(false);
+      hasCheckedAutoFinalize.current = false;
     }
   };
+
+  const processFinalization = async (providedId?: string) => {
+    const id = providedId || finalizeModal.id;
+    if (!id) return;
+    try {
+      const res = reservations.find(r => r.id === id);
+      
+      // Si tiene saldo pendiente al finalizar, creamos una venta por el valor pagado hasta ahora? 
+      // O por el total? El usuario dice "si debe se crearía con la finalización". 
+      // Usualmente esto significa que el abono se convierte en venta finalizada.
+      if (res && Number(res.paidAmount) > 0 && res.status !== 'FINALIZADO') {
+        try {
+          await api.post('/ventas', {
+            reservaId: Number(res.id),
+            clienteId: Number(res.clientId),
+            tipo: 'RESERVA',
+            estado: 'CONFIRMADO',
+            montoTotal: Number(res.totalAmount),
+            montoPagado: Number(res.paidAmount),
+            fechaVenta: new Date().toISOString().split('T')[0],
+            metodoPago: 'VARIOS',
+            notas: `Venta generada por finalización de reserva #${res.id}`
+          });
+        } catch (vError) {
+          console.error("Error creando venta tras finalización:", vError);
+        }
+      }
+
+      const updated = await reservaService.finalizeReservation(id);
+      setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
+      if (selectedReserva?.id === updated.id) setSelectedReserva(updated);
+      showNotification('Evento finalizado exitosamente.');
+    } catch {
+      showNotification('Error al finalizar el evento.', 'error');
+    } finally {
+      setFinalizeModal({ isOpen: false, id: null });
+    }
+  };
+
+  // ─── AUTO-FINALIZACIÓN ───
+  useEffect(() => {
+    if (!loading && reservations.length > 0 && !hasCheckedAutoFinalize.current) {
+      const checkFinalization = async () => {
+        const now = new Date();
+        // Solo para administradores/empleados
+        if (!canManage) return;
+
+        hasCheckedAutoFinalize.current = true;
+
+        // Clonamos para evitar problemas de concurrencia durante el bucle
+        const toCheck = [...reservations];
+
+        for (const res of toCheck) {
+          if (res.status === 'CONFIRMADA') {
+            const eventDateTime = new Date(`${res.eventDate}T${res.startTime || '23:59'}`);
+            if (now > eventDateTime) {
+               try {
+                  // Llamamos a la lógica completa de finalización (que incluye creación de venta)
+                  await processFinalization(res.id);
+               } catch (e) {
+                  console.error("Error auto-finalizando", res.id, e);
+               }
+            }
+          }
+        }
+      };
+      checkFinalization();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, canManage]);
 
   useEffect(() => {
     if (user) fetchData();
@@ -284,6 +354,28 @@ export const useReservasManager = () => {
 
   const processCancel = async (id: string, motivo: string) => {
     try {
+      const res = reservations.find(r => r.id === id);
+      
+      // Si tiene abono, creamos una venta por ese valor antes de anular (o como parte del proceso)
+      if (res && Number(res.paidAmount) > 0) {
+        try {
+          await api.post('/ventas', {
+            reservaId: Number(res.id),
+            clienteId: Number(res.clientId),
+            tipo: 'RESERVA',
+            estado: 'CONFIRMADO',
+            montoTotal: Number(res.paidAmount),
+            montoPagado: Number(res.paidAmount),
+            fechaVenta: new Date().toISOString().split('T')[0],
+            metodoPago: 'VARIOS',
+            notas: `Venta generada por anulación de reserva con abonos. Motivo: ${motivo}`
+          });
+          showNotification(`Se registró una venta por el valor abonado: $${Number(res.paidAmount).toLocaleString()}`, 'success');
+        } catch (vError) {
+          console.error("Error creando venta tras anulación:", vError);
+        }
+      }
+
       const updated = await reservaService.cancelReservation(id, motivo || 'Cancelación manual por usuario');
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
       setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
@@ -337,24 +429,10 @@ export const useReservasManager = () => {
         error?.response?.data?.message ||
         error?.message ||
         'Error al registrar el abono';
-      showNotification(`❌ ${msg}`, 'error', 6000);
+      showNotification(` ${msg}`, 'error', 6000);
     }
   };
 
-  const processFinalization = async () => {
-    if (!finalizeModal.id) return;
-    try {
-      const updated = await reservaService.finalizeReservation(finalizeModal.id);
-      setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-      setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-      if (selectedReserva?.id === updated.id) setSelectedReserva(updated);
-      showNotification('Evento finalizado exitosamente.');
-    } catch {
-      showNotification('Error al finalizar el evento.', 'error');
-    } finally {
-      setFinalizeModal({ isOpen: false, id: null });
-    }
-  };
 
   const handleTimeSlotBlock = (date: string, time: string) => {
     if (!canManage) return;
@@ -370,26 +448,6 @@ export const useReservasManager = () => {
     setIsBlockModalOpen(true);
   };
 
-  // ─── NUEVO: abrir modal de reprogramación ──────────────────────────────────
-  const handleOpenReprogramar = (res: Reservation) => {
-    setReprogramarReserva(res);
-    setIsReprogramarOpen(true);
-  };
-
-  // ─── NUEVO: procesar reprogramación ───────────────────────────────────────
-  const handleReprogramar = async (
-    id: string,
-    data: { eventDate: string; startTime: string; endTime: string }
-  ) => {
-    const updated = await reservaService.reprogramarReservation(id, data);
-    setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-    setCalendarReservations(prev => prev.map(r => r.id === updated.id ? updated : r));
-    if (selectedReserva?.id === id) setSelectedReserva(updated);
-    setIsReprogramarOpen(false);
-    setReprogramarReserva(null);
-    showNotification('Reserva reprogramada exitosamente.', 'success', 5000);
-  };
-
   return {
     view, setView, currentDate, setCurrentDate,
     reservations, setReservations, calendarReservations, blocks, setBlocks,
@@ -400,11 +458,6 @@ export const useReservasManager = () => {
     isCreateOpen, setIsCreateOpen, isEditOpen, setIsEditOpen,
     isDetailOpen, setIsDetailOpen, isAbonoModalOpen, setIsAbonoModalOpen,
     isDateDetailsOpen, setIsDateDetailsOpen, isBlockModalOpen, setIsBlockModalOpen,
-    // ─── NUEVO ───────────────────────────────────────────────────────────────
-    isReprogramarOpen, setIsReprogramarOpen,
-    reprogramarReserva, setReprogramarReserva,
-    handleOpenReprogramar, handleReprogramar,
-    // ─────────────────────────────────────────────────────────────────────────
     editingReserva, setEditingReserva, selectedReserva, setSelectedReserva,
     selectedDateForForm, setSelectedDateForForm, selectedTimeForForm, setSelectedTimeForForm,
     selectedDateForDetails, setSelectedDateForDetails,

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Reservation, UserRole } from '@/types';
-import { Eye, DollarSign, Edit2, Ban, Trash2, CalendarClock, User, FileText, Calendar, CreditCard } from 'lucide-react';
+import { Eye, DollarSign, CalendarClock, Ban, Trash2, User, FileText, Calendar, CreditCard } from 'lucide-react';
 import { TablePagination } from '@/shared/components/TablePagination';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { AnularReservaModal } from '@/shared/components/AnularReservaModal';
+import { format12h } from '@/shared/utils/time';
+import { ActionButton } from '@/shared/components/ActionButton';
+
 
 interface Props {
   reservations: Reservation[];
@@ -15,17 +18,14 @@ interface Props {
   onFinalize: (id: string) => void;
   onCancel: (id: string, motivo: string) => void;
   onDelete: (id: string) => void;
-  // ─── NUEVO ───────────────────────────────────────────────────────────────
-  onReprogramar: (res: Reservation) => void;
 }
 
-{/* Esta función devuelve el estilo de la etiqueta de estado de la reserva. */}
 const getStatusBadgeStyles = (status: string) => {
   switch (status) {
     case 'PENDIENTE':      return 'bg-amber-100 text-amber-700 border-amber-300';
     case 'CONFIRMADA':     return 'bg-emerald-100 text-emerald-700 border-emerald-300';
     case 'ANULADA':        return 'bg-slate-100 text-slate-600 border-slate-300';
-    case 'REPROGRAMADA': return 'bg-[#e1f8ff] text-[#0c808b] border-[#0c808b]/30';
+    case 'FINALIZADO':     return 'bg-blue-100 text-blue-700 border-blue-300';
     default:               return 'bg-slate-100 text-slate-600 border-slate-300';
   }
 };
@@ -36,39 +36,16 @@ const getStatusLabel = (status: string) => {
     case 'PENDIENTE':    return 'Pendiente';
     case 'CONFIRMADA':   return 'Confirmada';
     case 'ANULADA':      return 'Anulada';
-    case 'REPROGRAMADA': return 'Reprogramada';
+    case 'FINALIZADO':   return 'Finalizado';
     default:             return status;
   }
 };
 
-const ActionButton: React.FC<{
-  icon: React.ElementType;
-  onClick: () => void;
-  tooltip?: string;
-  variant?: 'default' | 'success' | 'indigo' | 'danger' | 'warning';
-}> = ({ icon: Icon, onClick, tooltip, variant = 'default' }) => {
-  const variants = {
-    default: 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600',
-    success: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100',
-    indigo:  'bg-indigo-50 text-indigo-600 hover:bg-indigo-100',
-    danger:  'bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700',
-    warning: 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700',
-  };
-  return (
-    <button
-      onClick={onClick}
-      title={tooltip}
-      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${variants[variant]}`}
-    >
-      <Icon size={16} strokeWidth={2} />
-    </button>
-  );
-};
+
 
 export const ReservasTable: React.FC<Props> = ({
   reservations, loading, userRole,
   onView, onEdit, onAddPayment, onFinalize, onCancel, onDelete,
-  onReprogramar,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -114,17 +91,18 @@ export const ReservasTable: React.FC<Props> = ({
                 const paid     = Number(res.paidAmount)  || 0;
                 const saldo    = total - paid;
 
-                // ─── LÓGICA DE ESTADOS ─────────────────────────────────────
-                const isActive    = !['ANULADA', 'Anulado', 'Finalizado'].includes(res.status);
+                const eventDateStr = res.eventDate;
+                const eventTimeStr = res.startTime || res.eventTime || '23:59';
+                const now = new Date();
+                let hasPassed = false;
+                if (eventDateStr) {
+                  const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+                  hasPassed = now > eventDateTime;
+                }
+
+                const isActive    = !['ANULADA', 'Anulado'].includes(res.status) && 
+                                    (!['FINALIZADO', 'Finalizado'].includes(res.status) || !hasPassed);
                 const isAnulada   = res.status === 'ANULADA';
-                // Una reserva es reprogramable si:
-                // 1. Está PENDIENTE o CONFIRMADA o REPROGRAMADA
-                // 2. Tiene al menos un abono registrado (paidAmount > 0)
-                const canReprogramar =
-                  isActive &&
-                  !isClient &&
-                  paid > 0 &&
-                  ['PENDIENTE', 'CONFIRMADA', 'REPROGRAMADA'].includes(res.status);
 
                 const itemNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
@@ -141,7 +119,7 @@ export const ReservasTable: React.FC<Props> = ({
                           <Calendar size={12} className="text-slate-400" /> {res.eventDate}
                         </span>
                         <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
-                          {res.startTime || res.eventTime} {res.endTime ? `→ ${res.endTime}` : ''}
+                          {format12h(res.startTime || res.eventTime)} {res.endTime ? `→ ${format12h(res.endTime)}` : ''}
                         </span>
                       </div>
                     </td>
@@ -187,22 +165,15 @@ export const ReservasTable: React.FC<Props> = ({
                     {/* Botones de las acciones disponibles */}
                     <td className="py-5 px-8">
                       <div className="flex items-center justify-center gap-2">
-                        <ActionButton icon={Eye} onClick={() => onView(res)} tooltip="Ver Detalle" />
+                        <ActionButton icon={Eye} onClick={() => onView(res)} tooltip="Ver Detalle" size={16} />
                         {isActive && !isClient && (
                           <>
                             <ActionButton
-                              icon={Edit2}
+                              icon={CalendarClock}
                               onClick={() => onEdit(res)}
                               tooltip="Editar Reserva"
+                              size={16}
                             />
-                            {/* ─── BOTÓN REPROGRAMAR — solo si tiene abono ─── */}
-                            {canReprogramar && (
-                              <ActionButton
-                                icon={CalendarClock}
-                                tooltip="Reprogramar Reserva"
-                                onClick={() => onReprogramar(res)}
-                              />
-                            )}
 
                             {/*Boton de registrar Pago inicial*/}
                             {res.status === 'PENDIENTE' && (
@@ -210,15 +181,17 @@ export const ReservasTable: React.FC<Props> = ({
                                 icon={DollarSign}
                                 onClick={() => onAddPayment(res.id)}
                                 tooltip="Registrar Abono"
+                                size={16}
                               />
                             )}
 
-                            {/* ─── BOTÓN ANULAR — solo en estado PENDIENTE ─── */}
-                            {res.status === 'PENDIENTE' && (
+                            {/* ─── BOTÓN ANULAR — solo en estado PENDIENTE o CONFIRMADA ─── */}
+                            {(res.status === 'PENDIENTE' || res.status === 'CONFIRMADA') && (
                               <ActionButton
                                 icon={Ban}
                                 tooltip="Anular Reserva"
                                 onClick={() => setAnularModal({ open: true, reservation: res })}
+                                size={16}
                               />
                             )}
                           
@@ -229,6 +202,7 @@ export const ReservasTable: React.FC<Props> = ({
                             icon={Trash2}
                             tooltip="Eliminar"
                             onClick={() => setDeleteModal({ open: true, id: res.id })}
+                            size={16}
                           />
                         )}
                       </div>

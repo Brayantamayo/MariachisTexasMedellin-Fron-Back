@@ -114,9 +114,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(usuario)
       return true
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error)
-      return false
+      throw error;
     } finally {
       setIsLoading(false)
     }

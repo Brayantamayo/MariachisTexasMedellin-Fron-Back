@@ -7,6 +7,8 @@ import { blockService } from '../services/blockService';
 import { BlockFormModal } from '../components/BlockFormModal';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
+
 
 export const BlocksPage: React.FC = () => {
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
@@ -339,17 +341,4 @@ export const BlocksPage: React.FC = () => {
   );
 };
 
-// Componente auxiliar para botones de acción
-const ActionButton: React.FC<{ 
-    icon: React.ElementType, 
-    onClick: () => void, 
-    tooltip?: string
-}> = ({ icon: Icon, onClick, tooltip }) => (
-    <button 
-        onClick={onClick}
-        title={tooltip}
-        className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200 hover:scale-105"
-    >
-        <Icon size={16} strokeWidth={2} />
-    </button>
-);
+

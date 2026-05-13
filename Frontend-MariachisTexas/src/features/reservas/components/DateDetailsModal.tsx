@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Plus, User, ArrowRight, ShieldAlert, Lock, Info, AlertTriangle, Music, FileText, CheckCircle } from 'lucide-react';
 import { Reservation, CalendarBlock, UserRole, Rehearsal, Quotation } from '@/types';
 import { useAuth } from '@/shared/contexts/AuthContext';
+import { format12h } from '@/shared/utils/time';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface Props {
   rehearsals?: Rehearsal[];
   quotations?: Quotation[];
   onViewReservation: (reservation: Reservation) => void;
+  onViewRehearsal?: (rehearsal: Rehearsal) => void;
   onCreateNew: (time?: string) => void;
   onBlockTime: (date: string, time: string) => void;
   onDeleteBlock: (blockId: string) => void;
@@ -32,7 +34,7 @@ const addOneHour = (t: string): string => {
 export const DateDetailsModal: React.FC<Props> = ({
   isOpen, onClose, date,
   reservations, blocks = [], rehearsals = [], quotations = [],
-  onViewReservation, onCreateNew, onBlockTime, onDeleteBlock
+  onViewReservation, onViewRehearsal, onCreateNew, onBlockTime, onDeleteBlock
 }) => {
   const { user } = useAuth();
   const isAdmin  = user?.role === UserRole.ADMIN;
@@ -47,57 +49,86 @@ export const DateDetailsModal: React.FC<Props> = ({
   const dateStr = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const hours: string[] = [];
-  for (let i = 8; i <= 23; i++) hours.push(`${i.toString().padStart(2,'0')}:00`);
-  hours.push('00:00');
+  for (let i = 0; i <= 23; i++) hours.push(`${i.toString().padStart(2,'0')}:00`);
 
   const getSlotStatus = (time: string) => {
-    const hMin    = timeToMinutes(time)
-    const prevMin = hMin - 60
-    const prevTime = prevMin >= 0
-      ? `${Math.floor(prevMin / 60).toString().padStart(2,'0')}:${String(prevMin % 60).padStart(2,'0')}`
-      : `23:00`
+    const hMin     = timeToMinutes(time)
+    const prevMin  = (hMin - 60 + 1440) % 1440
+    const prevTime = `${Math.floor(prevMin / 60).toString().padStart(2,'0')}:${String(prevMin % 60).padStart(2,'0')}`
 
-    // 1. Reserva — hora exacta de inicio
-    const reservation = reservations.find(r => r.startTime === time || r.eventTime === time)
+    const checkReservaEnRango = (current: number, r: any) => {
+      const s = timeToMinutes(r.startTime || r.eventTime || '00:00');
+      const e = timeToMinutes(r.endTime || '00:00');
+      
+      if (s < e) {
+        if (r.eventDate !== date) return false;
+        return current >= s && current < e;
+      } else {
+        if (r.eventDate === date) {
+          return current >= s;
+        } else {
+          return current < e;
+        }
+      }
+    };
+
+    // 1. Ensayo (Prioridad para que coincida con la grilla del calendario)
+    const rehearsal = rehearsals.find(r => {
+      const rTime = r.time ?? (r as any).hora;
+      if (!rTime) return false;
+      // Normalizar formato (ej: "8:00" -> "08:00")
+      const [h, m] = rTime.split(':').map(Number);
+      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      return normalizedRTime === time;
+    });
+    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
+
+    // 2. Reserva — hora exacta de inicio
+    const reservation = reservations.find(r => {
+      const rTime = r.startTime || r.eventTime;
+      if (!rTime) return false;
+      const [h, m] = rTime.split(':').map(Number);
+      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      return normalizedRTime === time && r.eventDate === date;
+    });
     if (reservation) return { status: 'reserved', data: reservation }
 
-    // 2. Horas intermedias de una reserva (entre inicio y fin, sin incluir fin)
-    const reservaEnRango = reservations.find(r => {
-      const start = timeToMinutes(r.startTime || r.eventTime || '00:00')
-      const end   = timeToMinutes(r.endTime   || '00:00')
-      return hMin > start && hMin < end
-    })
+    // 3. Horas intermedias de una reserva
+    const reservaEnRango = reservations.find(r => checkReservaEnRango(hMin, r))
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
 
-    // 3. Buffer POST-reserva: la hora exacta de fin
+    // 4. Buffer POST-reserva: la hora exacta de fin
     const bufferPostReserva = reservations.find(r => {
-      const end = timeToMinutes(r.endTime || '00:00')
-      return hMin === end
+      if (r.endTime !== time) return false;
+      const s = timeToMinutes(r.startTime || r.eventTime || '00:00');
+      const e = timeToMinutes(r.endTime || '00:00');
+      if (s < e) return r.eventDate === date;
+      return r.eventDate !== date;
     })
     if (bufferPostReserva) return { status: 'buffer', data: bufferPostReserva }
 
-    // 4. Buffer PRE-reserva: la hora anterior al inicio
-    const prevReservation = reservations.find(r => r.startTime === prevTime || r.eventTime === prevTime)
+    // 5. Buffer PRE-reserva: la hora anterior al inicio
+    const nextHour = addOneHour(time)
+    const prevReservation = reservations.find(r => {
+      if ((r.startTime || r.eventTime) !== nextHour) return false;
+      if (r.eventDate !== date) return false;
+      return time !== '23:00';
+    })
     if (prevReservation) return { status: 'buffer', data: prevReservation }
 
-    // 5. Cotización EN_ESPERA — rango completo (sin incluir fin)
-    const quote = quotations.find(q => {
-      const start = timeToMinutes(q.startTime)
-      const end   = timeToMinutes(q.endTime)
-      return hMin >= start && hMin < end
-    })
+    // 6. Cotización — rango completo (sin incluir fin)
+    const quote = quotations.find(q => checkReservaEnRango(hMin, q))
     if (quote) return { status: 'quote', data: quote }
 
-    // 6. Buffer POST-cotización: hora exacta de fin
+    // 7. Buffer POST-cotización: hora exacta de fin
     const bufferPostCotizacion = quotations.find(q => {
-      const end = timeToMinutes(q.endTime)
-      return hMin === end
+      if (q.endTime !== time) return false;
+      const s = timeToMinutes(q.startTime || '00:00');
+      const e = timeToMinutes(q.endTime || '00:00');
+      if (s < e) return q.eventDate === date;
+      return q.eventDate !== date;
     })
     if (bufferPostCotizacion) return { status: 'buffer', data: bufferPostCotizacion }
-
-    // 7. Ensayo
-    const rehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === time)
-    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
     // 8. Buffer ensayo (hora siguiente al ensayo)
     const prevRehearsal = rehearsals.find(r => (r.time ?? (r as any).hora) === prevTime)
@@ -108,9 +139,13 @@ export const DateDetailsModal: React.FC<Props> = ({
     if (fullBlock) return { status: 'blocked_full', data: fullBlock }
 
     // 10. Bloqueo por horas
-    const timeBlock = blocks.find(b =>
-      b.type === 'TIME_RANGE' && time >= (b.startTime||'') && time < (b.endTime||'')
-    )
+    const timeBlock = blocks.find(b => {
+      if (b.type !== 'TIME_RANGE') return false;
+      const s = timeToMinutes(b.startTime || '00:00');
+      const e = timeToMinutes(b.endTime || '00:00');
+      if (s < e) return hMin >= s && hMin < e;
+      return hMin >= s || hMin < e; // Simplified, assuming blocks are only configured within bounds
+    })
     if (timeBlock) return { status: 'blocked_partial', data: timeBlock }
 
     return { status: 'free', data: null }
@@ -134,6 +169,8 @@ export const DateDetailsModal: React.FC<Props> = ({
       const res = slotData.data as Reservation;
       if (isClient && user?.email !== res.clientEmail) return;
       onViewReservation(slotData.data);
+    } else if (slotData.status === 'rehearsal' && onViewRehearsal) {
+      onViewRehearsal(slotData.data);
     }
   };
 
@@ -148,15 +185,6 @@ export const DateDetailsModal: React.FC<Props> = ({
       badge:  'bg-emerald-100 text-emerald-700 border-emerald-200',
       label:  'Confirmada',
       dot:    'bg-emerald-500',
-    }
-    if (s === 'REPROGRAMADA') return {
-      border: 'border-[#0c808b]/30',
-      bg:     'bg-[#e1f8ff]',
-      text:   'text-[#0c808b]',
-      sub:    'text-[#0c808b]',
-      badge:  'bg-white text-[#0c808b] border-[#0c808b]/30',
-      label:  'Reprogramada',
-      dot:    'bg-[#0c808b]',
     }
     // PENDIENTE
     return {
@@ -203,7 +231,7 @@ export const DateDetailsModal: React.FC<Props> = ({
               if (status === 'reserved') {
                 const res   = data as Reservation;
                 const clrs  = getReservaColors(res);
-                const range = `${res.startTime || res.eventTime} → ${res.endTime}`
+                const range = `${format12h(res.startTime || res.eventTime)} → ${format12h(res.endTime)}`
                 const isMyReservation = !isClient || user?.email === res.clientEmail;
                 const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
 
@@ -280,7 +308,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   content = (
                     <div className="flex items-center gap-3 w-full opacity-70" onClick={() => onViewReservation(res)}>
                       <div className="h-full w-0.5 bg-blue-300 rounded-full" />
-                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ {isClient ? 'Tu reserva' : res.clientName} — Finalizado</span>
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ Reservado por {isClient ? 'ti' : res.clientName} (Finalizado)</span>
                     </div>
                   );
                 } else if (isMyReservation) {
@@ -289,7 +317,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                     <div className="flex items-center gap-3 w-full opacity-80" onClick={() => onViewReservation(res)}>
                       <div className={`h-full w-0.5 rounded-full ${clrs.dot}`} />
                       <span className={`text-[10px] font-bold uppercase tracking-widest ${clrs.sub}`}>
-                        ↳ {isClient ? 'Tu reserva' : res.clientName} — En curso
+                        ↳ Reservado por {isClient ? 'ti' : res.clientName}
                       </span>
                     </div>
                   );
@@ -305,7 +333,7 @@ export const DateDetailsModal: React.FC<Props> = ({
               // ── QUOTE ────────────────────────────────────────────────────
               } else if (status === 'quote') {
                 const q = data as Quotation;
-                const range = `${q.startTime} → ${q.endTime}`
+                const range = `${format12h(q.startTime)} → ${format12h(q.endTime)}`
                 if (!isClient) {
                   containerClass = "border-amber-200 bg-amber-50/70 cursor-not-allowed";
                   content = (
@@ -337,8 +365,9 @@ export const DateDetailsModal: React.FC<Props> = ({
               } else if (status === 'rehearsal') {
                 const reh      = data as Rehearsal;
                 const rehTime  = reh.time ?? (reh as any).hora ?? ''
-                const rangeLabel = `${rehTime} → ${addOneHour(rehTime)}`
-                containerClass   = "border-slate-200 bg-slate-100 cursor-not-allowed";
+                const rangeLabel = `${format12h(rehTime)} → ${format12h(addOneHour(rehTime))}`
+                const canViewReh = !isClient && onViewRehearsal;
+                containerClass   = `border-purple-400 bg-purple-50 ${canViewReh ? 'cursor-pointer hover:bg-purple-100/80 shadow-inner' : 'cursor-not-allowed'}`;
                 content = isClient ? (
                   <div className="flex items-center justify-center w-full text-slate-400">
                     <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10}/> Reservado</span>
@@ -346,14 +375,15 @@ export const DateDetailsModal: React.FC<Props> = ({
                 ) : (
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
-                        <Music size={13} className="text-blue-600" />
+                      <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center shrink-0">
+                        <Music size={13} className="text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-blue-800">Ensayo Programado</p>
-                        <p className="text-[10px] font-mono text-blue-500 mt-0.5">{rangeLabel}</p>
+                        <p className="text-sm font-bold text-purple-900">Ensayo Programado</p>
+                        <p className="text-[10px] font-mono text-purple-600 mt-0.5">{rangeLabel}</p>
                       </div>
                     </div>
+                    <Music size={16} className="text-purple-300 opacity-50" />
                   </div>
                 );
 
@@ -362,10 +392,11 @@ export const DateDetailsModal: React.FC<Props> = ({
                 let bufferRange = ''
                 if (data) {
                   const d = data as any
-                  if (d.endTime) bufferRange = `${d.endTime} → ${addOneHour(d.endTime)}`
+                  if (d.endTime) bufferRange = `${format12h(d.endTime)} → ${format12h(addOneHour(d.endTime))}`
                   else if (d.time ?? d.hora) {
                     const t = d.time ?? d.hora
-                    bufferRange = `${addOneHour(t)} → ${addOneHour(addOneHour(t))}`
+                    const bufferStart = addOneHour(t)
+                    bufferRange = `${format12h(bufferStart)} → ${format12h(addOneHour(bufferStart))}`
                   }
                 }
                 containerClass = "border-slate-100 bg-slate-50/80 cursor-not-allowed border-dashed";
@@ -429,7 +460,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                   className={`group flex items-center gap-4 p-3 rounded-xl border transition-all select-none ${containerClass}`}
                 >
                   <div className="w-12 text-center shrink-0">
-                    <span className="text-sm font-bold text-slate-500 font-mono">{time}</span>
+                    <span className="text-sm font-bold text-slate-500 font-mono whitespace-nowrap">{format12h(time)}</span>
                   </div>
                   <div className="flex-1 flex items-center min-w-0">{content}</div>
                 </div>

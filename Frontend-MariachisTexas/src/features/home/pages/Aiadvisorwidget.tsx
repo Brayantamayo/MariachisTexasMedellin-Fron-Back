@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
 import '/shared/css/Aiadvisorwidget.css';
 import api from '@/shared/api/api';
@@ -32,7 +33,6 @@ export const AIAdvisorWidget: React.FC = () => {
   const bodyRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Abrir / cerrar panel ───────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       setMessages([{ role: 'assistant', content: '¡Hola! Soy tu asesor de Mariachis Texas 🎺 ¿En qué te puedo ayudar hoy?' }]);
@@ -44,12 +44,10 @@ export const AIAdvisorWidget: React.FC = () => {
     }
   }, [isOpen]);
 
-  // ── Auto-scroll ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [messages, isTyping]);
 
-  // ── Notificación cuando el panel está cerrado ──────────────────────────────
   useEffect(() => {
     if (!isOpen && messages.length > 1) {
       const last = messages[messages.length - 1];
@@ -57,7 +55,6 @@ export const AIAdvisorWidget: React.FC = () => {
     }
   }, [messages]);
 
-  // ── Llamada al backend ─────────────────────────────────────────────────────
   const callBackend = async (userMessage: string) => {
     try {
       const { data } = await api.post('/ai/chat', {
@@ -75,13 +72,12 @@ export const AIAdvisorWidget: React.FC = () => {
 
       return reply;
     } catch (err: any) {
-      return err.message ?? 'Hubo un problema de conexión. Intenta de nuevo.';
+      return 'En este momento nuestro Asesor se encuentra atendiendo a un cliente. Por favor, intente de nuevo más tarde.';
     }
   };
 
-  // ── Enviar mensaje ─────────────────────────────────────────────────────────
-  const handleSend = async (overrideText?: string) => {
-    const msg = (overrideText ?? input).trim();
+  const handleSend = async (text?: string) => {
+    const msg = text || input.trim();
     if (!msg || isTyping) return;
 
     setInput('');
@@ -90,13 +86,11 @@ export const AIAdvisorWidget: React.FC = () => {
     setIsTyping(true);
 
     const reply = await callBackend(msg);
-
-    setIsTyping(false);
     setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    setIsTyping(false);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  return (
+  return createPortal(
     <>
       <button
         className={`advisor-fab ${isOpen ? 'advisor-fab--open' : ''}`}
@@ -109,7 +103,6 @@ export const AIAdvisorWidget: React.FC = () => {
 
       <div className={`advisor-panel ${isOpen ? 'advisor-panel--open' : ''}`}>
 
-        {/* Header */}
         <div className="advisor-header">
           <div className="advisor-header__avatar"><Sparkles size={16} /></div>
           <div className="advisor-header__info">
@@ -118,12 +111,15 @@ export const AIAdvisorWidget: React.FC = () => {
               <span className="advisor-header__dot" /> En línea
             </span>
           </div>
-          <button className="advisor-header__close" onClick={() => setIsOpen(false)}>
-            <X size={18} />
+          <button 
+            className="advisor-header__close" 
+            onClick={() => setIsOpen(false)}
+            aria-label="Cerrar asesor"
+          >
+            <X size={24} />
           </button>
         </div>
 
-        {/* Mensajes */}
         <div className="advisor-body" ref={bodyRef}>
           {messages.map((msg, i) => (
             <div key={i} className={`advisor-msg advisor-msg--${msg.role}`}>
@@ -132,7 +128,6 @@ export const AIAdvisorWidget: React.FC = () => {
             </div>
           ))}
 
-          {/* Quick chips */}
           {showChips && messages.length <= 1 && (
             <div className="advisor-chips">
               {QUICK_CHIPS.map(chip => (
@@ -143,7 +138,6 @@ export const AIAdvisorWidget: React.FC = () => {
             </div>
           )}
 
-          {/* Typing indicator */}
           {isTyping && (
             <div className="advisor-msg advisor-msg--assistant">
               <div className="advisor-msg__bubble advisor-typing">
@@ -153,7 +147,6 @@ export const AIAdvisorWidget: React.FC = () => {
           )}
         </div>
 
-        {/* Input */}
         <div className="advisor-input-area">
           <textarea
             ref={inputRef}
@@ -179,6 +172,7 @@ export const AIAdvisorWidget: React.FC = () => {
         </div>
 
       </div>
-    </>
+    </>,
+    document.body
   );
 };

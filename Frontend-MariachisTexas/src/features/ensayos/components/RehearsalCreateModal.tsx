@@ -26,7 +26,6 @@ const EMPTY_FORM = {
   location:      '',
   date:          getTodayLocal(),
   time:          '',
-  notes:         '',
   repertoireIds: [] as string[],
 };
 

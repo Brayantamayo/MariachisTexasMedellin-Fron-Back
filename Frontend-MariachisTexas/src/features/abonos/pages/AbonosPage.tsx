@@ -5,34 +5,35 @@ import { useAuth } from '@/shared/contexts/AuthContext';
 import { UserRole } from '@/types';
 import api from '@/shared/api/api';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Abono {
-  id:               string;
-  amount:           number;
-  date:             string;
-  method:           string;
-  notes:            string;
-  reservationId:    string;
+  id: string;
+  amount: number;
+  date: string;
+  method: string;
+  notes: string;
+  reservationId: string;
   reservationStatus?: string;
-  clientId:         string;
-  clientEmail:      string;
-  clientName:       string;
+  clientId: string;
+  clientEmail: string;
+  clientName: string;
   reservationTotal: number;
-  newBalance:       number;
+  newBalance: number;
 }
 
 interface ReservaGroup {
-  reservationId:    string;
-  clientName:       string;
-  clientEmail:      string;
+  reservationId: string;
+  clientName: string;
+  clientEmail: string;
   reservationTotal: number;
-  paid:             number;
-  pending:          number;
-  eventType?:       string;
+  paid: number;
+  pending: number;
+  eventType?: string;
   reservationStatus?: string;
-  abonos:           Abono[];
+  abonos: Abono[];
 }
 
 const getReservationStatusDisplay = (status: string | undefined, pending: number) => {
@@ -64,11 +65,11 @@ const getReservationStatusDisplay = (status: string | undefined, pending: number
 };
 
 const metodoPagoLabel: Record<string, string> = {
-  EFECTIVO:      'Efectivo',
+  EFECTIVO: 'Efectivo',
   TRANSFERENCIA: 'Transferencia',
-  NEQUI:         'Nequi',
-  DAVIPLATA:     'Daviplata',
-  OTRO:          'Otro',
+  NEQUI: 'Nequi',
+  DAVIPLATA: 'Daviplata',
+  OTRO: 'Otro',
 };
 
 // ─── Abono DETALLE───────────────────────────────────────────────────────
@@ -116,10 +117,10 @@ const AbonoDetailModal: React.FC<{
         {/* Details */}
         <div className="px-6 py-4 space-y-3">
           {[
-            { label: 'Fecha',     value: new Date(abono.date).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) },
-            { label: 'Cliente',   value: abono.clientName },
-            { label: 'Método',    value: metodoPagoLabel[abono.method] ?? abono.method },
-            { label: 'Reserva',   value: `#${abono.reservationId}` },
+            { label: 'Fecha', value: new Date(abono.date).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) },
+            { label: 'Cliente', value: abono.clientName },
+            { label: 'Método', value: metodoPagoLabel[abono.method] ?? abono.method },
+            { label: 'Reserva', value: `#${abono.reservationId}` },
             { label: 'Saldo quedó', value: `$${abono.newBalance.toLocaleString('es-CO')}` },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
@@ -150,13 +151,13 @@ const AbonoDetailModal: React.FC<{
 
 
 // ─── Modal Registrar Abono ────────────────────────────────────────────────────
- interface RegisterAbonoFormErrors {
+interface RegisterAbonoFormErrors {
   reservationId?: string;
-  date?:          string;
-  method?:        string;
+  date?: string;
+  method?: string;
 }
 const REGISTER_EMPTY_ERRORS: RegisterAbonoFormErrors = {};
- 
+
 export const RegisterAbonoModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -170,11 +171,11 @@ export const RegisterAbonoModal: React.FC<{
     method: 'EFECTIVO',
     notes: '',
   });
-  const [errors,      setErrors]      = useState<RegisterAbonoFormErrors>(REGISTER_EMPTY_ERRORS);
-  const [error,       setError]       = useState<string | null>(null);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [loadingRes,  setLoadingRes]  = useState(false);
- 
+  const [errors, setErrors] = useState<RegisterAbonoFormErrors>(REGISTER_EMPTY_ERRORS);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingRes, setLoadingRes] = useState(false);
+
   useEffect(() => {
     if (!isOpen) return;
     setErrors(REGISTER_EMPTY_ERRORS);
@@ -185,23 +186,23 @@ export const RegisterAbonoModal: React.FC<{
       .catch(() => setError('Error cargando reservas. Por favor recarga la página.'))
       .finally(() => setLoadingRes(false));
   }, [isOpen]);
- 
+
   const handleFormChange = (field: string, value: string) => {
     setForm(f => ({ ...f, [field]: value }));
     if (errors[field as keyof RegisterAbonoFormErrors])
       setErrors(prev => ({ ...prev, [field]: undefined }));
     if (error) setError(null);
   };
- 
-  const selectedRes    = reservations.find(r => r.id === form.reservationId);
+
+  const selectedRes = reservations.find(r => r.id === form.reservationId);
   const montoRequerido = selectedRes
     ? selectedRes.paid === 0
       ? Math.ceil(selectedRes.total / 2)
       : selectedRes.pending
     : 0;
   const isSecondAbono = selectedRes && selectedRes.paid > 0;
-  const abonoLabel    = isSecondAbono ? '2do Abono' : '1er Abono';
- 
+  const abonoLabel = isSecondAbono ? '2do Abono' : '1er Abono';
+
   const handleSubmit = async () => {
     // Validación por campo
     const newErrors: RegisterAbonoFormErrors = {};
@@ -211,23 +212,23 @@ export const RegisterAbonoModal: React.FC<{
       newErrors.date = 'La fecha es requerida.';
     if (!form.method)
       newErrors.method = 'El método de pago es requerido.';
- 
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return; // NO cierra el modal
     }
- 
+
     setErrors(REGISTER_EMPTY_ERRORS);
     setError(null);
     setSubmitting(true);
- 
+
     try {
       await api.post('/abonos', {
         reservaId: form.reservationId,
-        amount:    montoRequerido,
-        date:      form.date,
-        method:    form.method,
-        notes:     form.notes,
+        amount: montoRequerido,
+        date: form.date,
+        method: form.method,
+        notes: form.notes,
       });
       onSuccess();
       onClose();
@@ -248,15 +249,15 @@ export const RegisterAbonoModal: React.FC<{
       setSubmitting(false);
     }
   };
- 
+
   if (!isOpen) return null;
- 
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" onClick={onClose} />
- 
+
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in-up">
- 
+
         {/* Header */}
         <div className="bg-red-600 px-6 py-5 flex items-center justify-between rounded-t-2xl flex-shrink-0">
           <div>
@@ -267,17 +268,17 @@ export const RegisterAbonoModal: React.FC<{
             <X size={16} />
           </button>
         </div>
- 
+
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4">
- 
+
           {/* ✅ Error global del backend */}
           {error && (
             <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" /> {error}
             </div>
           )}
- 
+
           {/* Reserva */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
@@ -286,11 +287,10 @@ export const RegisterAbonoModal: React.FC<{
             <select
               value={form.reservationId}
               onChange={e => handleFormChange('reservationId', e.target.value)}
-              className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 outline-none bg-white transition-all ${
-                errors.reservationId
-                  ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
-                  : 'border-slate-200 focus:border-red-400'
-              }`}
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-red-100 outline-none bg-white transition-all ${errors.reservationId
+                ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                : 'border-slate-200 focus:border-red-400'
+                }`}
             >
               <option value="">{loadingRes ? 'Cargando...' : '-- Selecciona una reserva --'}</option>
               {reservations.map(r => (
@@ -305,7 +305,7 @@ export const RegisterAbonoModal: React.FC<{
               </p>
             )}
           </div>
- 
+
           {/* Info reserva seleccionada */}
           {selectedRes && (
             <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-100">
@@ -339,7 +339,7 @@ export const RegisterAbonoModal: React.FC<{
               </div>
             </div>
           )}
- 
+
           {/* Fecha y Método */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -350,11 +350,10 @@ export const RegisterAbonoModal: React.FC<{
                 type="date"
                 value={form.date}
                 onChange={e => handleFormChange('date', e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none transition-all ${
-                  errors.date
-                    ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
-                    : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
-                }`}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none transition-all ${errors.date
+                  ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                  : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
+                  }`}
               />
               {errors.date && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -369,11 +368,10 @@ export const RegisterAbonoModal: React.FC<{
               <select
                 value={form.method}
                 onChange={e => handleFormChange('method', e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none bg-white transition-all ${
-                  errors.method
-                    ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
-                    : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
-                }`}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none bg-white transition-all ${errors.method
+                  ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500'
+                  : 'border-slate-200 focus:ring-2 focus:ring-red-100 focus:border-red-400'
+                  }`}
               >
                 {[
                   { value: 'EFECTIVO', label: 'Efectivo' },
@@ -392,7 +390,7 @@ export const RegisterAbonoModal: React.FC<{
               )}
             </div>
           </div>
- 
+
           {/* Notas */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notas (opcional)</label>
@@ -405,7 +403,7 @@ export const RegisterAbonoModal: React.FC<{
             />
           </div>
         </div>
- 
+
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 flex gap-3 flex-shrink-0 rounded-b-2xl bg-white">
           <button onClick={onClose} disabled={submitting}
@@ -427,20 +425,22 @@ export const RegisterAbonoModal: React.FC<{
 
 
 // ─── Pagina ────────────────────────────────────────────────────────────────
+
+
 export const AbonosPage: React.FC = () => {
-  const { user }        = useAuth();
-  const [abonos,        setAbonos]        = useState<Abono[]>([]);
-  const [groups,        setGroups]        = useState<ReservaGroup[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [searchTerm,    setSearchTerm]    = useState('');
-  const [currentPage,   setCurrentPage]   = useState(1);
-  const [expandedId,    setExpandedId]    = useState<string | null>(null);
-  const [notification,  setNotification]  = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { user } = useAuth();
+  const [abonos, setAbonos] = useState<Abono[]>([]);
+  const [groups, setGroups] = useState<ReservaGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedAbono, setSelectedAbono] = useState<Abono | null>(null);
-  const [isDetailOpen,  setIsDetailOpen]  = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
-  const isClient   = user?.role === UserRole.CLIENTE;
+  const isClient = user?.role === UserRole.CLIENTE;
   const itemsPerPage = 10;
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -459,14 +459,14 @@ export const AbonosPage: React.FC = () => {
       (data as Abono[]).forEach(a => {
         if (!grouped.has(a.reservationId)) {
           grouped.set(a.reservationId, {
-            reservationId:    a.reservationId,
-            clientName:       a.clientName,
-            clientEmail:      a.clientEmail,
+            reservationId: a.reservationId,
+            clientName: a.clientName,
+            clientEmail: a.clientEmail,
             reservationTotal: a.reservationTotal,
             reservationStatus: a.reservationStatus,
-            paid:             0,
-            pending:          0,
-            abonos:           [],
+            paid: 0,
+            pending: 0,
+            abonos: [],
           });
         }
         const g = grouped.get(a.reservationId)!;
@@ -495,14 +495,14 @@ export const AbonosPage: React.FC = () => {
   const handleDownloadAbono = async (abonoId: string) => {
     showNotification('Descargando comprobante...');
     try {
-      const token    = localStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/abonos/${abonoId}/download/pdf`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Error');
       const blob = await response.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
       a.href = url; a.download = `abono-${abonoId}.pdf`;
       a.click(); URL.revokeObjectURL(url);
       showNotification('Comprobante descargado.');
@@ -516,7 +516,7 @@ export const AbonosPage: React.FC = () => {
     g.reservationId.includes(searchTerm)
   );
 
-  const totalPages   = Math.ceil(filteredGroups.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
   const currentItems = filteredGroups.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
@@ -552,13 +552,13 @@ export const AbonosPage: React.FC = () => {
 
         {/* Botón solo visible para ADMIN/EMPLEADO */}
         {!isClient && (
-  <button
-    onClick={() => setIsRegisterOpen(true)}
-    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-sm"
-  >
-    <Plus size={14} /> Registrar Abono
-  </button>
-)}
+          <button
+            onClick={() => setIsRegisterOpen(true)}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-sm"
+          >
+            <Plus size={14} /> Registrar Abono
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -598,8 +598,8 @@ export const AbonosPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {currentItems.map(group => {
-                    const isExpanded  = expandedId === group.reservationId;
-                    const isPaid      = group.pending <= 0.01;
+                    const isExpanded = expandedId === group.reservationId;
+                    const isPaid = group.pending <= 0.01;
                     const statusDisplay = getReservationStatusDisplay(group.reservationStatus, group.pending);
 
                     return (
@@ -676,20 +676,17 @@ export const AbonosPage: React.FC = () => {
                                       </span>
                                       <span className="text-sm font-bold text-emerald-600">${abono.amount.toLocaleString('es-CO')}</span>
                                       <div className="flex items-center justify-center gap-2">
-                                        <button
+                                        <ActionButton
+                                          icon={Eye}
                                           onClick={e => { e.stopPropagation(); setSelectedAbono(abono); setIsDetailOpen(true); }}
-                                          title="Ver detalle"
-                                          className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 flex items-center justify-center transition-all"
-                                        >
-                                          <Eye size={14} />
-                                        </button>
-                                        <button
+                                          tooltip="Ver detalle"
+                                        />
+                                        <ActionButton
+                                          icon={Download}
                                           onClick={e => { e.stopPropagation(); handleDownloadAbono(abono.id); }}
-                                          title="Descargar PDF"
-                                          className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all"
-                                        >
-                                          <Download size={14} />
-                                        </button>
+                                          tooltip="Descargar PDF"
+                                          variant="danger"
+                                        />
                                       </div>
                                     </div>
                                   ))}
@@ -723,11 +720,11 @@ export const AbonosPage: React.FC = () => {
       />
 
       <RegisterAbonoModal
-  isOpen={isRegisterOpen}
-  onClose={() => setIsRegisterOpen(false)}
-  onSuccess={() => { showNotification('Abono registrado exitosamente.'); fetchAbonos(); }}
-  showNotification={showNotification}  // ← agregar esto
-/>
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={() => { showNotification('Abono registrado exitosamente.'); fetchAbonos(); }}
+        showNotification={showNotification}  // ← agregar esto
+      />
     </div>
   );
 };

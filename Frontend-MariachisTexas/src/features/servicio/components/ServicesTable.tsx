@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Edit2, Trash2, Eye, Briefcase } from 'lucide-react';
 import { Service, UserRole } from '@/types';
 import { TablePagination } from '@/shared/components/TablePagination';
+import { ActionButton } from '@/shared/components/ActionButton';
 
 interface Props {
   services: Service[];
@@ -14,6 +15,7 @@ interface Props {
   onToggleStatus: (service: Service) => void;
 }
 
+
 export const ServicesTable: React.FC<Props> = ({ 
   services, loading, userRole, onEdit, onDelete, onView, onToggleStatus 
 }) => {
@@ -21,15 +23,7 @@ export const ServicesTable: React.FC<Props> = ({
   const itemsPerPage = 10;
   const canManage = userRole === UserRole.ADMIN;
 
-  const ActionButton: React.FC<{ icon: React.ElementType, onClick: () => void, tooltip?: string }> = ({ icon: Icon, onClick, tooltip }) => (
-    <button 
-      onClick={onClick}
-      title={tooltip}
-      className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-    >
-      <Icon size={16} strokeWidth={2} />
-    </button>
-  );
+
 
 
   {/* Si no hay servicios cargados, mostrar mensaje de cargando */}
