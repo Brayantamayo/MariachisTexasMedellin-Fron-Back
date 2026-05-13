@@ -111,6 +111,51 @@ export const VentaDetailModal: React.FC<Props> = ({ isOpen, onClose, sale, onDow
                 </p>
               </div>
 
+              {/* Abonos */}
+              {sale.abonos && sale.abonos.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <CreditCard size={14} className="text-primary-600" /> Historial de Abonos
+                  </h4>
+                  <div className="space-y-3">
+                    {sale.abonos.map((abono, i) => (
+                      <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-5">
+                          <CreditCard size={40} />
+                        </div>
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase">Abono #{i+1}</p>
+                            <p className="text-sm font-bold text-slate-700">{new Date(abono.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                          <p className="text-sm font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                            + ${abono.amount.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-2 py-0.5 rounded">
+                            <Tag size={10} /> {abono.method}
+                          </div>
+                        </div>
+                        {abono.notes && (
+                          <p className="text-[10px] text-slate-400 italic mt-2 border-t border-slate-50 pt-2">
+                            "{abono.notes}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Resumen de Pago */}
+                  <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <div className="flex justify-between items-center text-xs font-bold text-emerald-800">
+                      <span>Total Abonado:</span>
+                      <span>${sale.abonos.reduce((sum, a) => sum + a.amount, 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Repertorio */}
               {sale.repertoire && sale.repertoire.length > 0 && (
                 <div>

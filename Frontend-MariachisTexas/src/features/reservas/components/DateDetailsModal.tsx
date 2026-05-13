@@ -72,18 +72,7 @@ export const DateDetailsModal: React.FC<Props> = ({
       }
     };
 
-    // 1. Ensayo (Prioridad para que coincida con la grilla del calendario)
-    const rehearsal = rehearsals.find(r => {
-      const rTime = r.time ?? (r as any).hora;
-      if (!rTime) return false;
-      // Normalizar formato (ej: "8:00" -> "08:00")
-      const [h, m] = rTime.split(':').map(Number);
-      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
-      return normalizedRTime === time;
-    });
-    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
-
-    // 2. Reserva — hora exacta de inicio
+    // 1. Reserva — hora exacta de inicio
     const reservation = reservations.find(r => {
       const rTime = r.startTime || r.eventTime;
       if (!rTime) return false;
@@ -93,9 +82,20 @@ export const DateDetailsModal: React.FC<Props> = ({
     });
     if (reservation) return { status: 'reserved', data: reservation }
 
-    // 3. Horas intermedias de una reserva
+    // 2. Horas intermedias de una reserva
     const reservaEnRango = reservations.find(r => checkReservaEnRango(hMin, r))
     if (reservaEnRango) return { status: 'reserved_range', data: reservaEnRango }
+
+    // 3. Ensayo (Prioridad para que coincida con la grilla del calendario)
+    const rehearsal = rehearsals.find(r => {
+      const rTime = r.time ?? (r as any).hora;
+      if (!rTime) return false;
+      // Normalizar formato (ej: "8:00" -> "08:00")
+      const [h, m] = rTime.split(':').map(Number);
+      const normalizedRTime = `${h.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+      return normalizedRTime === time;
+    });
+    if (rehearsal) return { status: 'rehearsal', data: rehearsal }
 
     // 4. Buffer POST-reserva: la hora exacta de fin
     const bufferPostReserva = reservations.find(r => {
@@ -169,7 +169,7 @@ export const DateDetailsModal: React.FC<Props> = ({
       const res = slotData.data as Reservation;
       if (isClient && user?.email !== res.clientEmail) return;
       onViewReservation(slotData.data);
-    } else if (slotData.status === 'rehearsal' && onViewRehearsal) {
+    } else if (slotData.status === 'rehearsal' && onViewRehearsal && !isClient) {
       onViewRehearsal(slotData.data);
     }
   };
@@ -232,20 +232,20 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const res   = data as Reservation;
                 const clrs  = getReservaColors(res);
                 const range = `${format12h(res.startTime || res.eventTime)} → ${format12h(res.endTime)}`
-                const isMyReservation = !isClient || user?.email === res.clientEmail;
+                const isMyReservation = !isClient || user?.email === res.clientEmail || (res as any).isMine;
                 const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
 
-                if (isFinalizado) {
+                if (isFinalizado && isMyReservation) {
                   // ── FINALIZADO slot ──────────────────────────────────────
-                  containerClass = `border-blue-300 bg-blue-50 ${isMyReservation ? 'cursor-pointer hover:bg-blue-100' : 'cursor-not-allowed'}`;
-                  content = isMyReservation ? (
+                  containerClass = "border-blue-300 bg-blue-50 cursor-pointer hover:bg-blue-100";
+                  content = (
                     <div className="flex items-center justify-between w-full" onClick={() => onViewReservation(res)}>
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
                           <CheckCircle size={14} className="text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-blue-800">{isClient ? `Tu reserva - ${res.clientName}` : res.clientName}</p>
+                          <p className="text-sm font-bold text-blue-800">{isClient ? 'Tu reserva' : res.clientName}</p>
                           <p className="text-[10px] text-blue-600 uppercase tracking-wide mt-0.5">{res.eventType}</p>
                           <p className="text-[10px] font-mono text-blue-500 mt-0.5">{range}</p>
                           <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-blue-600 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
@@ -254,12 +254,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center w-full text-slate-400">
-                      <span className="text-[10px] font-bold uppercase flex items-center gap-2"><Lock size={10} /> Reservado</span>
-                    </div>
                   );
-
                 } else if (isMyReservation) {
                   // ── PENDIENTE / CONFIRMADA slot ──────────────────────────
                   containerClass = `${clrs.border} ${clrs.bg} cursor-pointer hover:brightness-95 transition-all`;
@@ -268,14 +263,11 @@ export const DateDetailsModal: React.FC<Props> = ({
                       <div className="flex items-start gap-3">
                         {/* Color dot indicating status */}
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${clrs.badge} border`}>
-                          
-                          
-                          <User size={14}
-                          />
+                          <User size={14} />
                         </div>
                         <div>
                           {/* CLIENT NAME — prominent */}
-                          <p className={`text-sm font-bold ${clrs.text}`}>{isClient ? `Tu reserva - ${res.clientName}` : res.clientName} </p>
+                          <p className={`text-sm font-bold ${clrs.text}`}>{isClient ? 'Tu reserva' : res.clientName}</p>
                           <p className={`text-[10px] font-mono mt-0.5 ${clrs.sub}`}>{range}</p>
                           {/* Status badge */}
                           <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${clrs.badge}`}>
@@ -300,15 +292,15 @@ export const DateDetailsModal: React.FC<Props> = ({
               } else if (status === 'reserved_range') {
                 const res  = data as Reservation;
                 const clrs = getReservaColors(res);
-                const isMyReservation = !isClient || user?.email === res.clientEmail;
+                const isMyReservation = !isClient || user?.email === res.clientEmail || (res as any).isMine;
                 const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
 
-                if (isFinalizado) {
+                if (isFinalizado && isMyReservation) {
                   containerClass = "border-blue-100 bg-blue-50/50 cursor-pointer";
                   content = (
                     <div className="flex items-center gap-3 w-full opacity-70" onClick={() => onViewReservation(res)}>
                       <div className="h-full w-0.5 bg-blue-300 rounded-full" />
-                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ Reservado por {isClient ? 'ti' : res.clientName} (Finalizado)</span>
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">↳ {isClient ? 'Tu reserva' : `Reservado por ${res.clientName}`} (Finalizado)</span>
                     </div>
                   );
                 } else if (isMyReservation) {
@@ -317,7 +309,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                     <div className="flex items-center gap-3 w-full opacity-80" onClick={() => onViewReservation(res)}>
                       <div className={`h-full w-0.5 rounded-full ${clrs.dot}`} />
                       <span className={`text-[10px] font-bold uppercase tracking-widest ${clrs.sub}`}>
-                        ↳ Reservado por {isClient ? 'ti' : res.clientName}
+                        ↳ {isClient ? 'Tu reserva' : `Reservado por ${res.clientName}`}
                       </span>
                     </div>
                   );
@@ -441,13 +433,27 @@ export const DateDetailsModal: React.FC<Props> = ({
 
               // ── FREE ─────────────────────────────────────────────────────
               } else {
-                containerClass = "border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 hover:shadow-sm bg-white cursor-pointer";
-                content = (
-                  <div className="flex items-center justify-between w-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-bold text-primary-400 uppercase tracking-widest">Disponible</span>
-                    <Plus size={14} className="text-primary-400" />
-                  </div>
-                );
+                const timeMinutes = timeToMinutes(time);
+                const now = new Date();
+                const currentLocalStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                const isPastSlot = date < currentLocalStr || (date === currentLocalStr && timeMinutes <= now.getHours() * 60 + now.getMinutes());
+
+                if (isPastSlot) {
+                  containerClass = "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed";
+                  content = (
+                    <div className="flex items-center justify-center w-full text-slate-300">
+                      <span className="text-[10px] uppercase font-bold tracking-widest">No Disponible</span>
+                    </div>
+                  );
+                } else {
+                  containerClass = "border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 hover:shadow-sm bg-white cursor-pointer";
+                  content = (
+                    <div className="flex items-center justify-between w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-bold text-primary-400 uppercase tracking-widest">Disponible</span>
+                      <Plus size={14} className="text-primary-400" />
+                    </div>
+                  );
+                }
               }
 
               return (

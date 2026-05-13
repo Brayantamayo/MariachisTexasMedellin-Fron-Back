@@ -202,13 +202,18 @@ export const ReservasPage: React.FC = () => {
                           r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm);
     
-    if (isClient) return matchesSearch;
+    // Filtro dinámico según el rol
+    if (isClient) {
+      // Al cliente le mostramos todas sus reservas activas o finalizadas
+      return matchesSearch && r.status !== 'ANULADA';
+    }
 
-    // Queremos ver solo las reservas activas (Pendientes, Confirmadas, Finalizadas)
-    // El usuario pidió que si se anula en ventas (o aquí) NO aparezca más en la lista de reservas.
-    const visibleStatuses = ['PENDIENTE', 'CONFIRMADA', 'FINALIZADO'];
+    // Al administrador solo le mostramos las pendientes y las anuladas sin abonos
+    // Las confirmadas y finalizadas el admin las ve en Ventas
+    const isAnuladaSinAbono = r.status === 'ANULADA' && (Number(r.paidAmount) || 0) <= 0;
+    const isVisibleStatus = r.status === 'PENDIENTE' || isAnuladaSinAbono;
     
-    return matchesSearch && visibleStatuses.includes(r.status);
+    return matchesSearch && isVisibleStatus;
   });
 
   const renderCalendar = () => {
@@ -289,7 +294,7 @@ export const ReservasPage: React.FC = () => {
           className={`h-36 border border-slate-100 p-3 transition-all relative group overflow-hidden select-none
             ${isToday ? 'bg-blue-50/20 ring-1 ring-blue-100' : 'bg-white'}
             ${!isFullDayBlock && !isSelected && !isPast ? 'hover:bg-slate-50/50 hover:shadow-[inset_0_0_20px_rgba(0,0,0,0.01)] cursor-pointer' : ''}
-            ${isPast ? 'bg-slate-50/60 grayscale opacity-40' : ''}
+            ${isPast ? 'bg-slate-50/60 opacity-60' : ''}
             ${isSelected ? (canManage ? 'bg-red-50/30 border-red-200' : 'bg-emerald-50/30 border-emerald-200') : ''}
           `}
           style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
@@ -335,7 +340,6 @@ export const ReservasPage: React.FC = () => {
                 </div>
               )),
               ...dayEvents
-                .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
                 .map(ev => {
                   const st = s(ev);
                   const isMine = user?.email === ev.clientEmail || reservations.some(r => r.id === ev.id);
@@ -350,7 +354,7 @@ export const ReservasPage: React.FC = () => {
                   if (st === 'PENDIENTE') {
                     statusStyle = 'bg-amber-50 border-amber-500 text-amber-800';
                     timeStyle = 'text-amber-600';
-                  } else if (st === 'FINALIZADO' && hasPassed) {
+                  } else if (st === 'FINALIZADO') {
                     statusStyle = 'bg-blue-50 border-blue-500 text-blue-800';
                     timeStyle = 'text-blue-600';
                   } else if (st === 'ANULADA') {
@@ -358,13 +362,13 @@ export const ReservasPage: React.FC = () => {
                     timeStyle = 'text-slate-400';
                   }
 
-                  if (isPast || (isClient && !isMine)) {
+                  if ((isClient && !isMine) || isPast) {
                     statusStyle = 'bg-slate-50 border-slate-300 text-slate-400';
                     timeStyle = 'text-slate-400';
                   }
 
                   const label = isClient
-                    ? (isMine ? `TU RESERVA - ${ev.clientName || ''}` : 'RESERVADO')
+                    ? (isMine ? `TU RESERVA` : 'RESERVADO')
                     : (canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType);
 
                   return (
@@ -530,7 +534,7 @@ export const ReservasPage: React.FC = () => {
           const prevDateStr = getPrevDay(selectedDateForDetails || '');
           if (r.eventDate === prevDateStr && r.endTime && r.endTime < (r.startTime || r.eventTime)) return true;
           return false;
-        })}
+        }).map(r => ({...r, isMine: user?.email === r.clientEmail || reservations.some(myR => myR.id === r.id)}))}
         blocks={blocks.filter(b => b.startDate <= (selectedDateForDetails || '') && b.endDate >= (selectedDateForDetails || '') && b.isActive)}
         rehearsals={rehearsals.filter(r => r.date === selectedDateForDetails && r.status !== 'LISTO')}
         quotations={quotations.filter(q => {

@@ -26,9 +26,30 @@ const reservaInclude = {
 
 // ─── OBTENER ──────────────────────────────────────────────────────────────────
 export const getReservas = async (usuarioId?: number): Promise<ReservationResponse[]> => {
-  const where = usuarioId
-    ? { cotizacion: { cliente: { usuario: { id: usuarioId } } } }
-    : { estado: { in: ['PENDIENTE', 'ANULADA'] as EstadoReserva[] } }
+  // Asegurar que las reservas estén actualizadas antes de devolverlas
+  await anularReservasVencidas().catch(err => console.error('[Cleanup] Error anular:', err))
+  await finalizarReservasPorHoraEvento().catch(err => console.error('[Cleanup] Error finalizar:', err))
+
+  let where: any = {};
+
+  if (usuarioId) {
+    // Si hay usuarioId, es un cliente. Buscamos su registro de cliente primero.
+    const cliente = await prisma.cliente.findUnique({ 
+      where: { usuarioId },
+      select: { id: true }
+    });
+    
+    if (!cliente) return []; // Si no hay cliente asociado al usuario, no hay reservas.
+
+    where = { 
+      cotizacion: { clienteId: cliente.id },
+      estado: { not: 'ANULADA' as EstadoReserva } // Al cliente no le mostramos las anuladas por defecto
+    };
+  } else {
+    // Para el administrador/empleado, mantenemos el filtro restrictivo
+    // Solo PENDIENTE y ANULADA (sin abonos se filtra en el frontend)
+    where = { estado: { in: ['PENDIENTE', 'ANULADA'] as EstadoReserva[] } };
+  }
 
   const reservas = await prisma.reserva.findMany({
     where,
@@ -40,7 +61,11 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
 
 ///Obtener reservas para el calendario
 export const getReservasCalendario = async () => {
-  const reservaWhere = { estado: { in: ['PENDIENTE', 'CONFIRMADA'] as EstadoReserva[] } }
+  // Asegurar que las reservas estén actualizadas antes de devolverlas
+  await anularReservasVencidas().catch(err => console.error('[Cleanup] Error anular:', err))
+  await finalizarReservasPorHoraEvento().catch(err => console.error('[Cleanup] Error finalizar:', err))
+
+  const reservaWhere = { estado: { not: 'ANULADA' as EstadoReserva } }
 
   const [reservas, ensayos, cotizaciones, ventasFinalizadas] = await Promise.all([
     prisma.reserva.findMany({
@@ -82,9 +107,12 @@ export const getReservasCalendario = async () => {
       orderBy: { fechaEvento: 'asc' },
     }),
 
-    // Ventas FINALIZADAS que aún no han terminado (horaFin > ahora)
+    // Ventas DIRECTAS (sin reserva) que no estén canceladas
     prisma.venta.findMany({
-      where: { estado: 'FINALIZADO' },
+      where: { 
+        estado: { not: 'CANCELADA' },
+        reservaId: null // Crucial: evitar duplicados si ya vienen de la tabla Reserva
+      },
       include: {
         reserva: {
           include: {
@@ -218,9 +246,9 @@ export const getReservasCalendario = async () => {
         selectedServices: [],
         totalAmount: Number(v.montoTotal),
         paidAmount: Number(v.montoPagado),
-        pendingAmount: 0,
+        pendingAmount: Number(v.montoTotal) - Number(v.montoPagado),
         payments,
-        status: 'FINALIZADO',
+        status: v.estado === 'FINALIZADO' ? 'FINALIZADO' : 'CONFIRMADA',
       }
     })
 
@@ -517,8 +545,17 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
     : r.cotizacion.notasAdicionales
 
   await prisma.$transaction(async (tx) => {
-    // 1. Marcar reserva y cotización como ANULADA
-    await tx.reserva.update({ where: { id }, data: { estado: 'ANULADA' } })
+    const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
+    
+    // 1. Marcar reserva y cotización como ANULADA, ajustando el valor total a lo pagado y perdonando la deuda
+    await tx.reserva.update({ 
+      where: { id }, 
+      data: { 
+        estado: 'ANULADA',
+        saldoPendiente: 0,
+        totalValor: r.abonos.length > 0 ? totalPagado : Number(r.totalValor)
+      } 
+    })
     await tx.cotizacion.update({
       where: { id: r.cotizacionId },
       data: { estado: 'ANULADA', notasAdicionales: notasActualizadas },
@@ -528,7 +565,7 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
     if (r.venta) {
       await tx.venta.update({
         where: { id: r.venta.id },
-        data: { estado: 'CANCELADA' },
+        data: { estado: 'CANCELADA', montoTotal: totalPagado },
       })
     }
     // 3. Si no hay Venta pero sí hay abonos, crear una Venta CANCELADA para el registro
@@ -547,7 +584,7 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
           clienteId: r.cotizacion.clienteId,
           tipo: 'RESERVA',
           estado: 'CANCELADA',
-          montoTotal: Number(r.totalValor),
+          montoTotal: totalPagado,
           montoPagado: totalPagado,
           fechaVenta: new Date(),
           metodoPago: metodoPago as any,
@@ -832,27 +869,60 @@ export const finalizeReserva = async (id: number): Promise<ReservationResponse> 
   return getReservaById(id)
 }
 
-// ─── CRON: ANULAR RESERVAS VENCIDAS (24h sin pago) ───────────────────────────
+// ─── CRON: ANULAR RESERVAS VENCIDAS O PASADAS ───────────────────────────
 export const anularReservasVencidas = async (): Promise<number> => {
+  const ahora = new Date()
   const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-  const reservasPendientes = await prisma.reserva.findMany({
+  const reservas = await prisma.reserva.findMany({
     where: {
       estado: 'PENDIENTE',
-      createdAt: { lt: hace24h },
+      OR: [
+        { createdAt: { lt: hace24h } },
+        { cotizacion: { horaInicio: { lt: ahora } } }
+      ]
     },
     include: { abonos: true, cotizacion: true },
   })
 
   let count = 0
-  for (const r of reservasPendientes) {
-    // Solo anular si no tiene abonos
-    if (r.abonos.length === 0) {
+  for (const r of reservas) {
+    // Solo anular si no tiene abonos o si la hora ya pasó (lo que invalida la reserva)
+    if (r.abonos.length === 0 || r.cotizacion.horaInicio < ahora) {
+      const motivo = r.cotizacion.horaInicio < ahora 
+        ? 'La hora de inicio del evento ha transcurrido sin confirmacion de la reserva.'
+        : 'No se registro el pago del anticipo dentro de las 24 horas posteriores a la creacion de la reserva.'
+        
       await prisma.$transaction(async (tx) => {
-        await tx.reserva.update({ where: { id: r.id }, data: { estado: 'ANULADA' } })
+        const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
+        
+        await tx.reserva.update({ 
+          where: { id: r.id }, 
+          data: { 
+            estado: 'ANULADA',
+            saldoPendiente: 0,
+            totalValor: r.abonos.length > 0 ? totalPagado : Number(r.totalValor)
+          } 
+        })
+
+        if (r.abonos.length > 0 && r.cotizacion.clienteId) {
+          const metodoPago = r.abonos[r.abonos.length - 1].metodoPago ?? 'EFECTIVO'
+          await tx.venta.create({
+            data: {
+              reservaId: r.id,
+              clienteId: r.cotizacion.clienteId,
+              tipo: 'RESERVA',
+              estado: 'CANCELADA',
+              montoTotal: totalPagado,
+              montoPagado: totalPagado,
+              fechaVenta: new Date(),
+              metodoPago: metodoPago as any,
+            },
+          })
+        }
         await tx.cotizacion.update({
           where: { id: r.cotizacionId },
-          data: { estado: 'ANULADA', notasAdicionales: `${r.cotizacion.notasAdicionales ?? ''} [Anulada automáticamente: sin pago en 24h]`.trim() },
+          data: { estado: 'ANULADA', notasAdicionales: `${r.cotizacion.notasAdicionales ?? ''} [Anulada automáticamente: ${r.cotizacion.horaInicio < ahora ? 'evento pasado' : 'sin pago en 24h'}]`.trim() },
         })
       })
       count++
@@ -865,7 +935,7 @@ export const anularReservasVencidas = async (): Promise<number> => {
           const mail = emailReservaAnulada({
             nombreCliente: buildClientName(cliente.usuario?.nombre, cliente.apellido),
             reservaId: String(r.id),
-            motivo: 'No se registro el pago del anticipo dentro de las 24 horas posteriores a la creacion de la reserva.'
+            motivo
           });
           await sendMail({ to: cliente.email, subject: mail.subject, html: mail.html });
         }
@@ -875,7 +945,7 @@ export const anularReservasVencidas = async (): Promise<number> => {
     }
   }
 
-  if (count > 0) console.log(`[Scheduler] ${count} reserva(s) anulada(s) por vencimiento de 24h`)
+  if (count > 0) console.log(`[Scheduler] ${count} reserva(s) anulada(s) por vencimiento o fecha pasada`)
   return count
 }
 

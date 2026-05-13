@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Trash2, Plus, Upload, X, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Eye, AlertTriangle } from 'lucide-react';
+import { Camera, Trash2, Plus, Upload, X, Image as ImageIcon, Loader2, ChevronLeft, ChevronRight, Eye, AlertTriangle, Home } from 'lucide-react';
 import { galeriaService } from '../services/galeria.service';
 import { GaleriaItem } from '@/types';
 
@@ -181,6 +181,17 @@ export const GaleriaPage: React.FC = () => {
                       <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Imagen {idx + 1}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          localStorage.setItem('landing_bg', img.url);
+                          toast.success('Imagen de inicio actualizada');
+                        }}
+                        className="p-2 bg-blue-500/80 backdrop-blur-sm rounded-full text-white hover:bg-blue-600 transition-all duration-200 hover:scale-110"
+                        title="Establecer como fondo de inicio"
+                      >
+                        <Home size={18} />
+                      </button>
                       <div className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors">
                         <Eye size={18} />
                       </div>

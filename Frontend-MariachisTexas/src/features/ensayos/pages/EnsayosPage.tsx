@@ -13,6 +13,7 @@ import { RehearsalEditModal } from '../components/RehearsalEditModal';
 import { RehearsalDetailModal } from '../components/RehearsalDetailModal';
 import { DateDetailsModal } from '@/src/features/reservas/components/DateDetailsModal';
 import { ReservaDetailModal } from '@/src/features/reservas/components/ReservaDetailModal';
+import { format12h } from '@/shared/utils/time';
 
 const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
@@ -173,7 +174,7 @@ export const EnsayosPage: React.FC = () => {
           className={`h-36 border border-slate-100 p-3 transition-all relative group overflow-hidden
             ${isToday ? 'bg-purple-50/20 ring-1 ring-purple-100' : 'bg-white'}
             ${!isFullDayBlock && !isPast ? 'hover:bg-slate-50/50 hover:shadow-[inset_0_0_20px_rgba(0,0,0,0.01)] cursor-pointer' : ''}
-            ${isPast ? 'bg-slate-50/60 grayscale opacity-40' : ''}
+            ${isPast ? 'bg-slate-50/60 opacity-60' : ''}
           `}
           style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
         >
@@ -193,49 +194,48 @@ export const EnsayosPage: React.FC = () => {
           </div>
 
           {/* Eventos del día */}
-          <div className="space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar relative z-10 pointer-events-none">
+          <div className="space-y-1 overflow-hidden h-[76px] relative z-10 pointer-events-none">
 
-            {/* Bloqueos de hora */}
-            {dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
-              <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
-                <ShieldAlert size={11} />
-                <span className="truncate">{b.startTime} BLOQUEO</span>
-              </div>
-            ))}
+            {[
+              /* Bloqueos de hora */
+              ...dayBlocks.filter(b => b.type === 'TIME_RANGE').map(b => (
+                <div key={b.id} className="text-[10px] border-l-4 border-red-500 bg-red-50 text-red-700 px-2 py-1.5 rounded-r-md font-black flex items-center gap-2 shadow-sm">
+                  <ShieldAlert size={11} />
+                  <span className="truncate">{b.startTime} BLOQUEO</span>
+                </div>
+              )),
 
-            {/* Cotizaciones */}
-            {dayQuotes.map((quote, i) => (
-              <div key={quote.id || `cot-${dateStr}-${i}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${isPast ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
-                <FileText size={11} />
-                <span className="font-bold">{quote.startTime}</span>
-                <span className="truncate">COTIZACIÓN</span>
-              </div>
-            ))}
+              /* Cotizaciones */
+              ...dayQuotes.map((quote, i) => (
+                <div key={quote.id || `cot-${dateStr}-${i}`} className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm ${isPast ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
+                  <FileText size={11} />
+                  <span className="font-bold">{quote.startTime}</span>
+                  <span className="truncate">COTIZACIÓN</span>
+                </div>
+              )),
 
-            {/* Ensayos — púrpura */}
-            {dayRehearsals.map(r => (
-              <div
-                key={r.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedRehearsal(r);
-                  setIsDetailOpen(true);
-                }}
-                className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors cursor-pointer
-                  ${isPast 
-                    ? 'border-slate-300 bg-slate-50 text-slate-400' 
-                    : 'border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
-              >
-                <Zap size={11} className={isPast ? 'text-slate-300' : 'text-purple-500'} />
-                <span className={`font-black shrink-0 ${isPast ? 'text-slate-400' : 'text-purple-600'}`}>{r.time}</span>
-                <span className="truncate font-black uppercase tracking-tight flex-1">{r.title}</span>
-              </div>
-            ))}
+              /* Ensayos — púrpura */
+              ...dayRehearsals.map(r => (
+                <div
+                  key={r.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedRehearsal(r);
+                    setIsDetailOpen(true);
+                  }}
+                  className={`text-[10px] border-l-4 px-2 py-1.5 rounded-r-md font-black truncate flex items-center gap-2 shadow-sm transition-colors cursor-pointer
+                    ${isPast 
+                      ? 'border-slate-300 bg-slate-50 text-slate-400' 
+                      : 'border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
+                >
+                  <Zap size={11} className={isPast ? 'text-slate-300' : 'text-purple-500'} />
+                  <span className={`font-black shrink-0 ${isPast ? 'text-slate-400' : 'text-purple-600'}`}>{r.time}</span>
+                  <span className="truncate font-black uppercase tracking-tight flex-1">{r.title}</span>
+                </div>
+              )),
 
-            {/* Reservas — color según estado */}
-            {dayEvents
-              .filter(() => dayQuotes.length === 0 && dayRehearsals.length === 0)
-              .map(ev => {
+              /* Reservas — color según estado */
+              ...dayEvents.map(ev => {
                 const s = (ev.status ?? '').toUpperCase();
                 let style    = 'bg-amber-50 border-amber-500 text-amber-800 border-l-4';
                 let timeStyle = 'text-amber-600';
@@ -245,18 +245,26 @@ export const EnsayosPage: React.FC = () => {
                   timeStyle = 'text-slate-400';
                 } else {
                   if (s === 'CONFIRMADA') { style = 'bg-emerald-50 border-emerald-500 text-emerald-800 border-l-4'; timeStyle = 'text-emerald-600'; }
-                  if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-500 text-blue-800 border-l-4'; timeStyle = 'text-blue-600'; }
+                  else if (s === 'FINALIZADO') { style = 'bg-blue-50 border-blue-500 text-blue-800 border-l-4'; timeStyle = 'text-blue-600'; }
+                  else if (s === 'ANULADA') { style = 'bg-slate-50 border-slate-300 text-slate-400 border-l-4'; timeStyle = 'text-slate-400'; }
                 }
 
                 return (
                   <div key={ev.id} className={`text-[10px] px-2 py-1.5 rounded-r-md truncate flex items-center gap-2 shadow-sm ${style}`}>
-                    <span className={`font-black shrink-0 ${timeStyle}`}>{ev.eventTime}</span>
+                    <span className={`font-black shrink-0 ${timeStyle}`}>{format12h(ev.eventTime || '00:00')}</span>
                     <span className="truncate font-black uppercase tracking-tight flex-1">
                       {canManage ? (ev.clientName || ev.clientEmail || `#${ev.id}`) : ev.eventType}
                     </span>
                   </div>
                 );
-              })}
+              })
+            ].slice(0, 2)}
+            
+            {totalItems > 2 && (
+              <div className="text-[9px] font-bold text-slate-400 text-center uppercase mt-1">
+                 + {totalItems - 2} más
+              </div>
+            )}
           </div>
 
           {/* Fondo bloqueo total */}
