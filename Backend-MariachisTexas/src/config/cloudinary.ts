@@ -3,10 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Para subidas NO firmadas (usando el preset 'Mariachis') solo necesitamos el cloud_name.
-// Esto evita el error de "Invalid api_key" si no has configurado las llaves todavía.
+// Configuración completa de Cloudinary con credenciales para operaciones firmadas (eliminar, etc.)
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dlhshfzak',
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
   secure: true
 });
 
