@@ -4,7 +4,7 @@ import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award,
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
-import { AIAdvisorWidget } from './AIAdvisorWidget';
+import { AIAdvisorWidget } from './Aiadvisorwidger';
 
 
 interface Props {
