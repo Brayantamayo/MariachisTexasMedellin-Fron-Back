@@ -50,8 +50,14 @@ export const GaleriaController = {
         return res.status(404).json({ message: 'Imagen no encontrada' });
       }
 
+      // Intentar eliminar de Cloudinary (puede fallar si no hay api_key/api_secret configurados)
       if (item.publicId) {
-        await cloudinary.uploader.destroy(item.publicId);
+        try {
+          await cloudinary.uploader.destroy(item.publicId);
+        } catch (cloudinaryError) {
+          console.warn('No se pudo eliminar de Cloudinary (credenciales incompletas):', cloudinaryError);
+          // Continuar con la eliminación del registro en BD
+        }
       }
 
       await GaleriaService.hardDelete(Number(id));
