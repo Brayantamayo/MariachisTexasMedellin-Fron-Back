@@ -109,6 +109,13 @@ app.use('/api/usuarios', usuarioRoutes)
 app.use('/api/empleados',    empleadoRoutes)
 app.use('/api/galeria',      galeriaRoutes)
 app.use('/api/ai', aiRoutes)
+// ─── REDIRECCIÓN DE SEGURIDAD (Si entran al backend buscando el front) ────────
+app.get(['/register', '/registro', '/login', '/home', '/dashboard'], (req, res) => {
+  const frontendUrl = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
+  const target = `${frontendUrl}${req.path}${Object.keys(req.query).length ? '?' + new URLSearchParams(req.query as any).toString() : ''}`;
+  console.log(`[Backend] Redirigiendo petición de front desde backend: ${req.url} -> ${target}`);
+  res.redirect(target);
+});
 
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
