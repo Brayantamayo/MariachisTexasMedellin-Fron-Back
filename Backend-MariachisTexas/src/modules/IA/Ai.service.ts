@@ -1,7 +1,7 @@
-import { Groq } from 'groq-sdk';
+const Groq = require('groq-sdk'); // Importación más compatible con CommonJS/TS-Node
 import prisma from '../../config/prisma';
 
-const GROQ_MODEL = 'llama3-8b-8192'; // Modelo más rápido y con mayor disponibilidad
+const GROQ_MODEL = 'llama-3.3-70b-versatile'; 
 
 // ─── Consulta la BD y construye el contexto ──────────────────────────────────
 const buildContext = async (): Promise<string> => {

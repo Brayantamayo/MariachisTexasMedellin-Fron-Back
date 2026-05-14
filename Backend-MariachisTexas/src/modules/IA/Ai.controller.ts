@@ -15,7 +15,7 @@ export const chatController = async (req: Request, res: Response): Promise<void>
     const reply = await chatWithGroq(message, history)  // ← cambio aquí
     res.status(200).json({ reply })
   } catch (err: any) {
-    console.error('[AI Controller]', err?.message)
-    res.status(500).json({ error: 'Error al contactar con el servicio de IA' })
+    console.error('❌ [AI ERROR]:', err?.message || err)
+    res.status(500).json({ error: 'Error al contactar con el servicio de IA', details: err?.message })
   }
 }
