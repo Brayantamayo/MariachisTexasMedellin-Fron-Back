@@ -49,7 +49,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
     const token = new URLSearchParams(window.location.search).get('token');
     if (!token) return;
     tokenRef.current = token;
-    window.history.replaceState({}, '', '/registro');
+    window.history.replaceState({}, '', '/register');
     authService.getRegistroToken(token)
       .then(data => {
         setEmailFromUrl(data.email);
