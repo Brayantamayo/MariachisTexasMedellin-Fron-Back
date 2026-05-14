@@ -34,8 +34,10 @@ import { Toaster } from 'react-hot-toast';
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // ✅ Todos los hooks ANTES de cualquier return condicional
-  const [currentPath, setCurrentPath] = useState<string>('/');
+  // ✅ Lee la ruta real del navegador al iniciar
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    return window.location.pathname || '/';
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
@@ -47,6 +49,7 @@ const MainLayout: React.FC = () => {
       currentPath === '/' ||
       currentPath === '/login' ||
       currentPath === '/register' ||
+      currentPath === '/registro' ||
       currentPath === '/forgot-password' ||
       currentPath === '/verify-otp' ||
       currentPath === '/reset-password'
@@ -59,7 +62,6 @@ const MainLayout: React.FC = () => {
     }
   }, [isAuthenticated, currentPath, user]);
 
-  // ✅ Ahora sí el return condicional — DESPUÉS de todos los hooks
   if (isLoading) return <LoadingScreen />;
 
   const publicRoutes = ['/cotizacion'];
@@ -121,7 +123,6 @@ const MainLayout: React.FC = () => {
   const renderAppContent = () => {
     const module = currentPath.substring(1) as ModuleName;
     switch (module) {
-      // ✅ HomePage recibe onNavigate para que los botones redirijan
       case 'home': return <HomePage onNavigate={setCurrentPath} />;
       case 'dashboard': return <DashboardPage />;
       case 'clientes': return <ClientsPage />;
@@ -129,7 +130,6 @@ const MainLayout: React.FC = () => {
       case 'roles': return <RolesPage />;
       case 'galeria': return <GaleriaPage />;
       case 'empleados': return <EmployeesPage />;
-
       case 'repertorio': return <RepertoirePage />;
       case 'servicios': return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
       case 'ensayos': return <EnsayosPage />;
