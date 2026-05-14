@@ -36,7 +36,9 @@ const MainLayout: React.FC = () => {
 
   // ✅ Lee la ruta real del navegador al iniciar
   const [currentPath, setCurrentPath] = useState<string>(() => {
-    return window.location.pathname || '/';
+    let path = window.location.pathname || '/';
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    return path;
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
@@ -64,7 +66,7 @@ const MainLayout: React.FC = () => {
 
   if (isLoading) return <LoadingScreen />;
 
-  const publicRoutes = ['/cotizacion'];
+  const publicRoutes = ['/', '/login', '/register', '/registro', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
   const isPublicRoute = publicRoutes.includes(currentPath);
 
   if (!isAuthenticated || isPublicRoute) {
@@ -108,8 +110,23 @@ const MainLayout: React.FC = () => {
           return <PublicRepertoirePage />;
         case '/cotizacion':
           return <PublicCotizacionPage onNavigate={setCurrentPath} />;
-        default:
+        case '/':
           return <LandingPage onNavigate={setCurrentPath} />;
+        default:
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white p-4">
+              <div className="text-center">
+                <h1 className="text-6xl font-serif font-bold text-primary-600 mb-4">404</h1>
+                <p className="text-xl text-gray-400 mb-8">La página "{currentPath}" no existe.</p>
+                <button 
+                  onClick={() => setCurrentPath('/')}
+                  className="px-8 py-3 bg-white text-black rounded-full font-bold uppercase tracking-widest text-xs hover:bg-gray-200 transition-all"
+                >
+                  Volver al Inicio
+                </button>
+              </div>
+            </div>
+          );
       }
     };
 
