@@ -302,28 +302,12 @@ export const convertirCotizacion = async (id: number) => {
   const telefono  = cotizacion.cliente?.telefonoPrincipal   || cotizacion.contactoTelefono  || ''
   const telefono2 = cotizacion.cliente?.telefonoAlternativo || cotizacion.contactoTelefono2 || ''
 
-  if (emailDestino) {
-    const { randomUUID } = await import('crypto')
-    const token = randomUUID()
-
-    await prisma.registroToken.create({
-      data: {
-        token,
-        email:     emailDestino,
-        nombre:    nombreCliente,
-        telefono,
-        telefono2: telefono2 || null,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
-        usado:     false,
-      }
-    })
-
-    // Generar enlace de registro (Usando la URL del frontend configurada en Render)
+    // Generar enlace simple a la landing page (sin tokens)
     const frontendBase = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
-    const registerUrl = `${frontendBase}/register?token=${token}`;
     const loginUrl    = `${frontendBase}/login`;
+    const registerUrl = `${frontendBase}/`; // Lleva a la landing para que el usuario navegue a registrarse
     
-    console.log(`[Cotizacion] Enlace de registro generado para ${emailDestino}: ${registerUrl}`);
+    console.log(`[Cotizacion] Cotización aprobada para ${emailDestino}. Instrucciones de registro manual enviadas.`);
 
     const horaInicioStr = toLocalTime(cotizacion.horaInicio)
     const horaFinStr    = toLocalTime(cotizacion.horaFin)
@@ -338,12 +322,11 @@ export const convertirCotizacion = async (id: number) => {
       totalEstimado: Number(cotizacion.totalEstimado),
       registerUrl,   loginUrl,
     })
-    try {
-  await sendMail({ to: emailDestino, subject: mail.subject, html: mail.html })
-  console.log('Correo cotización aprobada enviado a:', emailDestino)
+  try {
+    await sendMail({ to: emailDestino, subject: mail.subject, html: mail.html })
+    console.log('Correo cotización aprobada enviado a:', emailDestino)
   } catch (err) {
-  console.error(' Error correo cotización:', err)
-  }
+    console.error(' Error correo cotización:', err)
   }
 
   return { quotation: await getCotizacionById(id), reservationId: String(reserva.id) }

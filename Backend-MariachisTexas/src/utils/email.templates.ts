@@ -258,20 +258,21 @@ export const emailCotizacionAprobada = (p: EmailCotizacionAprobadaParams) => ({
     )}
 
     <p style="margin:0;color:${colors.text};font-size:14px;line-height:1.75;">
-      Si aun no tienes cuenta, puedes registrarte con este mismo correo para consultar el estado de tu reserva y acceder a la informacion relacionada.
+      Si aun no tienes cuenta, por favor sigue estos pasos para poder gestionar tu reserva:
     </p>
 
-    ${button('Crear cuenta', p.registerUrl)}
+    ${button('Ir a la página', p.registerUrl)}
 
     ${panel(`
       <p style="margin:0 0 10px;color:${colors.heading};font-size:15px;font-weight:800;">
-        Pasos para confirmar tu reserva:
+        Pasos para ver tu reserva:
       </p>
       <ol style="margin:0;padding-left:20px;color:${colors.text};font-size:14px;line-height:1.8;">
-        <li style="margin-bottom:8px;">Dale clic al boton <b>Crear cuenta</b> de arriba. Seras redirigido a la pagina de registro.</li>
-        <li style="margin-bottom:8px;">Llena tus datos personales, pero <b>no modifiques el correo prellenado</b>, ya que este esta vinculado a tu reserva.</li>
-        <li style="margin-bottom:8px;">Una vez registrado e iniciada la sesion, dirigete a la seccion de <b>Reservas</b> donde podras ver todos los detalles.</li>
-        <li style="margin-bottom:8px;">Recuerda que para confirmar tu reserva, debes realizar el abono del 50%. Comunicate al <b>314 757 4707</b> para gestionarlo y envianos el comprobante a nombre de quien esta la reserva. ¡Muchas gracias!</li>
+        <li style="margin-bottom:8px;">Haz clic en el botón <b>"Ir a la página"</b> de arriba para ir a nuestra web.</li>
+        <li style="margin-bottom:8px;">Busca el botón <b>"REGISTRARSE"</b> en el menú superior.</li>
+        <li style="margin-bottom:8px;">Llena tus datos personales. <b>IMPORTANTE:</b> Debes usar el mismo correo electrónico al que te llegó este mensaje.</li>
+        <li style="margin-bottom:8px;">Una vez registrado, inicia sesión y dirígete a la sección de <b>Reservas</b> donde ya aparecerá toda tu información vinculada automáticamente.</li>
+        <li style="margin-bottom:8px;">Recuerda que para confirmar definitivamente, debes realizar el abono del 50% y enviar el comprobante al <b>314 757 4707</b>.</li>
       </ol>
     `, 'warning')}
 
