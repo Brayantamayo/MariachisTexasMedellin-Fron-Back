@@ -1,9 +1,0 @@
-{
-  "name": "mariachis-texas-root",
-  "private": true,
-  "scripts": {
-    "install-all": "npm install --prefix Frontend-MariachisTexas && npm install --prefix Backend-MariachisTexas",
-    "build": "npm run build --prefix Frontend-MariachisTexas",
-    "start": "npm start --prefix Backend-MariachisTexas"
-  }
-}

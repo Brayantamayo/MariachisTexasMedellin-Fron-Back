@@ -86,7 +86,7 @@ const MainLayout: React.FC = () => {
 
   if (isLoading) return <LoadingScreen />;
 
-  const publicRoutes = ['/', '/login', '/register', '/registro', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
+  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
   const isPublicRoute = publicRoutes.includes(currentPath);
 
   if (!isAuthenticated || isPublicRoute) {
@@ -95,7 +95,6 @@ const MainLayout: React.FC = () => {
         case '/login':
           return <LoginPage onNavigate={navigate} />;
         case '/register':
-        case '/registro':
           return <RegisterPage onNavigate={navigate} />;
         case '/forgot-password':
           return (
