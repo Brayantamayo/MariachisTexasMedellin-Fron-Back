@@ -318,9 +318,12 @@ export const convertirCotizacion = async (id: number) => {
       }
     })
 
-    const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-    const registerUrl = `${base}/register?token=${token}`
-    const loginUrl    = `${base}/login`
+    // Generar enlace de registro (Usando la URL del frontend configurada en Render)
+    const frontendBase = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
+    const registerUrl = `${frontendBase}/register?token=${token}`;
+    const loginUrl    = `${frontendBase}/login`;
+    
+    console.log(`[Cotizacion] Enlace de registro generado para ${emailDestino}: ${registerUrl}`);
 
     const horaInicioStr = toLocalTime(cotizacion.horaInicio)
     const horaFinStr    = toLocalTime(cotizacion.horaFin)
