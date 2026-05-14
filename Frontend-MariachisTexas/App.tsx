@@ -71,6 +71,7 @@ const MainLayout: React.FC = () => {
         case '/login':
           return <LoginPage onNavigate={setCurrentPath} />;
         case '/register':
+        case '/registro':
           return <RegisterPage onNavigate={setCurrentPath} />;
         case '/forgot-password':
           return (

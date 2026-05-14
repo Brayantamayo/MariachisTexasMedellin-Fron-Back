@@ -319,7 +319,7 @@ export const convertirCotizacion = async (id: number) => {
     })
 
     const base        = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '')
-    const registerUrl = `${base}/registro?token=${token}`
+    const registerUrl = `${base}/register?token=${token}`
     const loginUrl    = `${base}/login`
 
     const horaInicioStr = toLocalTime(cotizacion.horaInicio)
