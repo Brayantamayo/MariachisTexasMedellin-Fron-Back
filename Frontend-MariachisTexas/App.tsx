@@ -40,6 +40,26 @@ const MainLayout: React.FC = () => {
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
     return path;
   });
+
+  // ✅ Nueva función de navegación que sincroniza el enlace del navegador
+  const navigate = (path: string) => {
+    if (path !== currentPath) {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // ✅ Escuchar el botón atrás/adelante del navegador
+  useEffect(() => {
+    const handlePopState = () => {
+      let path = window.location.pathname || '/';
+      if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+      setCurrentPath(path);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
@@ -73,14 +93,14 @@ const MainLayout: React.FC = () => {
     const renderPublicContent = () => {
       switch (currentPath) {
         case '/login':
-          return <LoginPage onNavigate={setCurrentPath} />;
+          return <LoginPage onNavigate={navigate} />;
         case '/register':
         case '/registro':
-          return <RegisterPage onNavigate={setCurrentPath} />;
+          return <RegisterPage onNavigate={navigate} />;
         case '/forgot-password':
           return (
             <ForgotPasswordPage
-              onNavigate={setCurrentPath}
+              onNavigate={navigate}
               onEmailSent={(email) => {
                 setResetEmail(email);
                 setCurrentPath('/verify-otp');
@@ -95,7 +115,7 @@ const MainLayout: React.FC = () => {
                 setResetOtp(otp);
                 setCurrentPath('/reset-password');
               }}
-              onNavigate={setCurrentPath}
+              onNavigate={navigate}
             />
           );
         case '/reset-password':
@@ -103,15 +123,15 @@ const MainLayout: React.FC = () => {
             <ResetPasswordPage
               email={resetEmail}
               otp={resetOtp}
-              onNavigate={setCurrentPath}
+              onNavigate={navigate}
             />
           );
         case '/repertorio':
           return <PublicRepertoirePage />;
         case '/cotizacion':
-          return <PublicCotizacionPage onNavigate={setCurrentPath} />;
+          return <PublicCotizacionPage onNavigate={navigate} />;
         case '/':
-          return <LandingPage onNavigate={setCurrentPath} />;
+          return <LandingPage onNavigate={navigate} />;
         default:
           return (
             <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white p-4">
@@ -131,7 +151,7 @@ const MainLayout: React.FC = () => {
     };
 
     return (
-      <PublicLayout onNavigate={setCurrentPath} currentPath={currentPath}>
+      <PublicLayout onNavigate={navigate} currentPath={currentPath}>
         {renderPublicContent()}
       </PublicLayout>
     );
@@ -140,7 +160,7 @@ const MainLayout: React.FC = () => {
   const renderAppContent = () => {
     const module = currentPath.substring(1) as ModuleName;
     switch (module) {
-      case 'home': return <HomePage onNavigate={setCurrentPath} />;
+      case 'home': return <HomePage onNavigate={navigate} />;
       case 'dashboard': return <DashboardPage />;
       case 'clientes': return <ClientsPage />;
       case 'usuarios': return <UsersPage />;
@@ -178,7 +198,7 @@ const MainLayout: React.FC = () => {
       <div className={`fixed inset-0 z-50 lg:hidden transition-transform duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar
           currentPath={currentPath}
-          onNavigate={(path) => { setCurrentPath(path); setIsMobileMenuOpen(false); }}
+          onNavigate={(path) => { navigate(path); setIsMobileMenuOpen(false); }}
           isPanelOpen={isPanelOpen}
           setIsPanelOpen={setIsPanelOpen}
         />
@@ -188,7 +208,7 @@ const MainLayout: React.FC = () => {
       <div className="hidden lg:block">
         <Sidebar
           currentPath={currentPath}
-          onNavigate={setCurrentPath}
+          onNavigate={navigate}
           isPanelOpen={isPanelOpen}
           setIsPanelOpen={setIsPanelOpen}
         />
