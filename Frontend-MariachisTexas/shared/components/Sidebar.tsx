@@ -193,7 +193,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
         {/* ✅ Cerrar sesión visible en el rail */}
         <div className="mt-1 px-5 w-full">
           <button
-            onClick={logout}
+            onClick={() => {
+              onNavigate('/');
+              logout();
+            }}
             title="Cerrar Sesión"
             className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-zinc-600 hover:bg-red-900/30 hover:text-red-400 transition-all duration-500 group"
           >

@@ -65,13 +65,15 @@ const MainLayout: React.FC = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetOtp, setResetOtp] = useState('');
 
+  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
+  const isPublicRoute = publicRoutes.includes(currentPath);
+
   // Redirigir al dashboard o home tras login
   useEffect(() => {
     if (isAuthenticated && (
       currentPath === '/' ||
       currentPath === '/login' ||
       currentPath === '/register' ||
-      currentPath === '/registro' ||
       currentPath === '/forgot-password' ||
       currentPath === '/verify-otp' ||
       currentPath === '/reset-password'
@@ -84,10 +86,14 @@ const MainLayout: React.FC = () => {
     }
   }, [isAuthenticated, currentPath, user]);
 
-  if (isLoading) return <LoadingScreen />;
+  // 🛡️ Redirigir al inicio si el usuario no está autenticado y la ruta no es pública
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !isPublicRoute && currentPath !== '/') {
+      navigate('/');
+    }
+  }, [isLoading, isAuthenticated, isPublicRoute, currentPath]);
 
-  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
-  const isPublicRoute = publicRoutes.includes(currentPath);
+  if (isLoading) return <LoadingScreen />;
 
   if (!isAuthenticated || isPublicRoute) {
     const renderPublicContent = () => {
@@ -132,10 +138,6 @@ const MainLayout: React.FC = () => {
         case '/':
           return <LandingPage onNavigate={navigate} />;
         default:
-          // 🛡️ Redirigir al inicio si la ruta no es pública o no existe
-          useEffect(() => {
-            navigate('/');
-          }, []);
           return <LoadingScreen />;
       }
     };
