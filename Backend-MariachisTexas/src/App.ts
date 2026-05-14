@@ -114,7 +114,7 @@ app.get(['/register', '/registro', '/login', '/home', '/dashboard'], (req, res) 
   const frontendUrl = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
   const target = `${frontendUrl}${req.path}${Object.keys(req.query).length ? '?' + new URLSearchParams(req.query as any).toString() : ''}`;
   console.log(`[Backend] Redirigiendo petición de front desde backend: ${req.url} -> ${target}`);
-  res.redirect(target);
+  return res.redirect(301, target);
 });
 
 
