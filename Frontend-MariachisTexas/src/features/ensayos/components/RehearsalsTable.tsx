@@ -63,8 +63,15 @@ export const RehearsalsTable: React.FC<Props> = ({
 
           <tbody className="divide-y divide-slate-50">
             {currentRehearsals.map(rehearsal => {
-              // ✅ "LISTO" viene del mapeo del service
-              const isCompleted = rehearsal.status === 'LISTO';
+              // 🕒 Lógica automática: ¿Ha pasado ya el ensayo?
+              const now = new Date();
+              // Combinamos fecha y hora (asumiendo formato YYYY-MM-DD y HH:mm)
+              const rehearsalDateTime = new Date(`${rehearsal.date}T${rehearsal.time}`);
+              const isPassed = now > rehearsalDateTime;
+              
+              // El estado es LISTO si ya pasó el tiempo o si ya venía así de base
+              const isCompleted = isPassed || rehearsal.status === 'LISTO';
+              const isFuture = rehearsalDateTime > now;
 
               return (
                 <tr
@@ -107,26 +114,20 @@ export const RehearsalsTable: React.FC<Props> = ({
                     </span>
                   </td>
 
-                  {/* Estado */}
+                  {/* Estado Automático */}
                   <td className="py-5 px-6">
                     <div className="flex items-center justify-center gap-3">
-                      {canManage ? (
-                        <button
-                          onClick={() => !isCompleted && onToggleStatus(rehearsal)}
-                          disabled={isCompleted}
-                          title={isCompleted ? 'Ensayo completado' : 'Marcar como Listo'}
-                          className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isCompleted
-                              ? 'bg-emerald-500 focus-visible:ring-emerald-400 cursor-not-allowed opacity-70'
-                              : 'bg-primary-500 focus-visible:ring-primary-400 cursor-pointer'
-                            }`}
-                        >
-                          <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isCompleted ? 'translate-x-5' : 'translate-x-0'
-                            }`} />
-                        </button>
-                      ) : (
-                        <div className={`w-2.5 h-2.5 rounded-full ${isCompleted ? 'bg-emerald-500 shadow-sm' : 'bg-primary-500'
+                      {/* El interruptor ahora es solo visual y está deshabilitado */}
+                      <div
+                        title={isCompleted ? 'Ensayo finalizado' : 'Pendiente por realizar'}
+                        className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors duration-300 opacity-70 ${isCompleted
+                            ? 'bg-emerald-500'
+                            : 'bg-primary-500'
+                          }`}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isCompleted ? 'translate-x-5' : 'translate-x-0'
                           }`} />
-                      )}
+                      </div>
 
                       <span className={`text-[10px] font-bold uppercase tracking-wider w-20 text-center ${isCompleted ? 'text-emerald-600' : 'text-primary-600'
                         }`}>
@@ -139,33 +140,31 @@ export const RehearsalsTable: React.FC<Props> = ({
                   {/* Acciones */}
                   <td className="py-5 px-8">
                     <div className="flex items-center justify-center gap-2">
-                      {/* Ver siempre disponible */}
                       <ActionButton
                         icon={Eye}
                         onClick={() => onView(rehearsal)}
                         tooltip="Ver detalles"
-
                       />
 
                       {canManage && (
                         <>
-                          {!isCompleted && (
+                          {/* Solo se puede editar si no ha pasado */}
+                          {!isPassed && (
                             <ActionButton
                               icon={Edit2}
                               onClick={() => onEdit(rehearsal)}
                               tooltip="Editar ensayo"
                             />
                           )}
-                          {
-                            !isCompleted && (
-                              <ActionButton
-                                icon={Trash2}
-                                onClick={() => onDelete(rehearsal.id)}
-                                tooltip="Eliminar ensayo"
-                              />
-                            )
-                          }
-
+                          
+                          {/* Solo se puede eliminar si es en el futuro */}
+                          {isFuture && (
+                            <ActionButton
+                              icon={Trash2}
+                              onClick={() => onDelete(rehearsal.id)}
+                              tooltip="Eliminar ensayo"
+                            />
+                          )}
                         </>
                       )}
                     </div>
