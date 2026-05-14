@@ -133,20 +133,11 @@ const MainLayout: React.FC = () => {
         case '/':
           return <LandingPage onNavigate={navigate} />;
         default:
-          return (
-            <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white p-4">
-              <div className="text-center">
-                <h1 className="text-6xl font-serif font-bold text-primary-600 mb-4">404</h1>
-                <p className="text-xl text-gray-400 mb-8">La página "{currentPath}" no existe.</p>
-                <button 
-                  onClick={() => setCurrentPath('/')}
-                  className="px-8 py-3 bg-white text-black rounded-full font-bold uppercase tracking-widest text-xs hover:bg-gray-200 transition-all"
-                >
-                  Volver al Inicio
-                </button>
-              </div>
-            </div>
-          );
+          // 🛡️ Redirigir al inicio si la ruta no es pública o no existe
+          useEffect(() => {
+            navigate('/');
+          }, []);
+          return <LoadingScreen />;
       }
     };
 
