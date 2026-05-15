@@ -197,23 +197,28 @@ export const ReservasPage: React.FC = () => {
     return dateStr >= s && dateStr <= e;
   };
 
+  const [statusFilter, setStatusFilter] = useState<'TODOS' | 'PENDIENTE' | 'ANULADA'>('TODOS');
+
+  // Resetear página al filtrar
+  useEffect(() => {
+    // Reset search when filter changes
+  }, [statusFilter, searchTerm]);
+
   const filteredReservations = reservations.filter(r => {
     const matchesSearch = (r.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm);
     
-    // Filtro dinámico según el rol
-    if (isClient) {
-      // Al cliente le mostramos todas sus reservas activas o finalizadas
-      return matchesSearch && r.status !== 'ANULADA';
+    // Solo mostrar PENDIENTE y ANULADA en reservas
+    const isVisibleStatus = r.status === 'PENDIENTE' || r.status === 'ANULADA';
+    if (!isVisibleStatus) return false;
+
+    // Filtro por pestaña
+    if (statusFilter !== 'TODOS') {
+      if (r.status !== statusFilter) return false;
     }
 
-    // Al administrador solo le mostramos las pendientes y las anuladas sin abonos
-    // Las confirmadas y finalizadas el admin las ve en Ventas
-    const isAnuladaSinAbono = r.status === 'ANULADA' && (Number(r.paidAmount) || 0) <= 0;
-    const isVisibleStatus = r.status === 'PENDIENTE' || isAnuladaSinAbono;
-    
-    return matchesSearch && isVisibleStatus;
+    return matchesSearch;
   });
 
   const renderCalendar = () => {
@@ -465,12 +470,32 @@ export const ReservasPage: React.FC = () => {
       <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden min-h-[600px] flex flex-col">
         {view === 'list' ? (
           <div className="flex flex-col h-full">
-            <div className="p-8 pb-4">
-              <div className="relative max-w-sm">
+            <div className="p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="relative max-w-sm w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input type="text" placeholder="Buscar Reserva"
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all placeholder:text-slate-400 text-sm" />
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                {[
+                  { id: 'TODOS', label: 'Todos' },
+                  { id: 'PENDIENTE', label: 'Pendientes' },
+                  { id: 'ANULADA', label: 'Anuladas' }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setStatusFilter(f.id as any)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${
+                      statusFilter === f.id 
+                        ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-200' 
+                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
             <ReservasTable
