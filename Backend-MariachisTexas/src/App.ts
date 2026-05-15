@@ -26,8 +26,6 @@ import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 const app = express()
 
 // ─── SEGURIDAD ────────────────────────────────────────────────────────────────
-// Helmet agrega headers HTTP de seguridad automáticamente
-
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
@@ -50,7 +48,7 @@ app.use(cors({
 
     if (!origin) return callback(null, true)
     if (origin.startsWith('http://localhost:')) return callback(null, true)
-    if (origin.endsWith('.onrender.com')) return callback(null, true) // ✅ Permitir cualquier subdominio de Render
+    if (origin.endsWith('.onrender.com')) return callback(null, true)
     if (allowed.includes(origin)) return callback(null, true)
 
     callback(new Error('No permitido por CORS'))
@@ -65,24 +63,21 @@ app.use(express.json())
 app.get('/health', (_, res) => res.json({ ok: true }))
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
-// Límite estricto para endpoints sensibles — auth y formulario público
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // ventana de 15 minutos
-  max: 10,             // máximo 10 intentos por IP en esa ventana
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: { message: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
-  standardHeaders: true,       // devuelve headers RateLimit-* estándar
-  legacyHeaders: false,
-})
-
-const publicLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // ventana de 1 hora
-  max: 30,             // máximo 30 solicitudes por IP por hora
-  message: { message: 'Demasiadas solicitudes. Intenta de nuevo más tarde.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
-
+const publicLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: { message: 'Demasiadas solicitudes. Intenta de nuevo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/registro', authLimiter)
@@ -94,6 +89,7 @@ app.use('/api/perfil', perfilRoutes)
 
 app.use('/api/cotizaciones/public', publicLimiter)
 
+// ─── RUTAS ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
 app.use('/api/servicios', serviciosRoutes)
 app.use('/api/repertorio', repertoireRoutes)
@@ -107,27 +103,12 @@ app.use('/api/bloqueos', bloqueoRoutes)
 app.use('/api/ventas', ventasRoutes)
 app.use('/api/roles', rolesRoutes)
 app.use('/api/usuarios', usuarioRoutes)
-app.use('/api/empleados',    empleadoRoutes)
-app.use('/api/galeria',      galeriaRoutes)
+app.use('/api/empleados', empleadoRoutes)
+app.use('/api/galeria', galeriaRoutes)
 app.use('/api/ai', aiRoutes)
-// ─── REDIRECCIÓN UNIVERSAL (Para evitar error "Extraviado" al recargar) ────────
-// Capturamos cualquier ruta que NO sea /api y NO sea un archivo estático
-app.get('{*path}', (req, res, next) => {
-  // Si es una ruta de API o tiene extensión (archivo), seguir adelante
-  if (req.path.startsWith('/api') || req.path.includes('.')) {
-    return next();
-  }
-
-  const frontendUrl = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
-  const target = `${frontendUrl}${req.path}${Object.keys(req.query).length ? '?' + new URLSearchParams(req.query as any).toString() : ''}`;
-  console.log(`[Backend] Redirigiendo navegación: ${req.url} -> ${target}`);
-  
-  return res.redirect(301, target);
-});
-
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
-app.use(notFoundHandler)   // atrapa rutas inexistentes
-app.use(errorHandler)      // atrapa errores lanzados con next(err)
+app.use(notFoundHandler)
+app.use(errorHandler)
 
 export default app
