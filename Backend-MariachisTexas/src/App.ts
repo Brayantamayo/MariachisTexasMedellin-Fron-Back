@@ -112,7 +112,7 @@ app.use('/api/galeria',      galeriaRoutes)
 app.use('/api/ai', aiRoutes)
 // ─── REDIRECCIÓN UNIVERSAL (Para evitar error "Extraviado" al recargar) ────────
 // Capturamos cualquier ruta que NO sea /api y NO sea un archivo estático
-app.get('(.*)', (req, res, next) => {
+app.get('{*path}', (req, res, next) => {
   // Si es una ruta de API o tiene extensión (archivo), seguir adelante
   if (req.path.startsWith('/api') || req.path.includes('.')) {
     return next();
