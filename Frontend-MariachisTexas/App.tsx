@@ -35,31 +35,16 @@ const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // ✅ Lee la ruta real del navegador al iniciar
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    let path = window.location.pathname || '/';
-    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-    return path;
-  });
+  const [currentPath, setCurrentPath] = useState<string>('/');
 
   // ✅ Nueva función de navegación que sincroniza el enlace del navegador
   const navigate = (path: string) => {
     if (path !== currentPath) {
-      window.history.pushState({}, '', path);
       setCurrentPath(path);
       window.scrollTo(0, 0);
     }
   };
 
-  // ✅ Escuchar el botón atrás/adelante del navegador
-  useEffect(() => {
-    const handlePopState = () => {
-      let path = window.location.pathname || '/';
-      if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-      setCurrentPath(path);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
