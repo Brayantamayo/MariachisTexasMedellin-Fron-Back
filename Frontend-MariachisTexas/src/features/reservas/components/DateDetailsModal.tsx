@@ -233,10 +233,21 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const clrs  = getReservaColors(res);
                 const range = `${format12h(res.startTime || res.eventTime)} → ${format12h(res.endTime)}`
                 const isMyReservation = !isClient || user?.email === res.clientEmail || (res as any).isMine;
-                const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
+                
+                // ✅ Nueva lógica: Solo mostrar azul si YA PASÓ el tiempo
+                const s = (res as any).status ?? res.status;
+                const isStatusFinalizado = s === 'FINALIZADO' || s === 'Finalizado';
+                
+                const now = new Date();
+                const nowTime = now.getTime();
+                const evTime = res.endTime || '23:59';
+                const evDateTime = new Date(`${res.eventDate}T${evTime}`);
+                const hasPassed = !isNaN(evDateTime.getTime()) && nowTime > evDateTime.getTime();
 
-                if (isFinalizado && isMyReservation) {
-                  // ── FINALIZADO slot ──────────────────────────────────────
+                const showAsBlue = isStatusFinalizado && hasPassed;
+
+                if (showAsBlue && isMyReservation) {
+                  // ── FINALIZADO slot (YA PASÓ) ────────────────────────────
                   containerClass = "border-blue-300 bg-blue-50 cursor-pointer hover:bg-blue-100";
                   content = (
                     <div className="flex items-center justify-between w-full" onClick={() => onViewReservation(res)}>
@@ -256,27 +267,40 @@ export const DateDetailsModal: React.FC<Props> = ({
                     </div>
                   );
                 } else if (isMyReservation) {
-                  // ── PENDIENTE / CONFIRMADA slot ──────────────────────────
-                  containerClass = `${clrs.border} ${clrs.bg} cursor-pointer hover:brightness-95 transition-all`;
+                  // ── PENDIENTE / CONFIRMADA / FINALIZADA (FUTURA) ──────────────────────────
+                  // Si es FINALIZADO pero no ha pasado, usamos los colores de CONFIRMADA (emerald)
+                  const effectiveClrs = (isStatusFinalizado && !hasPassed) 
+                    ? {
+                        border: 'border-emerald-300',
+                        bg:     'bg-emerald-50',
+                        text:   'text-emerald-800',
+                        sub:    'text-emerald-600',
+                        badge:  'bg-emerald-100 text-emerald-700 border-emerald-200',
+                        label:  'Confirmada',
+                        dot:    'bg-emerald-500',
+                      }
+                    : clrs;
+
+                  containerClass = `${effectiveClrs.border} ${effectiveClrs.bg} cursor-pointer hover:brightness-95 transition-all`;
                   content = (
                     <div className="flex items-center justify-between w-full" onClick={() => onViewReservation(res)}>
                       <div className="flex items-start gap-3">
                         {/* Color dot indicating status */}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${clrs.badge} border`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${effectiveClrs.badge} border`}>
                           <User size={14} />
                         </div>
                         <div>
                           {/* CLIENT NAME — prominent */}
-                          <p className={`text-sm font-bold ${clrs.text}`}>{isClient ? 'Tu reserva' : res.clientName}</p>
-                          <p className={`text-[10px] font-mono mt-0.5 ${clrs.sub}`}>{range}</p>
+                          <p className={`text-sm font-bold ${effectiveClrs.text}`}>{isClient ? 'Tu reserva' : res.clientName}</p>
+                          <p className={`text-[10px] font-mono mt-0.5 ${effectiveClrs.sub}`}>{range}</p>
                           {/* Status badge */}
-                          <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${clrs.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${clrs.dot}`} />
-                            {clrs.label}
+                          <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold border px-2 py-0.5 rounded-full ${effectiveClrs.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${effectiveClrs.dot}`} />
+                            {effectiveClrs.label}
                           </span>
                         </div>
                       </div>
-                      <ArrowRight size={16} className={`shrink-0 ${clrs.sub}`} />
+                      <ArrowRight size={16} className={`shrink-0 ${effectiveClrs.sub}`} />
                     </div>
                   );
                 } else {
@@ -293,9 +317,19 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const res  = data as Reservation;
                 const clrs = getReservaColors(res);
                 const isMyReservation = !isClient || user?.email === res.clientEmail || (res as any).isMine;
-                const isFinalizado    = (res as any).status === 'FINALIZADO' || (res as any).status === 'Finalizado'
+                
+                const s = (res as any).status ?? res.status;
+                const isStatusFinalizado = s === 'FINALIZADO' || s === 'Finalizado';
+                
+                const now = new Date();
+                const nowTime = now.getTime();
+                const evTime = res.endTime || '23:59';
+                const evDateTime = new Date(`${res.eventDate}T${evTime}`);
+                const hasPassed = !isNaN(evDateTime.getTime()) && nowTime > evDateTime.getTime();
 
-                if (isFinalizado && isMyReservation) {
+                const showAsBlue = isStatusFinalizado && hasPassed;
+
+                if (showAsBlue && isMyReservation) {
                   containerClass = "border-blue-100 bg-blue-50/50 cursor-pointer";
                   content = (
                     <div className="flex items-center gap-3 w-full opacity-70" onClick={() => onViewReservation(res)}>
@@ -304,11 +338,16 @@ export const DateDetailsModal: React.FC<Props> = ({
                     </div>
                   );
                 } else if (isMyReservation) {
-                  containerClass = `${clrs.border.replace('border-', 'border-').replace('300', '100')} ${clrs.bg.replace('50', '50/50')} cursor-pointer`;
+                  const effectiveDot = (isStatusFinalizado && !hasPassed) ? 'bg-emerald-500' : clrs.dot;
+                  const effectiveSub = (isStatusFinalizado && !hasPassed) ? 'text-emerald-600' : clrs.sub;
+                  const effectiveBorder = (isStatusFinalizado && !hasPassed) ? 'border-emerald-100' : clrs.border.replace('300', '100');
+                  const effectiveBg = (isStatusFinalizado && !hasPassed) ? 'bg-emerald-50/50' : clrs.bg.replace('50', '50/50');
+
+                  containerClass = `${effectiveBorder} ${effectiveBg} cursor-pointer`;
                   content = (
                     <div className="flex items-center gap-3 w-full opacity-80" onClick={() => onViewReservation(res)}>
-                      <div className={`h-full w-0.5 rounded-full ${clrs.dot}`} />
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${clrs.sub}`}>
+                      <div className={`h-full w-0.5 rounded-full ${effectiveDot}`} />
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${effectiveSub}`}>
                         ↳ {isClient ? 'Tu reserva' : `Reservado por ${res.clientName}`}
                       </span>
                     </div>

@@ -4,7 +4,6 @@ import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award,
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
-import { AIAdvisorWidget } from './Aiadvisorwidger';
 
 
 interface Props {
@@ -615,7 +614,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
         }
             
       `}</style>
-            <AIAdvisorWidget />
+
 
             {/* --- LIGHTBOX MODAL --- */}
             {lightboxOpen && dynamicGallery.length > 0 && (
