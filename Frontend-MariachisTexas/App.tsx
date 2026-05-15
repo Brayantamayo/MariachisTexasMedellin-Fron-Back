@@ -34,16 +34,26 @@ import { Toaster } from 'react-hot-toast';
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // ✅ Lee la ruta real del navegador al iniciar
-  const [currentPath, setCurrentPath] = useState<string>('/');
+  const [currentPath, setCurrentPath] = useState<string>(
+    () => window.location.pathname || '/'
+  );
 
-  // ✅ Nueva función de navegación que sincroniza el enlace del navegador
   const navigate = (path: string) => {
     if (path !== currentPath) {
+      window.history.pushState(null, '', path);
       setCurrentPath(path);
       window.scrollTo(0, 0);
     }
   };
+
+  // Sincroniza el botón "atrás/adelante" del navegador
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || '/');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
@@ -71,10 +81,10 @@ const MainLayout: React.FC = () => {
     }
   }, [isAuthenticated, currentPath, user]);
 
-  // 🛡️ Redirigir al inicio si el usuario no está autenticado y la ruta no es pública
+  // Redirigir al inicio si el usuario no está autenticado y la ruta no es pública
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !isPublicRoute && currentPath !== '/') {
-      navigate('/');
+      setCurrentPath('/');
     }
   }, [isLoading, isAuthenticated, isPublicRoute, currentPath]);
 
