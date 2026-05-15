@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
-import '/shared/css/Aiadvisorwidget.css';
+import '@/shared/css/Aiadvisorwidget.css';
 import api from '@/shared/api/api';
 
 interface Message {
@@ -92,21 +92,67 @@ export const AIAdvisorWidget: React.FC = () => {
 
   return createPortal(
     <>
-      <button
-        className={`advisor-fab ${isOpen ? 'advisor-fab--open' : ''}`}
-        onClick={() => setIsOpen(v => !v)}
-        aria-label="Abrir asesor"
+      {/* Lupita Floating Assistant Button */}
+      <div 
+        className={`fixed bottom-6 right-6 z-[999999] flex flex-col items-end pointer-events-none group transition-all duration-500 ${isOpen ? 'opacity-0 scale-0 translate-y-10' : 'opacity-100 scale-100 translate-y-0'}`}
       >
-        {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
-        {hasNewMsg && !isOpen && <span className="advisor-fab__dot" />}
-      </button>
+        {/* Welcome Bubble (shows when closed) */}
+        {!isOpen && (
+          <div className="mb-4 mr-2 bg-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-100 relative transition-all duration-500 transform pointer-events-auto group-hover:scale-105">
+            <p className="text-xs font-bold text-slate-800 leading-tight">
+              {hasNewMsg ? '¡Tengo una respuesta para ti!' : '¡Hola! Soy Lupita, ¿en qué puedo ayudarte?'}
+            </p>
+            <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r border-b border-slate-100 rotate-45 transform"></div>
+          </div>
+        )}
+
+        {/* Robot Image Trigger */}
+        <div 
+          className="w-28 h-28 relative pointer-events-auto cursor-pointer animate-float-lupita"
+          onClick={() => setIsOpen(true)}
+        >
+          <img 
+            src="/images/lupita.png" 
+            alt="Lupita Assistant" 
+            className="w-full h-full object-contain filter drop-shadow-2xl"
+          />
+          {hasNewMsg && <span className="advisor-fab__dot" style={{ top: '20%', right: '20%' }} />}
+        </div>
+      </div>
+
+      {/* Floating Close Button (only when panel is open) */}
+      {isOpen && (
+        <button
+          className="fixed bottom-6 right-6 z-[999999] w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-700 text-white flex items-center justify-center shadow-2xl hover:bg-red-600 transition-all transform hover:scale-110 animate-fade-in"
+          onClick={() => setIsOpen(false)}
+        >
+          <X size={24} />
+        </button>
+      )}
+
+      <style>{`
+        @keyframes float-lupita {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-12px) rotate(2deg); }
+        }
+        .animate-float-lupita {
+          animation: float-lupita 4s ease-in-out infinite;
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
 
       <div className={`advisor-panel ${isOpen ? 'advisor-panel--open' : ''}`}>
 
         <div className="advisor-header">
           <div className="advisor-header__avatar"><Sparkles size={16} /></div>
           <div className="advisor-header__info">
-            <p className="advisor-header__name">Asesor Mariachis Texas</p>
+            <p className="advisor-header__name">IA LUPITA</p>
             <span className="advisor-header__status">
               <span className="advisor-header__dot" /> En línea
             </span>
