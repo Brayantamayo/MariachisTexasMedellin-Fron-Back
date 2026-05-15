@@ -110,11 +110,17 @@ app.use('/api/usuarios', usuarioRoutes)
 app.use('/api/empleados',    empleadoRoutes)
 app.use('/api/galeria',      galeriaRoutes)
 app.use('/api/ai', aiRoutes)
-// ─── REDIRECCIÓN DE SEGURIDAD (Si entran al backend buscando el front) ────────
-app.get(['/register', '/registro', '/login', '/home', '/dashboard'], (req, res) => {
+// ─── REDIRECCIÓN UNIVERSAL (Para evitar error "Extraviado" al recargar) ────────
+// Capturamos cualquier ruta que NO sea /api y NO sea un archivo estático
+app.get('*', (req, res, next) => {
+  // Si es una ruta de API o tiene extensión (archivo), seguir adelante
+  if (req.path.startsWith('/api') || req.path.includes('.')) {
+    return next();
+  }
+
   const frontendUrl = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
   const target = `${frontendUrl}${req.path}${Object.keys(req.query).length ? '?' + new URLSearchParams(req.query as any).toString() : ''}`;
-  console.log(`[Backend] Redirigiendo petición de front desde backend: ${req.url} -> ${target}`);
+  console.log(`[Backend] Redirigiendo navegación: ${req.url} -> ${target}`);
   return res.redirect(301, target);
 });
 
