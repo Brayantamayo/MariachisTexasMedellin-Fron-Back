@@ -269,12 +269,15 @@ export const ReservasPage: React.FC = () => {
       let dotColorClass = 'bg-slate-300';
       if (totalItems > 0) {
         dotColorClass = 'bg-emerald-400';
-        // Solo mostramos azul si hay algún evento finalizado y ya pasó el tiempo
+        // Solo mostramos azul/gris si hay algún evento finalizado y ya pasó el tiempo
         const hasPassedFinalized = dayEvents.some(ev => {
           if (s(ev) !== 'FINALIZADO') return false;
           const evTime = ev.startTime || ev.eventTime || '23:59';
-          const evDateTime = new Date(`${ev.eventDate}T${evTime}`);
-          return !isNaN(evDateTime.getTime()) && nowTime > evDateTime.getTime();
+          // ✅ Usamos split para evitar que el navegador reste horas por Timezone
+          const [y, m, d] = ev.eventDate.split('-').map(Number);
+          const [hh, mm] = evTime.split(':').map(Number);
+          const evDateTime = new Date(y, m - 1, d, hh, mm).getTime();
+          return nowTime > evDateTime;
         });
         if (hasPassedFinalized) {
           dotColorClass = 'bg-blue-500';

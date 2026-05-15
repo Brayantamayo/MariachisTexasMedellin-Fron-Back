@@ -126,11 +126,16 @@ export const CotizacionForm: React.FC<Props> = ({
     onToggleSong(id)
   }
 
+  const [isNavigating, setIsNavigating] = useState(false)
   const handleContinueToClient = () => {
-    setShowClientStep(true)
+    setIsNavigating(true)
     setTimeout(() => {
-      clientSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)
+      setShowClientStep(true)
+      setIsNavigating(false)
+      setTimeout(() => {
+        clientSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }, 600) // Pequeño retraso para la animación
   }
 
   const headerClass = isPublic
@@ -697,17 +702,26 @@ export const CotizacionForm: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleContinueToClient}
-                disabled={blockStatus.isBlocked}
+                disabled={blockStatus.isBlocked || isNavigating}
                 className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
-                  ${blockStatus.isBlocked
+                  ${blockStatus.isBlocked || isNavigating
                     ? 'bg-slate-400 cursor-not-allowed shadow-none'
                     : 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
                   }`}>
-                Continuar
-                <ArrowRight size={18} />
+                {isNavigating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Calculando...</span>
+                  </>
+                ) : (
+                  <>
+                    Continuar
+                    <ArrowRight size={18} />
+                  </>
+                )}
               </button>
             ) : (
-              <button
+            <button
                 type="submit"
                 disabled={blockStatus.isBlocked || isSaving}
                 className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
@@ -717,8 +731,17 @@ export const CotizacionForm: React.FC<Props> = ({
                       ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
                       : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 hover:-translate-y-0.5'
                   }`}>
-                {isSaving ? 'Guardando...' : blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
-                {!blockStatus.isBlocked && !isSaving && <ArrowLeft className="rotate-180" size={18} />}
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Procesando...</span>
+                  </>
+                ) : (
+                  <>
+                    {blockStatus.isBlocked ? 'Fecha Bloqueada' : 'Enviar Cotización'}
+                    {!blockStatus.isBlocked && <ArrowLeft className="rotate-180" size={18} />}
+                  </>
+                )}
               </button>
             )}
           </div>

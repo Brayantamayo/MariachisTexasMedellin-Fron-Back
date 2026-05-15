@@ -122,24 +122,24 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
           {error && (
-            <div className="mb-5 flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3.5 text-red-600 text-xs shadow-sm shadow-red-100/50">
-              <AlertCircle size={16} className="shrink-0" /> 
+            <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-red-600 text-[10px] shadow-sm">
+              <AlertCircle size={14} className="shrink-0" /> 
               <span className="font-medium">{error}</span>
             </div>
           )}
 
           {/* Info box */}
-          <div className="bg-red-50/50 border border-red-100 rounded-[1.5rem] p-5 mb-6 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-100/30 rounded-full blur-2xl group-hover:bg-red-200/40 transition-colors" />
-            <p className="text-[10px] text-red-400 font-bold uppercase tracking-[0.2em] mb-1.5 relative z-10">Saldo a pagar</p>
-            <p className="text-4xl font-serif font-black text-red-600 tracking-tight relative z-10">
-              <span className="text-xl mr-0.5">$</span>{saldo.toLocaleString('es-CO')}
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 mb-4 relative overflow-hidden group">
+            <div className="absolute -right-4 -top-4 w-16 h-16 bg-red-100/30 rounded-full blur-xl group-hover:bg-red-200/40 transition-colors" />
+            <p className="text-[9px] text-red-400 font-bold uppercase tracking-[0.2em] mb-1 relative z-10">Saldo a pagar</p>
+            <p className="text-3xl font-serif font-black text-red-600 tracking-tight relative z-10">
+              <span className="text-lg mr-0.5">$</span>{saldo.toLocaleString('es-CO')}
             </p>
-            <div className="mt-2.5 pt-2.5 border-t border-red-100/60 flex items-center justify-between relative z-10">
-               <p className="text-[10px] text-red-500 font-medium">{sale.concept}</p>
-               <p className="text-[10px] text-slate-400">Total: <span className="font-bold">${(sale.totalAmount ?? 0).toLocaleString('es-CO')}</span></p>
+            <div className="mt-2 pt-2 border-t border-red-100/60 flex items-center justify-between relative z-10">
+               <p className="text-[9px] text-red-500 font-medium">{sale.concept}</p>
+               <p className="text-[9px] text-slate-400">Total: <span className="font-bold">${(sale.totalAmount ?? 0).toLocaleString('es-CO')}</span></p>
             </div>
           </div>
 
@@ -176,11 +176,11 @@ const FinalPaymentModal: React.FC<FinalPaymentModalProps> = ({ isOpen, onClose, 
                 placeholder="Referencia de pago..."
               />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1">
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="flex-1 py-3.5 border border-slate-200 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-600 transition-all active:scale-95"
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-600 transition-all"
               >
                 Cancelar
               </button>
@@ -390,24 +390,26 @@ const handleCreateSale = async (data: any) => {
     setCurrentPage(1);
   }, [statusFilter, searchTerm]);
 
-  const filtered = sales.filter(s => {
-    const matchesSearch = 
-      (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.concept ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.id ?? '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (statusFilter === 'TODOS') return matchesSearch;
-    
-    const badge = getStatusBadge(s);
-    const badgeLabel = badge.label.toUpperCase();
-    
-    // Normalizar ANULADA/ANULADO
-    if (statusFilter === 'ANULADO') {
-      return matchesSearch && (badgeLabel === 'ANULADO' || badgeLabel === 'ANULADA');
-    }
-    
-    return matchesSearch && badgeLabel === statusFilter;
-  });
+  const filtered = React.useMemo(() => {
+    return sales.filter(s => {
+      const matchesSearch = 
+        (s.clientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.concept ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.id ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (statusFilter === 'TODOS') return matchesSearch;
+      
+      const badge = getStatusBadge(s);
+      const badgeLabel = badge.label.toUpperCase();
+      
+      // Normalizar ANULADA/ANULADO
+      if (statusFilter === 'ANULADO') {
+        return matchesSearch && (badgeLabel === 'ANULADO' || badgeLabel === 'ANULADA');
+      }
+      
+      return matchesSearch && badgeLabel === statusFilter;
+    });
+  }, [sales, searchTerm, statusFilter]);
 
   const totalPages   = Math.ceil(filtered.length / itemsPerPage);
   const currentItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);

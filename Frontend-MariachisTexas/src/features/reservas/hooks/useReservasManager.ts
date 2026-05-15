@@ -193,6 +193,19 @@ export const useReservasManager = () => {
     try {
       const res = reservations.find(r => r.id === id);
       
+      // ✅ Restricción: No finalizar antes de la hora del evento
+      if (res) {
+        const now = new Date();
+        const eventDateStr = res.eventDate;
+        const startTimeStr = res.startTime || res.eventTime || '00:00';
+        const eventDateTime = new Date(`${eventDateStr}T${startTimeStr}`);
+        
+        if (now < eventDateTime) {
+          showNotification('No puedes finalizar el evento hasta que haya pasado la hora programada.', 'error');
+          return;
+        }
+      }
+      
       // Si tiene saldo pendiente al finalizar, creamos una venta por el valor pagado hasta ahora? 
       // O por el total? El usuario dice "si debe se crearía con la finalización". 
       // Usualmente esto significa que el abono se convierte en venta finalizada.
