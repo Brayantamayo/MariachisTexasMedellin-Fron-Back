@@ -362,9 +362,13 @@ export const ReservasPage: React.FC = () => {
                   if (st === 'PENDIENTE') {
                     statusStyle = 'bg-amber-50 border-amber-500 text-amber-800';
                     timeStyle = 'text-amber-600';
-                  } else if (st === 'FINALIZADO') {
+                  } else if (st === 'FINALIZADO' && hasPassed) {
                     statusStyle = 'bg-blue-50 border-blue-500 text-blue-800';
                     timeStyle = 'text-blue-600';
+                  } else if (st === 'FINALIZADO' && !hasPassed) {
+                    // Pagado al 100% pero evento aún no ocurre → verde
+                    statusStyle = 'bg-emerald-50 border-emerald-500 text-emerald-800';
+                    timeStyle = 'text-emerald-600';
                   } else if (st === 'ANULADA') {
                     statusStyle = 'bg-slate-50 border-slate-300 text-slate-400';
                     timeStyle = 'text-slate-400';
