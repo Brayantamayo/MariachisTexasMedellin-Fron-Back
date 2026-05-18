@@ -117,7 +117,11 @@ const validarDisponibilidad = async (
 
 export const vincularCotizacionesPorEmail = async (email: string, clienteId: number) => {
   const result = await prisma.cotizacion.updateMany({
-    where: { clienteId: null, contactoEmail: email, estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } },
+    where: { 
+      clienteId: null, 
+      contactoEmail: { equals: email, mode: 'insensitive' }, 
+      estado: { in: ['EN_ESPERA', 'CONVERTIDA'] } 
+    },
     data:  { clienteId }
   })
   return result.count

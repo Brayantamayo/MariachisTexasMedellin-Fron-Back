@@ -55,11 +55,9 @@ export const ClientDetailModal: React.FC<Props> = ({ isOpen, onClose, client }) 
     }
   };
 
-  if (!isOpen || !client) {
-    return null;
-  }
+  if (!isOpen || !client) return null;
 
-  const DetailItem = ({ icon: Icon, label, value }) => (
+  const DetailItem = ({ icon: Icon, label, value }: { icon: React.ComponentType<any>; label: string; value?: string | number | null }) => (
       <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
           <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
               <Icon size={14} />

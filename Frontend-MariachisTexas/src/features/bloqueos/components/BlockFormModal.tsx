@@ -28,15 +28,14 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
 
   const [formData, setFormData] = useState<any>(emptyBlock);
 
-  // Generar opciones de hora (01:00 AM - 12:00 AM)
-  const timeOptions = [];
-  for (let i = 1; i <= 23; i++) {
+
+  // Generar opciones de hora en orden cronológico (00:00 - 23:30)
+  const timeOptions: string[] = [];
+  for (let i = 0; i <= 23; i++) {
       const hour = i.toString().padStart(2, '0');
       timeOptions.push(`${hour}:00`);
       timeOptions.push(`${hour}:30`);
   }
-  timeOptions.push('00:00'); 
-  timeOptions.push('00:30');
 
   useEffect(() => {
     if (initialData) {
@@ -49,18 +48,19 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (isViewOnly) return;
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...(prev || emptyBlock), [name]: value }));
   };
 
   // Manejador especial para el CustomDatePicker
   const handleDateChange = (name: string, value: string) => {
       if (isViewOnly) return;
       
-      setFormData(prev => {
-          const newState = { ...prev, [name]: value };
+      setFormData((prev: any) => {
+          const current = prev || emptyBlock;
+          const newState = { ...current, [name]: value };
           
           // Si estamos en modo FULL_DATE o TIME_RANGE, la fecha fin debe ser igual a la inicio
-          if ((prev.type === 'FULL_DATE' || prev.type === 'TIME_RANGE') && name === 'startDate') {
+          if ((current.type === 'FULL_DATE' || current.type === 'TIME_RANGE') && name === 'startDate') {
               newState.endDate = value;
           }
           // Validación básica: Si fecha inicio > fecha fin, igualarlas
@@ -76,15 +76,18 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       if (isViewOnly) return;
       const newType = e.target.value;
-      setFormData(prev => ({
-          ...prev,
-          type: newType,
-          // Reset times if switching away from TIME_RANGE
-          startTime: newType === 'TIME_RANGE' ? prev.startTime : '',
-          endTime: newType === 'TIME_RANGE' ? prev.endTime : '',
-          // Sync end date if switching to single day types
-          endDate: (newType === 'FULL_DATE' || newType === 'TIME_RANGE') ? prev.startDate : prev.endDate
-      }));
+      setFormData((prev: any) => {
+          const current = prev || emptyBlock;
+          return {
+              ...current,
+              type: newType,
+              // Reset times if switching away from TIME_RANGE
+              startTime: newType === 'TIME_RANGE' ? current.startTime : '',
+              endTime: newType === 'TIME_RANGE' ? current.endTime : '',
+              // Sync end date if switching to single day types
+              endDate: (newType === 'FULL_DATE' || newType === 'TIME_RANGE') ? current.startDate : current.endDate
+          };
+      });
   };
 
   const handleSubmit = (e: React.FormEvent) => {

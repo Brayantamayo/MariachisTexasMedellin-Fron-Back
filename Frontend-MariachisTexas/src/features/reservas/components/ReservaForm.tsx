@@ -54,6 +54,7 @@ interface Props {
   onCancel: () => void;
   fieldErrors?: Record<string, string | undefined>;
   isSaving?: boolean;
+  minServices?: { serviceId: string; quantity: number }[];
 }
 
 const getClienteLabel = (cliente: any): string => {
@@ -70,7 +71,7 @@ export const ReservaForm: React.FC<Props> = ({
   availableHours = [],
   blockStatus = { isBlocked: false, reason: '', hasPartialBlocks: false, blockedRanges: [] },
   onChange, onDateChange, onClientSelect, onToggleSong, onServiceChange, onSubmit, onCancel,
-  fieldErrors, isSaving = false
+  fieldErrors, isSaving = false, minServices = []
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -292,7 +293,7 @@ export const ReservaForm: React.FC<Props> = ({
                 onChange={onChange}
                 disabled={lockClientFields}
                 className={lockClientFields ? lockedClass : `${inputClass} ${fieldErrors?.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''}`}
-                placeholder="Ej: 300 123 4567" />
+                placeholder="Ej: 312 2373486" />
               {fieldErrors?.clientPhone && <p className="text-red-500 text-[11px] mt-1 pl-1 font-medium">{fieldErrors.clientPhone}</p>}
             </div>
           </div>
@@ -403,7 +404,7 @@ export const ReservaForm: React.FC<Props> = ({
                         <option key={`start-${time}`} value={time}>{format12h(time)}</option>
                       ))}
                       {(formData.startTime || formData.eventTime) && !availableHours.includes(formData.startTime || formData.eventTime || '') && (
-                        <option value={formData.startTime || formData.eventTime}>{format12h(formData.startTime || formData.eventTime)} (Actual)</option>
+                      <option value={formData.startTime || formData.eventTime || ''}>{format12h(formData.startTime || formData.eventTime || '')} (Actual)</option>
                       )}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 pointer-events-none" size={16} />
@@ -491,8 +492,9 @@ export const ReservaForm: React.FC<Props> = ({
             </h4>
             <div className="space-y-4">
               {additionalServices.map(service => {
-                const selected = formData.selectedServices?.find(s => String(s.serviceId) === String(service.id));
+                const selected = formData.selectedServices?.find((s: any) => String(s.serviceId) === String(service.id));
                 const quantity = selected?.quantity || 0;
+                const minQuantity = minServices.find((s: any) => String(s.serviceId) === String(service.id))?.quantity || 0;
                 return (
                   <div key={service.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${quantity > 0 ? 'bg-white border-orange-200 shadow-lg shadow-orange-900/5 ring-1 ring-orange-100' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
                     <div>
@@ -500,9 +502,10 @@ export const ReservaForm: React.FC<Props> = ({
                       <p className="text-xs text-slate-400 mt-1 font-medium">${service.precio.toLocaleString()}</p>
                     </div>
                     <div className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-200 p-1.5">
-                      <button type="button" onClick={() => onServiceChange(service.id, Math.max(0, quantity - 1))}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > 0 ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}
-                        disabled={quantity === 0}>
+                      <button type="button" onClick={() => onServiceChange(service.id, Math.max(minQuantity, quantity - 1))}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${quantity > minQuantity ? 'hover:bg-white text-slate-600 shadow-sm' : 'text-slate-300 cursor-not-allowed'}`}
+                        disabled={quantity <= minQuantity}
+                        title={quantity <= minQuantity && minQuantity > 0 ? "No puedes quitar un servicio ya confirmado" : undefined}>
                         <Minus size={16} />
                       </button>
                       <span className="text-sm font-bold w-6 text-center text-slate-800">{quantity}</span>

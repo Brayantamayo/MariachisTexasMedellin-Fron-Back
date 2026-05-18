@@ -52,25 +52,23 @@ export const createAbono = async (
       400
     )
 
-  // Primer abono: debe ser exactamente el 50%
+  // Primer abono: debe ser exactamente el 50% o el 100%
   if (pagadoActual === 0) {
-    if (monto !== anticipo50)
+    if (monto !== anticipo50 && monto !== totalValor)
       throw new AppError(
-        `El primer abono debe ser exactamente el 50% del total: $${anticipo50.toLocaleString('es-CO')} COP`,
+        `El primer abono debe ser el 50% ($${anticipo50.toLocaleString('es-CO')}) o el 100% ($${totalValor.toLocaleString('es-CO')}) del total.`,
         400
       )
   } else {
-    // Segundo abono: debe ser exactamente el saldo pendiente
+    // Abonos subsecuentes: debe ser exactamente el saldo pendiente
     if (monto !== saldoActual)
       throw new AppError(
-        `El segundo abono debe ser exactamente el saldo pendiente: $${saldoActual.toLocaleString('es-CO')} COP`,
+        `El abono debe ser exactamente el saldo pendiente: $${saldoActual.toLocaleString('es-CO')} COP`,
         400
       )
   }
 
-  // ─── 6. Validar que no haya más de 2 abonos ───────────────────────────────
-  if (reserva.abonos.length >= 2)
-    throw new AppError('Esta reserva ya tiene los 2 abonos registrados (anticipo + pago final)', 400)
+  // Eliminada la validación de máximo 2 abonos para permitir agregar servicios a reservas confirmadas
 
   // ─── 7. Normalizar método de pago ─────────────────────────────────────────
   const metodoPago = d.method.toUpperCase() as any

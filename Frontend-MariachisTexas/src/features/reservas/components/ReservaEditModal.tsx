@@ -290,6 +290,7 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
             services={services}
             blockStatus={blockStatus}
             fieldErrors={errors}
+            minServices={reservation && ['CONFIRMADA', 'FINALIZADO'].includes(reservation.status) ? reservation.selectedServices : []}
             onChange={handleChange}
             onDateChange={handleDateChange}
             onClientSelect={() => {}}

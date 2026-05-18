@@ -19,6 +19,7 @@ interface ReservaOption {
   totalAmount: number;
   paidAmount: number;
   status: string;
+  paymentCount: number;
 }
 
 interface AbonoFormErrors {
@@ -46,6 +47,11 @@ const getTodayLocalDate = () => {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getAbonoLabel = (idx: number) => {
+  const ordinals = ['1er', '2do', '3er', '4to', '5to', '6to', '7mo', '8vo', '9no', '10mo'];
+  return `${ordinals[idx] || idx + 1} Abono`;
 };
 
 export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialReservationId }) => {
@@ -83,6 +89,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             totalAmount: Number(r.totalAmount ?? 0),
             paidAmount: Number(r.paidAmount ?? 0),
             status: r.status,
+            paymentCount: r.payments?.length ?? 0,
           }));
         setReservations(pending);
 
@@ -122,7 +129,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
   const pagado = selectedReserva ? selectedReserva.paidAmount : 0;
   const saldo = totalValor - pagado;
   const anticipo50 = Math.ceil(totalValor / 2);
-  const montoRequerido = tipoPago === '100%' ? saldo : anticipo50;
+  const montoRequerido = pagado > 0 ? saldo : (tipoPago === '100%' ? saldo : anticipo50);
   const saldoTrasPago = Math.max(0, saldo - montoRequerido);
   const hayPendiente = saldo > 0;
 
@@ -241,7 +248,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
           </div>
 
           {/* Selector tipo de pago */}
-          {selectedReserva && hayPendiente && (
+          {selectedReserva && hayPendiente && pagado === 0 && (
             <div>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setTipoPago('50%')}
@@ -250,7 +257,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                     }`}
                 >
-                  1er Abono
+                  {getAbonoLabel(selectedReserva.paymentCount)} (50%)
                   <span className="block text-[9px] font-normal opacity-80">
                     ${anticipo50.toLocaleString('es-CO')}
                   </span>
@@ -261,7 +268,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
                       : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
                     }`}
                 >
-                  2do Abono (Saldo)
+                  {getAbonoLabel(selectedReserva.paymentCount)} (Total)
                   <span className="block text-[9px] font-normal opacity-80">
                     ${saldo.toLocaleString('es-CO')}
                   </span>
@@ -275,7 +282,9 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             <div className="bg-gradient-to-br from-red-50 to-red-100/50 border border-red-200 rounded-xl p-3">
               <div className="flex items-center justify-between mb-0.5">
                 <p className="text-[9px] font-bold text-red-800 uppercase tracking-widest">
-                  {tipoPago === '100%' ? '2do Abono (Saldo)' : '1er Abono'}
+                  {pagado === 0 
+                    ? (tipoPago === '100%' ? `${getAbonoLabel(selectedReserva.paymentCount)} (Total)` : `${getAbonoLabel(selectedReserva.paymentCount)} (50%)`)
+                    : `${getAbonoLabel(selectedReserva.paymentCount)} (Saldo)`}
                 </p>
                 <DollarSign size={14} className="text-red-500" />
               </div>
@@ -285,7 +294,7 @@ export const AbonoCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-red-200/60 text-[9px] text-red-600">
                 <span>Total: <strong>${totalValor.toLocaleString('es-CO')}</strong></span>
                 <span>
-                  {tipoPago === '100%'
+                  {tipoPago === '100%' || pagado > 0
                     ? <strong className="text-emerald-600">Saldo: $0 ✓</strong>
                     : <>Saldo: <strong>${saldoTrasPago.toLocaleString('es-CO')}</strong></>
                   }

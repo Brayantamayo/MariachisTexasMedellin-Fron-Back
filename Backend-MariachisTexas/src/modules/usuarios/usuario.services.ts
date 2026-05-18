@@ -282,10 +282,14 @@ export const updateUsuario = async (id: number, data: UsuarioUpdateInput): Promi
   await prisma.$transaction(async (tx) => {
     await tx.usuario.update({ where: { id }, data: updateData })
 
-    // Sincronizar estado entre usuario y cliente
+    // Sincronizar estado y email entre usuario y cliente
     if (existing.cliente) {
-      if (updateData.estado !== undefined) {
-        await tx.cliente.update({ where: { usuarioId: id }, data: { activo: updateData.estado } })
+      const syncData: any = {}
+      if (updateData.estado !== undefined) syncData.activo = updateData.estado
+      if (updateData.email !== undefined) syncData.email = updateData.email
+      
+      if (Object.keys(syncData).length > 0) {
+        await tx.cliente.update({ where: { usuarioId: id }, data: syncData })
       }
       if (clienteData?.activo !== undefined) {
         await tx.usuario.update({ where: { id }, data: { estado: clienteData.activo } })
@@ -366,7 +370,24 @@ export const deleteUsuario = async (id: number): Promise<void> => {
     throw new AppError('No se puede eliminar el usuario porque tiene reservas activas', 400)
   }
 
-  await prisma.usuario.delete({
-    where: { id }
-  })
+  // Verificar si tiene historial (si es cliente)
+  let historyCount = 0
+  const cliente = await prisma.cliente.findUnique({ where: { usuarioId: id } })
+  if (cliente) {
+    historyCount += await prisma.cotizacion.count({ where: { clienteId: cliente.id } })
+    historyCount += await prisma.abono.count({ where: { clienteId: cliente.id } })
+    historyCount += await prisma.venta.count({ where: { clienteId: cliente.id } })
+  }
+
+  if (historyCount === 0) {
+    await prisma.usuario.delete({ where: { id } })
+  } else {
+    // Si hay historial, desactivamos en vez de eliminar para no perder los datos contables
+    await prisma.$transaction(async (tx) => {
+      await tx.usuario.update({ where: { id }, data: { estado: false } })
+      if (cliente) {
+        await tx.cliente.update({ where: { id: cliente.id }, data: { activo: false } })
+      }
+    })
+  }
 }
