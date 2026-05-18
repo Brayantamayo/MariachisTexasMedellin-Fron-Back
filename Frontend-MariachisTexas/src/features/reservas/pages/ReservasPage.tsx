@@ -209,7 +209,11 @@ export const ReservasPage: React.FC = () => {
                           r.eventType.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm);
     
-    // Solo mostrar PENDIENTE y ANULADA en reservas
+    if (isClient) {
+      return matchesSearch;
+    }
+
+    // Solo mostrar PENDIENTE y ANULADA en reservas para administradores/empleados
     const isVisibleStatus = r.status === 'PENDIENTE' || r.status === 'ANULADA';
     if (!isVisibleStatus) return false;
 
@@ -482,25 +486,27 @@ export const ReservasPage: React.FC = () => {
                   className="w-full bg-white border border-slate-200 rounded-full py-3 pl-11 pr-6 text-slate-600 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all placeholder:text-slate-400 text-sm" />
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-                {[
-                  { id: 'TODOS', label: 'Todos' },
-                  { id: 'PENDIENTE', label: 'Pendientes' },
-                  { id: 'ANULADA', label: 'Anuladas' }
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setStatusFilter(f.id as any)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${
-                      statusFilter === f.id 
-                        ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-200' 
-                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+              {!isClient && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                  {[
+                    { id: 'TODOS', label: 'Todos' },
+                    { id: 'PENDIENTE', label: 'Pendientes' },
+                    { id: 'ANULADA', label: 'Anuladas' }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setStatusFilter(f.id as any)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${
+                        statusFilter === f.id 
+                          ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-200' 
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <ReservasTable
               reservations={filteredReservations}
