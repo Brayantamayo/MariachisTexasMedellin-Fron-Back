@@ -72,13 +72,19 @@ const metodoPagoLabel: Record<string, string> = {
   OTRO: 'Otro',
 };
 
+const getAbonoLabel = (idx: number) => {
+  const ordinals = ['1er', '2do', '3er', '4to', '5to', '6to', '7mo', '8vo', '9no', '10mo'];
+  return `${ordinals[idx] || idx + 1} Abono`;
+};
+
 // ─── Abono DETALLE───────────────────────────────────────────────────────
 const AbonoDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   abono: Abono | null;
+  abonoLabel?: string;
   onDownload: (id: string) => void;
-}> = ({ isOpen, onClose, abono, onDownload }) => {
+}> = ({ isOpen, onClose, abono, abonoLabel, onDownload }) => {
   if (!isOpen || !abono) return null;
   const isFirstAbono = abono.newBalance > 0;
 
@@ -96,7 +102,7 @@ const AbonoDetailModal: React.FC<{
             <CreditCard className="text-emerald-400" size={22} />
           </div>
           <h3 className="text-sm font-serif font-bold text-white tracking-widest uppercase mb-0.5">
-            {isFirstAbono ? '1er Abono' : '2do Abono'}
+            {abonoLabel || (isFirstAbono ? '1er Abono' : '2do Abono')}
           </h3>
           <p className="text-[9px] text-slate-400 font-mono uppercase">ABONO #{abono.id}</p>
         </div>
@@ -164,7 +170,7 @@ export const RegisterAbonoModal: React.FC<{
   onSuccess: () => void;
   showNotification: (msg: string, type?: 'success' | 'error') => void;
 }> = ({ isOpen, onClose, onSuccess, showNotification }) => {
-  const [reservations, setReservations] = useState<{ id: string; clientName: string; pending: number; paid: number; total: number }[]>([]);
+  const [reservations, setReservations] = useState<{ id: string; clientName: string; pending: number; paid: number; total: number; paymentCount?: number }[]>([]);
   const [form, setForm] = useState({
     reservationId: '',
     date: new Date().toISOString().split('T')[0],
@@ -201,7 +207,7 @@ export const RegisterAbonoModal: React.FC<{
       : selectedRes.pending
     : 0;
   const isSecondAbono = selectedRes && selectedRes.paid > 0;
-  const abonoLabel = isSecondAbono ? '2do Abono' : '1er Abono';
+  const abonoLabel = selectedRes ? getAbonoLabel(selectedRes.paymentCount ?? (isSecondAbono ? 1 : 0)) : 'Abono';
 
   const handleSubmit = async () => {
     // Validación por campo
@@ -437,6 +443,7 @@ export const AbonosPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedAbono, setSelectedAbono] = useState<Abono | null>(null);
+  const [selectedAbonoLabel, setSelectedAbonoLabel] = useState<string>('');
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
@@ -664,7 +671,7 @@ export const AbonosPage: React.FC = () => {
                                   {group.abonos.map((abono, idx) => (
                                     <div key={abono.id} className="grid grid-cols-5 px-6 py-4 items-center hover:bg-slate-50/30">
                                       <span className="text-xs font-bold text-slate-600">
-                                        {idx === 0 ? '1er Abono' : '2do Abono'}
+                                        {getAbonoLabel(idx)}
                                       </span>
                                       <span className="text-xs text-slate-500 flex items-center gap-1">
                                         <Calendar size={11} className="text-slate-400" />
@@ -678,12 +685,12 @@ export const AbonosPage: React.FC = () => {
                                       <div className="flex items-center justify-center gap-2">
                                         <ActionButton
                                           icon={Eye}
-                                          onClick={e => { e.stopPropagation(); setSelectedAbono(abono); setIsDetailOpen(true); }}
+                                          onClick={e => { e?.stopPropagation(); setSelectedAbono(abono); setSelectedAbonoLabel(getAbonoLabel(idx)); setIsDetailOpen(true); }}
                                           tooltip="Ver detalle"
                                         />
                                         <ActionButton
                                           icon={Download}
-                                          onClick={e => { e.stopPropagation(); handleDownloadAbono(abono.id); }}
+                                          onClick={e => { e?.stopPropagation(); handleDownloadAbono(abono.id); }}
                                           tooltip="Descargar PDF"
                                           variant="danger"
                                         />
@@ -716,6 +723,7 @@ export const AbonosPage: React.FC = () => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         abono={selectedAbono}
+        abonoLabel={selectedAbonoLabel}
         onDownload={handleDownloadAbono}
       />
 

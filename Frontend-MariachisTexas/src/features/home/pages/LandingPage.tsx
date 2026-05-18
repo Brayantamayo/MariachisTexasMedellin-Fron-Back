@@ -4,7 +4,7 @@ import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award,
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
-
+import { AIAdvisorWidget } from '@/src/features/home/pages/Aiadvisorwidger.tsx';
 
 interface Props {
     onNavigate: (path: string) => void;
@@ -90,6 +90,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
 
     return (
         <div className="bg-[#050505] font-sans text-slate-200 overflow-x-hidden">
+            <AIAdvisorWidget />
 
             {/* --- HERO SECTION --- */}
             <section id="inicio" className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]">
@@ -580,7 +581,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                             Reservar Fecha
                         </button>
                         <button className="px-12 py-5 bg-white/5 border border-white/30 hover:bg-white/10 text-white rounded-full font-bold text-sm tracking-[0.25em] uppercase transition-all flex items-center justify-center gap-3 backdrop-blur-sm">
-                            <Phone size={16} /> 300 123 4567
+                            <Phone size={16} /> 312 2373486
                         </button>
                     </div>
                 </motion.div>

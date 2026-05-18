@@ -12,7 +12,7 @@ const getEmpleadoRolId = async (): Promise<number> => {
     // Intentar obtener del endpoint público
     const response = await api.get('/roles/public/empleado-rol-id');
     empleadoRolId = response.data.rolId;
-    return empleadoRolId;
+    return empleadoRolId || 2;
   } catch (err) {
     console.warn('No se pudo obtener rol EMPLEADO del servidor, usando fallback');
     // Fallback: asumir rolId 2
@@ -50,7 +50,9 @@ const mapFromBackend = (backend: any): User => {
   serviceZone: backend.empleado?.zonaServicio || 'URBANA',
   // Campos adicionales para empleados
   mainInstrument: backend.empleado?.instrumentoPrincipal || '',
-  otherInstruments: backend.empleado?.otrosInstrumentos ? backend.empleado.otrosInstrumentos.split(', ').filter((i: string) => i.trim()) : [],
+  otherInstruments: backend.empleado?.otrosInstrumentos
+    ? backend.empleado.otrosInstrumentos.split(',').map((i: string) => i.trim()).filter(Boolean)
+    : [],
   experienceYears: backend.empleado?.anosExperiencia || 0,
   avatar: backend.empleado?.foto || '',
   password: undefined // No devolver password

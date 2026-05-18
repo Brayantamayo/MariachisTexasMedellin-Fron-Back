@@ -36,16 +36,16 @@ export const DateDetailsModal: React.FC<Props> = ({
   reservations, blocks = [], rehearsals = [], quotations = [],
   onViewReservation, onViewRehearsal, onCreateNew, onBlockTime, onDeleteBlock
 }) => {
+  const safeDate = date || '';
   const { user } = useAuth();
   const isAdmin  = user?.role === UserRole.ADMIN;
   const isClient = user?.role === UserRole.CLIENTE;
 
   const timerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
+  const touchStartPos  = useRef<{ x: number; y: number } | null>(null);
 
-  if (!isOpen || !date) return null;
-
-  const dateObj = new Date(date + 'T00:00:00');
+  const dateObj = new Date(safeDate + 'T00:00:00');
   const dateStr = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const hours: string[] = [];
@@ -155,7 +155,7 @@ export const DateDetailsModal: React.FC<Props> = ({
     isLongPressRef.current = false;
     timerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
-      if (slotData.status === 'free') onBlockTime(date, time);
+      if (slotData.status === 'free') onBlockTime(safeDate, time);
       else if (slotData.status === 'blocked_partial' && isAdmin) onDeleteBlock(slotData.data.id);
     }, 700);
   };
@@ -172,6 +172,43 @@ export const DateDetailsModal: React.FC<Props> = ({
     } else if (slotData.status === 'rehearsal' && onViewRehearsal && !isClient) {
       onViewRehearsal(slotData.data);
     }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, time: string, slotData: any) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isLongPressRef.current = false;
+    timerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      if (slotData.status === 'free') onBlockTime(safeDate, time);
+      else if (slotData.status === 'blocked_partial' && isAdmin) onDeleteBlock(slotData.data.id);
+    }, 700);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, time: string, slotData: any) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (isLongPressRef.current) {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    handleMouseUp(time, slotData);
   };
 
   // ─── Status color helpers ─────────────────────────────────────────────────
@@ -231,7 +268,7 @@ export const DateDetailsModal: React.FC<Props> = ({
               if (status === 'reserved') {
                 const res   = data as Reservation;
                 const clrs  = getReservaColors(res);
-                const range = `${format12h(res.startTime || res.eventTime)} → ${format12h(res.endTime)}`
+                const range = `${format12h(res.startTime || res.eventTime || '')} → ${format12h(res.endTime || '')}`
                 const isMyReservation = !isClient || user?.email === res.clientEmail || (res as any).isMine;
                 
                 // ✅ Nueva lógica: Solo mostrar azul si YA PASÓ el tiempo
@@ -364,7 +401,7 @@ export const DateDetailsModal: React.FC<Props> = ({
               // ── QUOTE ────────────────────────────────────────────────────
               } else if (status === 'quote') {
                 const q = data as Quotation;
-                const range = `${format12h(q.startTime)} → ${format12h(q.endTime)}`
+                const range = `${format12h(q.startTime || '')} → ${format12h(q.endTime || '')}`
                 if (!isClient) {
                   containerClass = "border-amber-200 bg-amber-50/70 cursor-not-allowed";
                   content = (
@@ -475,7 +512,7 @@ export const DateDetailsModal: React.FC<Props> = ({
                 const timeMinutes = timeToMinutes(time);
                 const now = new Date();
                 const currentLocalStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                const isPastSlot = date < currentLocalStr || (date === currentLocalStr && timeMinutes <= now.getHours() * 60 + now.getMinutes());
+                const isPastSlot = safeDate < currentLocalStr || (safeDate === currentLocalStr && timeMinutes <= now.getHours() * 60 + now.getMinutes());
 
                 if (isPastSlot) {
                   containerClass = "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed";
@@ -500,8 +537,9 @@ export const DateDetailsModal: React.FC<Props> = ({
                   key={time}
                   onMouseDown={() => handleMouseDown(time, { status, data })}
                   onMouseUp={() => handleMouseUp(time, { status, data })}
-                  onTouchStart={() => handleMouseDown(time, { status, data })}
-                  onTouchEnd={() => handleMouseUp(time, { status, data })}
+                  onTouchStart={(e) => handleTouchStart(e, time, { status, data })}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={(e) => handleTouchEnd(e, time, { status, data })}
                   className={`group flex items-center gap-4 p-3 rounded-xl border transition-all select-none ${containerClass}`}
                 >
                   <div className="w-12 text-center shrink-0">

@@ -293,12 +293,31 @@ export const eliminarCliente = async (id: number) => {
     throw new AppError('No se puede eliminar el cliente porque tiene reservas activas', 400)
   }
 
-  await prisma.cliente.update({
-    where: { id },
-    data: { activo: false },
-  })
+  const historyCount = await prisma.cotizacion.count({ where: { clienteId: id } }) +
+                       await prisma.abono.count({ where: { clienteId: id } }) +
+                       await prisma.venta.count({ where: { clienteId: id } })
 
-  return { message: 'Cliente eliminado exitosamente' }
+  if (historyCount === 0) {
+    // Si no tiene historial, podemos hacer un hard delete completo
+    // Borrar el usuario automáticamente borra el cliente en cascada
+    await prisma.usuario.delete({ where: { id: cliente.usuarioId } })
+    return { message: 'Cliente y usuario eliminados permanentemente' }
+  } else {
+    // Si tiene historial, hacemos un soft delete de ambos
+    await prisma.$transaction(async (tx) => {
+      await tx.cliente.update({
+        where: { id },
+        data: { activo: false },
+      })
+      if (cliente.usuarioId) {
+        await tx.usuario.update({
+          where: { id: cliente.usuarioId },
+          data: { estado: false }
+        })
+      }
+    })
+    return { message: 'Cliente y usuario desactivados (mantienen historial)' }
+  }
 }
 
 // Cambiar estado de cliente

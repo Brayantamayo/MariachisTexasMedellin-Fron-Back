@@ -30,7 +30,6 @@ import { PublicLayout } from './shared/components/PublicLayout';
 import { LoadingScreen } from './shared/components/LoadingScreen';
 import { Menu } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
-import { AIAdvisorWidget } from './src/features/home/pages/Aiadvisorwidger';
 
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -210,7 +209,6 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <MainLayout />
-      <AIAdvisorWidget />
       <Toaster position="top-center" />
     </AuthProvider>
   );

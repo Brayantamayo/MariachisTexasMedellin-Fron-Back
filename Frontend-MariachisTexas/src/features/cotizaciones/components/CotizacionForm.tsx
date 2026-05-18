@@ -300,7 +300,7 @@ export const CotizacionForm: React.FC<Props> = ({
                   className={`${isEditing ? lockedInputClass : inputClass} ${fieldErrors.clientPhone ? 'border-red-400 bg-red-50 ring-2 ring-red-100 focus:border-red-500' : ''
                     }`}
                   ref={el => registerFieldRef?.('clientPhone', el)}
-                  placeholder="Ej: 300 123 4567"
+                  placeholder="Ej: 312 2373486"
                 />
                 {fieldErrors.clientPhone && (
                   <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1.5 animate-pulse pl-1">

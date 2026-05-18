@@ -413,7 +413,8 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput, isAdmi
         include: {
           repertorios: true,
         }
-      }
+      },
+      venta: true
     }
   })
 
@@ -492,10 +493,31 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput, isAdmi
       if (!isNaN(nuevoTotal) && nuevoTotal > 0) {
         const pagado = Number(r.totalValor) - Number(r.saldoPendiente)
         const nuevoSaldo = Math.max(0, nuevoTotal - pagado)
+        
+        let nuevoEstado = r.estado;
+        if (r.estado === 'FINALIZADO' && nuevoSaldo > 0.01) {
+          nuevoEstado = 'CONFIRMADA';
+        }
+
         await tx.reserva.update({
           where: { id },
-          data: { totalValor: nuevoTotal, saldoPendiente: nuevoSaldo },
+          data: { 
+            totalValor: nuevoTotal, 
+            saldoPendiente: nuevoSaldo,
+            estado: nuevoEstado as any 
+          },
         })
+
+        if (r.venta) {
+          const estadoVenta = nuevoEstado === 'CONFIRMADA' ? 'CONFIRMADO' : nuevoEstado;
+          await tx.venta.update({
+            where: { id: r.venta.id },
+            data: { 
+              montoTotal: nuevoTotal,
+              estado: estadoVenta as any 
+            }
+          })
+        }
       }
     }
 
