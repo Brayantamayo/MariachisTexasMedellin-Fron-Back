@@ -45,6 +45,8 @@ export const DateDetailsModal: React.FC<Props> = ({
   const isLongPressRef = useRef(false);
   const touchStartPos  = useRef<{ x: number; y: number } | null>(null);
 
+  if (!isOpen || !date) return null;
+
   const dateObj = new Date(safeDate + 'T00:00:00');
   const dateStr = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
