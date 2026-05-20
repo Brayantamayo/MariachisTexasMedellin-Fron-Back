@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { User, Mail, Lock, Phone, MapPin, Calendar, FileText, Camera, Home, Hash, Map, CheckCircle, AlertCircle, X, Loader2, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { authService } from '../pages/authService';
 import { getErrorMessage } from '@/shared/utils/getErrorMessage';
 import { uploadImage } from '@/shared/services/uploadService';
-
-
-interface Props {
-  onNavigate: (path: string) => void;
-}
 
 const PlusIcon = ({ size, className }: { size: number; className: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -17,7 +13,8 @@ const PlusIcon = ({ size, className }: { size: number; className: string }) => (
   </svg>
 );
 
-export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
+export const RegisterPage: React.FC = () => {
+  const navigate = useNavigate();
   const [emailFromUrl, setEmailFromUrl] = useState('');
   const tokenRef = useRef<string | null>(null);
 
@@ -135,7 +132,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
       });
       if (tokenRef.current) authService.marcarTokenUsado(tokenRef.current).catch(() => { });
       showNotification('¡Registro exitoso! Redirigiendo al inicio de sesión...', 'success');
-      setTimeout(() => onNavigate('/login'), 2000);
+      setTimeout(() => navigate('/login'), 2000);
     } catch (error: any) {
       showNotification(getErrorMessage(error), 'error');
     } finally {
@@ -459,7 +456,7 @@ export const RegisterPage: React.FC<Props> = ({ onNavigate }) => {
 
           <div className="mt-6 text-center pt-4 border-t border-white/5">
             <p className="text-gray-500 text-[10px] font-medium uppercase tracking-widest">
-              ¿Ya tienes cuenta? <button onClick={() => onNavigate('/login')} className="text-secondary-500 font-black hover:text-secondary-400 ml-1">Inicia sesión</button>
+              ¿Ya tienes cuenta? <button onClick={() => navigate('/login')} className="text-secondary-500 font-black hover:text-secondary-400 ml-1">Inicia sesión</button>
             </p>
           </div>
         </div>

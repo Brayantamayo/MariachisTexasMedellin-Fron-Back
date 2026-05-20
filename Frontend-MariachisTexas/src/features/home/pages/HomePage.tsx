@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { Reservation, Rehearsal, UserRole } from '@/types';
@@ -20,11 +21,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-interface HomePageProps {
-  onNavigate: (path: string) => void;
-}
-
-export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
+export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
@@ -240,14 +238,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
-                    onClick={() => onNavigate('/reservas')}
+                    onClick={() => navigate('/reservas')}
                     className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-900 transition-all hover:scale-[1.02] hover:bg-amber-300"
                   >
                     Ver agenda
                     <ChevronRight size={16} />
                   </button>
                   <button
-                    onClick={() => onNavigate('/repertorio')}
+                    onClick={() => navigate('/repertorio')}
                     className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/10"
                   >
                     Repertorio
@@ -414,7 +412,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         </div>
 
                         <button
-                          onClick={() => onNavigate('/reservas')}
+                          onClick={() => navigate('/reservas')}
                           className="inline-flex items-center gap-2 self-start rounded-2xl bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-900 transition-colors hover:bg-amber-300"
                         >
                           Ver detalles
@@ -472,7 +470,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       aquí verás la información más importante para prepararte.
                     </p>
                     <button
-                      onClick={() => onNavigate('/reservas')}
+                      onClick={() => navigate('/reservas')}
                       className="mt-8 inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/8 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/12"
                     >
                       Revisar reservas
@@ -531,7 +529,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </h4>
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => onNavigate('/repertorio')}
+                    onClick={() => navigate('/repertorio')}
                     className="group rounded-[1.4rem] border border-white/10 bg-slate-950/30 p-4 text-left transition-all hover:border-amber-400/25 hover:bg-amber-400/10"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/5 text-slate-300 transition-colors group-hover:text-amber-300">
@@ -544,7 +542,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   </button>
 
                   <button
-                    onClick={() => onNavigate('/reservas')}
+                    onClick={() => navigate('/reservas')}
                     className="group rounded-[1.4rem] border border-white/10 bg-slate-950/30 p-4 text-left transition-all hover:border-blue-400/25 hover:bg-blue-500/10"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/5 text-slate-300 transition-colors group-hover:text-blue-300">
@@ -648,7 +646,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
               <button
-                onClick={() => onNavigate('/reservas')}
+                onClick={() => navigate('/reservas')}
                 className="group relative px-10 py-5 rounded-2xl bg-red-600 text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:scale-105 hover:bg-red-500 shadow-[0_15px_30px_rgba(220,38,38,0.2)]"
               >
                 <div className="absolute inset-0 rounded-2xl bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
@@ -659,7 +657,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </button>
 
               <button
-                onClick={() => onNavigate('/repertorio')}
+                onClick={() => navigate('/repertorio')}
                 className="px-10 py-5 rounded-2xl bg-white/5 border border-amber-500/15 backdrop-blur-xl text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:bg-white/10 hover:border-white/20"
               >
                 <span className="flex items-center gap-3">
@@ -690,7 +688,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </div>
               </div>
               <button
-                onClick={() => onNavigate('/reservas')}
+                onClick={() => navigate('/reservas')}
                 className="text-[10px] font-black text-slate-500 hover:text-amber-500 uppercase tracking-widest transition-colors flex items-center gap-2"
               >
                 Historial completo <ChevronRight size={14} />
@@ -716,7 +714,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     de Medellín.
                   </p>
                   <button
-                    onClick={() => onNavigate('/reservas')}
+                    onClick={() => navigate('/reservas')}
                     className="inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl shadow-amber-900/20"
                   >
                     Cotizar ahora
@@ -791,7 +789,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         )}
                       </div>
                       <button
-                        onClick={() => onNavigate('/reservas')}
+                        onClick={() => navigate('/reservas')}
                         className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-xl group/btn"
                       >
                         <ChevronRight
@@ -863,7 +861,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <button
-                  onClick={() => onNavigate('/repertorio')}
+                  onClick={() => navigate('/repertorio')}
                   className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all gap-4"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-amber-500 transition-colors">
@@ -875,7 +873,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </button>
 
                 <button
-                  onClick={() => onNavigate('/reservas')}
+                  onClick={() => navigate('/reservas')}
                   className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all gap-4"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-red-500 transition-colors">

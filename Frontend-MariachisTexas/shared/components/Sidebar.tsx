@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../../types';
 import {
@@ -10,8 +11,6 @@ import {
 
 
 interface SidebarProps {
-  currentPath: string;
-  onNavigate: (path: string) => void;
   isPanelOpen: boolean;
   setIsPanelOpen: (isOpen: boolean) => void;
 }
@@ -32,8 +31,11 @@ interface Category {
   items: MenuItem[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPanelOpen, setIsPanelOpen }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isPanelOpen, setIsPanelOpen }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
   const [activeCategory, setActiveCategory] = useState<CategoryId>('inicio');
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isPinned, setIsPinned] = useState(false);
@@ -194,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
         <div className="mt-1 px-5 w-full">
           <button
             onClick={() => {
-              onNavigate('/');
+              navigate('/');
               logout();
             }}
             title="Cerrar Sesión"
@@ -250,7 +252,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
                     if (hasSubItems) {
                       toggleExpand(item.label);
                     } else {
-                      onNavigate(item.path);
+                      navigate(item.path);
                       if (!isPinned) setIsPanelOpen(false);
                     }
                   }}
@@ -276,7 +278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isPan
                       return (
                         <button
                           key={sub.path}
-                          onClick={() => { onNavigate(sub.path); if (!isPinned) setIsPanelOpen(false); }}
+                          onClick={() => { navigate(sub.path); if (!isPinned) setIsPanelOpen(false); }}
                           className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all duration-300 group
                             ${isSubActive ? 'text-primary-500 font-bold' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}
                           `}

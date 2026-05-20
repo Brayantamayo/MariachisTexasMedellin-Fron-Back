@@ -217,6 +217,17 @@ export const ReservaEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, res
       }
     }
 
+    // ── No permitir editar a fecha/hora pasada ─────────────────────────────────
+    const startTime = formData.startTime || formData.eventTime;
+    if (formData.eventDate && startTime) {
+      const eventDateTime = new Date(`${formData.eventDate}T${startTime}:00`);
+      if (eventDateTime < new Date()) {
+        setGlobalError('No se puede programar una reserva en una fecha u hora que ya pasó.');
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+
     const validationErrors = validate(formData, services);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);

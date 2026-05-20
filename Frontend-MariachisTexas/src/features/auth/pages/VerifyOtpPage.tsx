@@ -1,14 +1,19 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { authService } from '../pages/authService';
 
-interface Props {
-  email: string;
-  onVerified: (otp: string) => void;
-  onNavigate: (path: string) => void;
-}
+export const VerifyOtpPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email || '';
 
-export const VerifyOtpPage: React.FC<Props> = ({ email, onVerified, onNavigate }) => {
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [email, navigate]);
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +59,7 @@ export const VerifyOtpPage: React.FC<Props> = ({ email, onVerified, onNavigate }
     setError('');
     try {
       await authService.verificarOtp(email, code);
-      onVerified(code); // Pasar el OTP verificado a ResetPasswordPage
+      navigate('/reset-password', { state: { email, otp: code } });
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Código inválido o expirado.');
       setOtp(['', '', '', '', '', '']);
@@ -63,6 +68,10 @@ export const VerifyOtpPage: React.FC<Props> = ({ email, onVerified, onNavigate }
       setIsLoading(false);
     }
   };
+
+  if (!email) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 pt-32">
@@ -115,7 +124,7 @@ export const VerifyOtpPage: React.FC<Props> = ({ email, onVerified, onNavigate }
           </form>
 
           <div className="mt-6 text-center pt-6 border-t border-white/5">
-            <button onClick={() => onNavigate('/forgot-password')}
+            <button onClick={() => navigate('/forgot-password')}
               className="text-gray-400 hover:text-white transition-colors text-sm flex items-center justify-center gap-2 mx-auto group">
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
               Volver

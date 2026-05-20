@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './shared/contexts/AuthContext';
 import { Sidebar } from './shared/components/Sidebar';
 import { LoginPage } from './src/features/auth/pages/LoginPage';
@@ -25,137 +26,19 @@ import { DashboardPage } from './src/features/home/pages/DashboardPage';
 import { GaleriaPage } from './src/features/galeria/pages/GaleriaPage';
 import { ProfilePage } from './src/features/home/pages/ProfilePage';
 
-import { ModuleName, UserRole } from './types';
+import { UserRole } from './types';
 import { PublicLayout } from './shared/components/PublicLayout';
 import { LoadingScreen } from './shared/components/LoadingScreen';
+import { ProtectedRoute } from './shared/components/ProtectedRoute';
+import { PublicRoute } from './shared/components/PublicRoute';
 import { Menu } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
-const MainLayout: React.FC = () => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  const [currentPath, setCurrentPath] = useState<string>('/');
-
-  const navigate = (path: string) => {
-    if (path !== currentPath) {
-      setCurrentPath(path);
-      window.scrollTo(0, 0);
-    }
-  };
-
+const AuthenticatedLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetOtp, setResetOtp] = useState('');
-
-  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/verify-otp', '/reset-password', '/repertorio', '/cotizacion'];
-  const isPublicRoute = publicRoutes.includes(currentPath);
-
-  // Redirigir al dashboard o home tras login
-  useEffect(() => {
-    if (isAuthenticated && (
-      currentPath === '/' ||
-      currentPath === '/login' ||
-      currentPath === '/register' ||
-      currentPath === '/forgot-password' ||
-      currentPath === '/verify-otp' ||
-      currentPath === '/reset-password'
-    )) {
-      if (user?.role === UserRole.CLIENTE || user?.role === UserRole.EMPLEADO) {
-        setCurrentPath('/home');
-      } else {
-        setCurrentPath('/dashboard');
-      }
-    }
-  }, [isAuthenticated, currentPath, user]);
-
-  // Redirigir al inicio si el usuario no está autenticado y la ruta no es pública
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && !isPublicRoute && currentPath !== '/') {
-      setCurrentPath('/');
-    }
-  }, [isLoading, isAuthenticated, isPublicRoute, currentPath]);
-
-  if (isLoading) return <LoadingScreen />;
-
-  if (!isAuthenticated) {
-    const renderPublicContent = () => {
-      switch (currentPath) {
-        case '/login':
-          return <LoginPage onNavigate={navigate} />;
-        case '/register':
-          return <RegisterPage onNavigate={navigate} />;
-        case '/forgot-password':
-          return (
-            <ForgotPasswordPage
-              onNavigate={navigate}
-              onEmailSent={(email) => {
-                setResetEmail(email);
-                setCurrentPath('/verify-otp');
-              }}
-            />
-          );
-        case '/verify-otp':
-          return (
-            <VerifyOtpPage
-              email={resetEmail}
-              onVerified={(otp) => {
-                setResetOtp(otp);
-                setCurrentPath('/reset-password');
-              }}
-              onNavigate={navigate}
-            />
-          );
-        case '/reset-password':
-          return (
-            <ResetPasswordPage
-              email={resetEmail}
-              otp={resetOtp}
-              onNavigate={navigate}
-            />
-          );
-        case '/repertorio':
-          return <PublicRepertoirePage />;
-        case '/cotizacion':
-          return <PublicCotizacionPage onNavigate={navigate} />;
-        case '/':
-          return <LandingPage onNavigate={navigate} />;
-        default:
-          return <LoadingScreen />;
-      }
-    };
-
-    return (
-      <PublicLayout onNavigate={navigate} currentPath={currentPath}>
-        {renderPublicContent()}
-      </PublicLayout>
-    );
-  }
-
-  const renderAppContent = () => {
-    const module = currentPath.substring(1) as ModuleName;
-    switch (module) {
-      case 'home': return <HomePage onNavigate={navigate} />;
-      case 'dashboard': return <DashboardPage />;
-      case 'clientes': return <ClientsPage />;
-      case 'usuarios': return <UsersPage />;
-      case 'roles': return <RolesPage />;
-      case 'galeria': return <GaleriaPage />;
-      case 'empleados': return <EmployeesPage />;
-      case 'repertorio': return <RepertoirePage />;
-      case 'servicios': return user?.role === UserRole.ADMIN ? <ServicesPage /> : <HomePage onNavigate={setCurrentPath} />;
-      case 'ensayos': return <EnsayosPage />;
-      case 'reservas': return <ReservasPage />;
-      case 'abonos': return <AbonosPage />;
-      case 'ventas': return <VentasPage />;
-      case 'cotizaciones': return <CotizacionesPage />;
-      case 'perfil': return <ProfilePage />;
-      default:
-        return user?.role === UserRole.ADMIN
-          ? <DashboardPage />
-          : <HomePage onNavigate={setCurrentPath} />;
-    }
-  };
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -172,8 +55,6 @@ const MainLayout: React.FC = () => {
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden transition-transform duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar
-          currentPath={currentPath}
-          onNavigate={(path) => { navigate(path); setIsMobileMenuOpen(false); }}
           isPanelOpen={isPanelOpen}
           setIsPanelOpen={setIsPanelOpen}
         />
@@ -182,8 +63,6 @@ const MainLayout: React.FC = () => {
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <Sidebar
-          currentPath={currentPath}
-          onNavigate={navigate}
           isPanelOpen={isPanelOpen}
           setIsPanelOpen={setIsPanelOpen}
         />
@@ -199,18 +78,65 @@ const MainLayout: React.FC = () => {
       <main className={`flex-1 transition-all duration-300 w-full min-w-0 
         ${(currentPath === '/perfil' || currentPath === '/home') ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-20 lg:p-8 lg:pt-8 text-slate-800'} 
         ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
-        {renderAppContent()}
+        <Outlet />
       </main>
     </div>
   );
 };
 
+const MainLayout: React.FC = () => {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) return <LoadingScreen />;
+
+  return (
+    <Routes>
+      {isAuthenticated ? (
+        // Rutas para usuarios autenticados
+        <Route element={<AuthenticatedLayout />}>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><DashboardPage /></ProtectedRoute>} />
+          <Route path="/clientes" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><ClientsPage /></ProtectedRoute>} />
+          <Route path="/usuarios" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><UsersPage /></ProtectedRoute>} />
+          <Route path="/roles" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><RolesPage /></ProtectedRoute>} />
+          <Route path="/galeria" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><GaleriaPage /></ProtectedRoute>} />
+          <Route path="/empleados" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><EmployeesPage /></ProtectedRoute>} />
+          <Route path="/repertorio" element={<RepertoirePage />} />
+          <Route path="/ensayos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.EMPLEADO]}><EnsayosPage /></ProtectedRoute>} />
+          <Route path="/servicios" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><ServicesPage /></ProtectedRoute>} />
+          <Route path="/reservas" element={<ReservasPage />} />
+          <Route path="/ventas" element={<VentasPage />} />
+          <Route path="/abonos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AbonosPage /></ProtectedRoute>} />
+          <Route path="/cotizaciones" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CLIENTE]}><CotizacionesPage /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to={user?.role === UserRole.ADMIN ? "/dashboard" : "/home"} replace />} />
+        </Route>
+      ) : (
+        // Rutas para usuarios públicos/invitados
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+          <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+          <Route path="/verify-otp" element={<PublicRoute><VerifyOtpPage /></PublicRoute>} />
+          <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+          <Route path="/repertorio" element={<PublicRepertoirePage />} />
+          <Route path="/cotizacion" element={<PublicCotizacionPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      )}
+    </Routes>
+  );
+};
+
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <MainLayout />
-      <Toaster position="top-center" />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <MainLayout />
+        <Toaster position="top-center" />
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 

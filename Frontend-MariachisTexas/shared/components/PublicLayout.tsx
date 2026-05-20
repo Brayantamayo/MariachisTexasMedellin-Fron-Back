@@ -1,15 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { Music, Menu, X } from 'lucide-react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 
-interface Props {
-  children: React.ReactNode;
-  onNavigate: (path: string) => void;
-  currentPath: string;
-}
-//////NAV
-
-export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPath }) => {
+export const PublicLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -29,19 +25,19 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
 
   const handleNavClick = (sectionId: string) => {
     if (sectionId === 'repertorio') {
-        onNavigate('/repertorio');
+        navigate('/repertorio');
         setMobileMenuOpen(false);
         return;
     }
 
     if (sectionId === 'cotizar') {
-        onNavigate('/cotizacion');
+        navigate('/cotizacion');
         setMobileMenuOpen(false);
         return;
     }
 
     if (currentPath !== '/') {
-      onNavigate('/');
+      navigate('/');
       setTimeout(() => {
         const element = document.getElementById(sectionId);
         if (element) element.scrollIntoView({ behavior: 'smooth' });
@@ -67,7 +63,7 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
           <div className="flex justify-between items-center">
             
             {/* Logo */}
-            <div className="flex items-center cursor-pointer group" onClick={() => onNavigate('/')}>
+            <div className="flex items-center cursor-pointer group" onClick={() => navigate('/')}>
               <div className="relative w-12 h-12 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
                   <div className="absolute inset-0 bg-red-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <img 
@@ -106,14 +102,14 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
             {/* Auth Buttons */}
             <div className="hidden md:flex items-center gap-4">
               <button 
-                onClick={() => onNavigate('/login')}
+                onClick={() => navigate('/login')}
                 className="text-xs font-black tracking-[0.2em] transition-all duration-300 text-white hover:text-red-400 hover:scale-110 hover:-translate-y-0.5"
               >
                 INICIAR SESIÓN
               </button>
               
               <button 
-                onClick={() => onNavigate('/register')}
+                onClick={() => navigate('/register')}
                 className="relative group px-8 py-3 rounded-full font-black text-xs tracking-[0.2em] transition-all duration-300 bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white shadow-[0_0_20px_rgba(206,17,38,0.4)] hover:shadow-[0_0_35px_rgba(206,17,38,0.7)] hover:-translate-y-1 hover:scale-105 border border-[#f1bf00]/30 overflow-hidden"
               >
                 <span className="relative z-10">REGISTRARSE</span>
@@ -139,10 +135,10 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
                     </button>
                  ))}
                  <div className="flex flex-col gap-3 mt-4">
-                     <button onClick={() => { onNavigate('/login'); setMobileMenuOpen(false); }} className="w-full py-3 rounded-lg border border-white/20 text-sm font-bold tracking-widest text-white">
+                     <button onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} className="w-full py-3 rounded-lg border border-white/20 text-sm font-bold tracking-widest text-white">
                          INICIAR SESIÓN
                      </button>
-                     <button onClick={() => { onNavigate('/register'); setMobileMenuOpen(false); }} className="w-full py-3 rounded-lg bg-gradient-to-r from-[#ce1126] to-[#ff2b42] text-sm font-bold tracking-widest text-white shadow-lg shadow-red-900/40">
+                     <button onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} className="w-full py-3 rounded-lg bg-gradient-to-r from-[#ce1126] to-[#ff2b42] text-sm font-bold tracking-widest text-white shadow-lg shadow-red-900/40">
                          RESERVAR
                      </button>
                  </div>
@@ -152,7 +148,7 @@ export const PublicLayout: React.FC<Props> = ({ children, onNavigate, currentPat
 
       {/* Main Content */}
       <main className="relative z-10 w-full overflow-x-hidden">
-        {children}
+        <Outlet />
       </main>
 
     </div>

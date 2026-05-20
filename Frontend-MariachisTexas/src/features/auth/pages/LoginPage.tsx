@@ -1,12 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { Mail, Lock, AlertCircle, X } from 'lucide-react';
 
-interface Props {
-  onNavigate: (path: string) => void;
-}
-
-export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
+export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -455,7 +453,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => onNavigate('/forgot-password')}
+                  onClick={() => navigate('/forgot-password')}
                   className="text-[9px] text-red-400 hover:text-red-300 transition-colors font-medium"
                 >
                   Olvidaste tu contrasena?
@@ -492,7 +490,7 @@ export const LoginPage: React.FC<Props> = ({ onNavigate }) => {
             <p className="text-white/50 text-[10px]">
               No tienes cuenta?{' '}
               <button
-                onClick={() => onNavigate('/register')}
+                onClick={() => navigate('/register')}
                 className="text-green-400 font-bold hover:text-green-300 transition-colors"
               >
                 Registrate

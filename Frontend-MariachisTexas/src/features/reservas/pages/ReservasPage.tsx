@@ -214,7 +214,9 @@ export const ReservasPage: React.FC = () => {
     }
 
     // Solo mostrar PENDIENTE y ANULADA en reservas para administradores/empleados
-    const isVisibleStatus = r.status === 'PENDIENTE' || r.status === 'ANULADA';
+    // Además, si está ANULADA y tiene abonos (o pagos), se considera venta anulada, no debe mostrarse en Reservas
+    const hasAbonos = (Number(r.paidAmount) || 0) > 0 || (r.payments && r.payments.length > 0);
+    const isVisibleStatus = r.status === 'PENDIENTE' || (r.status === 'ANULADA' && !hasAbonos);
     if (!isVisibleStatus) return false;
 
     // Filtro por pestaña

@@ -1,13 +1,14 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, MapPin, Mail, Instagram, Facebook, Youtube } from 'lucide-react';
 
 interface Props {
-  onNavigate: (path: string) => void;
   scrollToSection: (id: string) => void;
 }
 
-export const Footer: React.FC<Props> = ({ onNavigate, scrollToSection }) => {
+export const Footer: React.FC<Props> = ({ scrollToSection }) => {
+  const navigate = useNavigate();
+  
   return (
     <footer className="bg-[#050505] text-white pt-20 pb-10 relative z-10 overflow-hidden">
         
@@ -86,7 +87,7 @@ export const Footer: React.FC<Props> = ({ onNavigate, scrollToSection }) => {
                         <li><button onClick={() => scrollToSection('inicio')} className="hover:text-mexican-gold transition-colors flex items-center gap-2 hover:translate-x-1 duration-300">Inicio</button></li>
                         <li><button onClick={() => scrollToSection('conocenos')} className="hover:text-mexican-gold transition-colors flex items-center gap-2 hover:translate-x-1 duration-300">Nosotros</button></li>
                         <li><button onClick={() => scrollToSection('galeria')} className="hover:text-mexican-gold transition-colors flex items-center gap-2 hover:translate-x-1 duration-300">Videos y Galería</button></li>
-                        <li className="pt-4"><button onClick={() => onNavigate('/login')} className="text-white bg-white/10 hover:bg-mexican-pink px-4 py-2 rounded-lg text-xs font-bold transition-all w-full md:w-auto">Acceso Staff</button></li>
+                        <li className="pt-4"><button onClick={() => navigate('/login')} className="text-white bg-white/10 hover:bg-mexican-pink px-4 py-2 rounded-lg text-xs font-bold transition-all w-full md:w-auto">Acceso Staff</button></li>
                     </ul>
                 </div>
             </div>
