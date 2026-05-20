@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, ArrowLeft, CheckCircle, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from './authService';
 
-interface Props {
-  email: string;
-  otp: string;
-  onNavigate: (path: string) => void;
-}
+export const ResetPasswordPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email || '';
+  const otp = location.state?.otp || '';
 
-export const ResetPasswordPage: React.FC<Props> = ({ email, otp, onNavigate }) => {
+  useEffect(() => {
+    if (!email || !otp) {
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [email, otp, navigate]);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +42,10 @@ export const ResetPasswordPage: React.FC<Props> = ({ email, otp, onNavigate }) =
     }
   };
 
+  if (!email || !otp) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 pt-32">
       <div className="max-w-md w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden animate-fade-in-up">
@@ -50,7 +60,7 @@ export const ResetPasswordPage: React.FC<Props> = ({ email, otp, onNavigate }) =
               <p className="text-gray-400 text-sm leading-relaxed mb-8">
                 Tu contraseña ha sido restablecida correctamente. Ya puedes iniciar sesión.
               </p>
-              <button onClick={() => onNavigate('/login')}
+              <button onClick={() => navigate('/login')}
                 className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(220,38,38,0.4)] uppercase tracking-widest text-xs">
                 Ir al Inicio de Sesión
               </button>
@@ -113,7 +123,7 @@ export const ResetPasswordPage: React.FC<Props> = ({ email, otp, onNavigate }) =
               </form>
 
               <div className="mt-6 text-center pt-6 border-t border-white/5">
-                <button onClick={() => onNavigate('/forgot-password')}
+                <button onClick={() => navigate('/forgot-password')}
                   className="text-gray-400 hover:text-white transition-colors text-sm flex items-center justify-center gap-2 mx-auto group">
                   <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                   Volver

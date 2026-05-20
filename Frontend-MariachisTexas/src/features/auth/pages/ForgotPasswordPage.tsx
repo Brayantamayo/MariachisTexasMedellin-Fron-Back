@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, KeyRound, Loader2 } from 'lucide-react';
 import { authService } from './authService';
 
-interface Props {
-  onNavigate: (path: string) => void;
-  onEmailSent: (email: string) => void;
-}
-
-export const ForgotPasswordPage: React.FC<Props> = ({ onNavigate, onEmailSent }) => {
+export const ForgotPasswordPage: React.FC = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,7 +15,7 @@ export const ForgotPasswordPage: React.FC<Props> = ({ onNavigate, onEmailSent })
     setIsLoading(true);
     try {
       await authService.recuperarPassword(email);
-      onEmailSent(email);
+      navigate('/verify-otp', { state: { email } });
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||
@@ -68,7 +65,7 @@ export const ForgotPasswordPage: React.FC<Props> = ({ onNavigate, onEmailSent })
           </form>
 
           <div className="mt-8 text-center pt-6 border-t border-white/5">
-            <button onClick={() => onNavigate('/login')}
+            <button onClick={() => navigate('/login')}
               className="text-gray-400 hover:text-white transition-colors text-sm flex items-center justify-center gap-2 mx-auto group">
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
               Volver a Iniciar Sesión

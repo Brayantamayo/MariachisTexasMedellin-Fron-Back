@@ -1,14 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, ChevronRight, Heart, Play, Trophy, Sparkles, Flame, Clock, Award, Users, Mic2, Phone, Music, Zap, Camera, X, ChevronLeft } from 'lucide-react';
 import { motion } from "motion/react";
 import { Footer } from '@/src/features/home/pages/Footer.tsx';
 import { MagicCard } from '@/src/features/home/pages/MagicCard.tsx';
 import { AIAdvisorWidget } from '@/src/features/home/pages/Aiadvisorwidger.tsx';
-
-interface Props {
-    onNavigate: (path: string) => void;
-}
 
 // --- HOOKS & UTILS ---
 // Removed useScrollReveal hook in favor of framer-motion whileInView
@@ -44,7 +41,8 @@ const InfiniteMarquee: React.FC<{ items: string[] }> = ({ items }) => {
     );
 };
 
-export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
+export const LandingPage: React.FC = () => {
+    const navigate = useNavigate();
     const [dynamicGallery, setDynamicGallery] = useState<string[]>([]);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -212,7 +210,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                             className="flex flex-col sm:flex-row gap-6 w-full justify-center items-center"
                         >
                             <button
-                                onClick={() => onNavigate('/register')}
+                                onClick={() => navigate('/register')}
                                 className="group relative px-12 py-5 bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white rounded-full font-serif font-bold text-base tracking-[0.25em] uppercase overflow-hidden transition-all duration-500 shadow-[0_0_30px_rgba(206,17,38,0.6)] hover:shadow-[0_0_60px_rgba(206,17,38,0.9)] hover:-translate-y-1 border-2 border-[#f1bf00]"
                             >
                                 <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-md">
@@ -446,7 +444,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
 
 
                     <div className="mt-12 text-center">
-                        <button onClick={() => onNavigate('/repertorio')} className="inline-flex items-center gap-2 text-white hover:text-[#f1bf00] transition-colors text-sm font-bold tracking-widest uppercase border-b border-[#f1bf00] pb-1">
+                        <button onClick={() => navigate('/repertorio')} className="inline-flex items-center gap-2 text-white hover:text-[#f1bf00] transition-colors text-sm font-bold tracking-widest uppercase border-b border-[#f1bf00] pb-1">
                             Ver Repertorio Completo <ChevronRight size={14} />
                         </button>
                     </div>
@@ -575,7 +573,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-6 justify-center">
                         <button
-                            onClick={() => onNavigate('/register')}
+                            onClick={() => navigate('/register')}
                             className="px-12 py-5 bg-[#ce1126] hover:bg-[#a80b1e] text-white rounded-full font-bold text-sm tracking-[0.25em] uppercase shadow-[0_0_40px_rgba(206,17,38,0.4)] hover:shadow-[0_0_60px_rgba(206,17,38,0.6)] transition-all transform hover:-translate-y-1"
                         >
                             Reservar Fecha
@@ -588,7 +586,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigate }) => {
             </section>
 
             {/* --- FOOTER COMPONENT --- */}
-            <Footer onNavigate={onNavigate} scrollToSection={scrollToSection} />
+            <Footer scrollToSection={scrollToSection} />
 
             {/* --- ANIMATIONS STYLES --- */}
             <style>{`

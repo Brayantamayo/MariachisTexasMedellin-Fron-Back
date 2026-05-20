@@ -46,9 +46,18 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
       estado: { not: 'ANULADA' as EstadoReserva } // Al cliente no le mostramos las anuladas por defecto
     };
   } else {
-    // Para el administrador/empleado, mantenemos el filtro restrictivo
-    // Solo PENDIENTE y ANULADA (sin abonos se filtra en el frontend)
-    where = { estado: { in: ['PENDIENTE', 'ANULADA'] as EstadoReserva[] } };
+    // Para el administrador/empleado:
+    // Mostrar PENDIENTE, o ANULADA si no tiene venta ni abonos (anuladas en reservas)
+    where = {
+      OR: [
+        { estado: 'PENDIENTE' as EstadoReserva },
+        {
+          estado: 'ANULADA' as EstadoReserva,
+          venta: null,
+          abonos: { none: {} }
+        }
+      ]
+    };
   }
 
   const reservas = await prisma.reserva.findMany({
@@ -429,6 +438,11 @@ export const updateReserva = async (id: number, data: ReservaUpdateInput, isAdmi
   const horaInicio = d.startTime ? new Date(`${date}T${d.startTime}:00`) : r.cotizacion.horaInicio
   const horaFin = d.endTime ? new Date(`${date}T${d.endTime}:00`) : r.cotizacion.horaFin
   if (horaFin < horaInicio) horaFin.setDate(horaFin.getDate() + 1)
+
+  // ── No permitir editar a fecha/hora pasada ─────────────────────────────────
+  if (horaInicio < new Date()) {
+    throw new AppError('No se puede programar una reserva en una fecha u hora que ya pasó', 400)
+  }
 
   // ── Validar servicios si se envían ────────────────────────────────────────
   if (d.selectedServices?.length) {

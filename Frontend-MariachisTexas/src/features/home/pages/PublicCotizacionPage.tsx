@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Star} from 'lucide-react';
 import { Song, Service } from '@/types';
 import { repertoireService } from '../../repertoire/services/repertoireService';
@@ -10,12 +11,8 @@ import { useAuth } from '@/shared/contexts/AuthContext';
 import { CotizacionForm, CotizacionFormErrors } from '../../cotizaciones/components/CotizacionForm';
 import toast from 'react-hot-toast';
 
-
-interface Props {
-  onNavigate?: (path: string) => void;
-}
-
-export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
+export const PublicCotizacionPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
   const INCLUDED_SONGS       = 7;
@@ -253,7 +250,7 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
           </p>
           <div className="flex gap-4 justify-center">
             <button
-              onClick={() => onNavigate?.('/')}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-all border border-white/5">
               Volver al Inicio
             </button>
@@ -292,7 +289,7 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
             </span>
           </h1>
           <p className="text-slate-400 max-w-2xl mx-auto text-base leading-relaxed font-light">
-            Personaliza tu experiencia con{' '}
+            Personaliza tu experience con{' '}
             <span className="text-white font-medium">Mariachis Texas</span>.
             Selecciona tu repertorio, fecha y servicios para obtener un presupuesto inmediato.
           </p>
@@ -318,7 +315,7 @@ export const PublicCotizacionPage: React.FC<Props> = ({ onNavigate }) => {
             onToggleSong={toggleSong}
             onServiceChange={handleServiceChange}
             onSubmit={handleSubmit}
-            onCancel={() => onNavigate?.('/')}
+            onCancel={() => navigate('/')}
           />
         </div>
 
