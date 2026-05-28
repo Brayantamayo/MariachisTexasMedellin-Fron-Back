@@ -409,6 +409,34 @@ export const createReserva = async (data: ReservaCreateInput, isAdmin = false): 
     console.error('Error correo reserva:', err)
   }
 
+  // Alerta de nueva reserva al administrador
+  try {
+    const adminEmail = process.env.MAIL_FROM_ADDRESS || 'infomarriachistexas@gmail.com'
+    const nombreCliente = `${usuario.nombre} ${cliente.apellido}`.trim()
+    await sendMail({
+      to: adminEmail,
+      subject: `[Nueva Reserva] Reserva registrada - ${nombreCliente}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+          <h2 style="color: #ce1126;">Nueva reserva registrada en el sistema</h2>
+          <p><b>Cliente:</b> ${nombreCliente}</p>
+          <p><b>Email Cliente:</b> ${cliente.email}</p>
+          <p><b>Teléfono:</b> ${cliente.telefonoPrincipal || 'No especificado'}</p>
+          <p><b>Fecha del Evento:</b> ${fechaFormateada}</p>
+          <p><b>Horario:</b> ${d.startTime} - ${d.endTime}</p>
+          <p><b>Dirección:</b> ${d.location}</p>
+          <p><b>Tipo de Evento:</b> ${d.eventType ?? 'Serenata'}</p>
+          <p><b>Valor Total:</b> $${d.totalAmount.toLocaleString('es-CO')} COP</p>
+          <p><b>Anticipo del 50% requerido:</b> $${anticipo.toLocaleString('es-CO')} COP</p>
+          <p style="margin-top: 20px; font-size: 13px; color: #666;">Por favor, ingresa al panel de administración para revisarla.</p>
+        </div>
+      `
+    })
+    console.log('Notificación de reserva enviada al administrador:', adminEmail)
+  } catch (adminMailErr) {
+    console.error('Error al enviar alerta de reserva al administrador:', adminMailErr)
+  }
+
   return getReservaById(reserva.id)
 }
 

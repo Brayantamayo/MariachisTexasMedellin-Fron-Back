@@ -3,7 +3,7 @@ import sendMail from '../../config/mailer'
 import { CotizacionCreateSchema, CotizacionUpdateSchema, zodError } from '../schemas'
 import { toLocalDate, toLocalTime, parseLocalDate, buildDateTime, dayRange, validarAnticipacionMismoDia, buildClientName } from '../../utils/date.helpers'
 import { mapEventType } from '../../utils/event.helpers'
-import { emailCotizacionAprobada } from '../../utils/email.templates'
+import { emailCotizacionAprobada, emailCotizacionRecibida } from '../../utils/email.templates'
 import { AppError } from '../../utils/AppError'
 import type { CotizacionCreateInput, CotizacionUpdateInput, ServicioSeleccionado } from '../../types/interfaces'
 
@@ -188,6 +188,61 @@ export const createCotizacion = async (data: CotizacionCreateInput): Promise<Quo
         cotizacionId: cot.id, repertorioId: Number(id), orden: i
       }))
     })
+
+  // Enviar correos fuera de la transacción
+  try {
+    const fullCot = await prisma.cotizacion.findUnique({
+      where: { id: cot.id },
+      include: { cliente: { include: { usuario: true } } }
+    })
+
+    const emailDestino = fullCot?.cliente?.email || d.clientEmail || ''
+    const nombreCliente = fullCot?.cliente
+      ? buildClientName(fullCot.cliente.usuario?.nombre, fullCot.cliente.apellido)
+      : d.clientName || 'Cliente'
+
+    const horaInicioStr = toLocalTime(horaInicio)
+    const horaFinStr    = toLocalTime(horaFin)
+    const fechaStr      = parseLocalDate(d.eventDate).toLocaleDateString('es-CO', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    })
+
+    if (emailDestino) {
+      const mailCliente = emailCotizacionRecibida({
+        nombreCliente,
+        fechaStr,
+        horaInicio: horaInicioStr,
+        horaFin: horaFinStr,
+        totalEstimado: Number(d.totalAmount || 0)
+      })
+      await sendMail({ to: emailDestino, subject: mailCliente.subject, html: mailCliente.html })
+      console.log('Correo cotización recibida enviado al cliente:', emailDestino)
+    }
+
+    // Alerta al administrador
+    const adminEmail = process.env.MAIL_FROM_ADDRESS || 'infomarriachistexas@gmail.com'
+    await sendMail({
+      to: adminEmail,
+      subject: `[Nueva Cotización] Solicitud recibida - ${nombreCliente}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+          <h2 style="color: #ce1126;">Nueva solicitud de cotización registrada</h2>
+          <p><b>Cliente:</b> ${nombreCliente}</p>
+          <p><b>Email:</b> ${emailDestino || 'No especificado'}</p>
+          <p><b>Teléfono:</b> ${d.clientPhone || 'No especificado'}</p>
+          <p><b>Fecha del Evento:</b> ${fechaStr}</p>
+          <p><b>Horario:</b> ${horaInicioStr} - ${horaFinStr}</p>
+          <p><b>Dirección:</b> ${d.location}</p>
+          <p><b>Tipo de Evento:</b> ${d.eventType}</p>
+          <p><b>Valor estimado:</b> $${Number(d.totalAmount || 0).toLocaleString('es-CO')} COP</p>
+          <p style="margin-top: 20px; font-size: 13px; color: #666;">Por favor, ingresa al panel de administración para revisarla y aprobarla.</p>
+        </div>
+      `
+    })
+    console.log('Notificación de cotización enviada al administrador:', adminEmail)
+  } catch (mailErr) {
+    console.error('Error al enviar correos de cotización registrada:', mailErr)
+  }
 
   return getCotizacionById(cot.id)
 }

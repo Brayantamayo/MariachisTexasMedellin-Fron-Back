@@ -21,6 +21,7 @@ import usuarioRoutes from './modules/usuarios/usuario.routes'
 import empleadoRoutes from './modules/empleados/empleado.routes'
 import galeriaRoutes from './modules/galeria/galeria.routes'
 import aiRoutes from './modules/IA/Ai.routes'
+import notificacionesRoutes from './modules/notificaciones/notificaciones.routes'
 import { notFoundHandler, errorHandler } from './middlewares/errorHandler'
 
 const app = express()
@@ -106,6 +107,7 @@ app.use('/api/usuarios', usuarioRoutes)
 app.use('/api/empleados', empleadoRoutes)
 app.use('/api/galeria', galeriaRoutes)
 app.use('/api/ai', aiRoutes)
+app.use('/api/notificaciones', notificacionesRoutes)
 
 // ⚠️ Estos van AL FINAL, después de todas las rutas
 app.use(notFoundHandler)

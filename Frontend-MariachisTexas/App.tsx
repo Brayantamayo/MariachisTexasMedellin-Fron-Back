@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './shared/contexts/AuthContext';
 import { Sidebar } from './shared/components/Sidebar';
+import Topbar from './shared/components/Topbar';
 import { LoginPage } from './src/features/auth/pages/LoginPage';
 import { RegisterPage } from './src/features/auth/pages/RegisterPage';
 import { ForgotPasswordPage } from './src/features/auth/pages/ForgotPasswordPage';
@@ -39,6 +40,8 @@ const AuthenticatedLayout: React.FC = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const location = useLocation();
   const currentPath = location.pathname;
+  const { user } = useAuth();
+  const showTopbar = user && user.role !== 'CLIENTE';
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -78,6 +81,11 @@ const AuthenticatedLayout: React.FC = () => {
       <main className={`flex-1 transition-all duration-300 w-full min-w-0 
         ${(currentPath === '/perfil' || currentPath === '/home') ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-20 lg:p-8 lg:pt-8 text-slate-800'} 
         ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
+        {showTopbar && currentPath !== '/perfil' && currentPath !== '/home' && (
+          <div className="hidden lg:block -mx-8 -mt-8 mb-6">
+            <Topbar />
+          </div>
+        )}
         <Outlet />
       </main>
     </div>
