@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationService, SystemNotification } from '@/src/features/notificaciones/services/notificationService';
-import { Search, Bell, Sun, Mail, Download, LogOut, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Bell, Mail, Download, LogOut, ArrowRight, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const Topbar: React.FC = () => {
@@ -13,7 +13,6 @@ export const Topbar: React.FC = () => {
   const [readIds, setReadIds] = useState<string[]>([]);
   const [isBellOpen, setIsBellOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -85,17 +84,6 @@ export const Topbar: React.FC = () => {
     navigate(n.enlace);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    toast.success(`Buscando "${searchQuery}" en el sistema...`);
-    // Visual filter or search placeholder
-  };
-
-  const toggleTheme = () => {
-    toast.success('¡Tema adaptado al estilo premium de Mariachis Texas!');
-  };
-
   // Obtener iniciales para el avatar
   const getInitials = () => {
     const first = user.name?.charAt(0) || 'N';
@@ -104,20 +92,9 @@ export const Topbar: React.FC = () => {
   };
 
   return (
-    <header className="w-full h-20 flex items-center justify-between px-6 bg-white/70 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
+    <header className="w-full h-20 flex items-center justify-end px-6 bg-white/70 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
       
       {/* ─── BUSCADOR (Izquierda) ─── */}
-      <form onSubmit={handleSearchSubmit} className="relative w-80 max-w-full">
-        <input
-          type="text"
-          placeholder="Buscar en el panel..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-11 pl-11 pr-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500/50 focus:bg-white transition-all"
-        />
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-      </form>
-
       {/* ─── ACCIONES (Derecha) ─── */}
       <div className="flex items-center gap-5">
         
@@ -207,14 +184,6 @@ export const Topbar: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Tema Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
-        >
-          <Sun size={20} />
-        </button>
 
         {/* Avatar de Usuario */}
         <div ref={profileRef} className="relative">
