@@ -193,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isPanelOpen, setIsPanelOpen })
         </div>
 
         {/* ✅ Cerrar sesión visible en el rail */}
-        <div className="mt-1 px-5 w-full">
+        <div className="hidden">
           <button
             onClick={() => {
               navigate('/');

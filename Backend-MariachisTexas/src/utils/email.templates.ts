@@ -380,3 +380,51 @@ export const emailReservaAnulada = (p: EmailReservaAnuladaParams) => ({
     </p>
   `),
 })
+
+interface EmailCotizacionRecibidaParams {
+  nombreCliente: string
+  fechaStr: string
+  horaInicio: string
+  horaFin: string
+  totalEstimado: number
+}
+
+export const emailCotizacionRecibida = (p: EmailCotizacionRecibidaParams) => ({
+  subject: 'Hemos recibido tu solicitud de cotización - Mariachis Texas',
+  html: wrapper(`
+    ${intro(
+      'Solicitud de cotización recibida',
+      `Hola ${p.nombreCliente}, gracias por tu interés en <b>Mariachis Texas</b>. Hemos recibido correctamente tu solicitud de cotización y estamos revisando los detalles de tu evento.`
+    )}
+
+    ${panel(
+      `
+        <p style="margin:0 0 14px;color:${colors.heading};font-size:17px;font-weight:800;">
+          Resumen de tu solicitud
+        </p>
+        ${detailRow('Fecha del evento', p.fechaStr)}
+        ${detailRow('Horario solicitado', `${p.horaInicio} - ${p.horaFin}`)}
+        ${detailRow('Valor estimado', `$${p.totalEstimado.toLocaleString('es-CO')} COP`)}
+      `
+    )}
+
+    ${panel(
+      `
+        <p style="margin:0 0 10px;color:${colors.heading};font-size:17px;font-weight:800;">
+          ¿Qué sigue ahora?
+        </p>
+        ${bulletList([
+          'Nuestro equipo verificará la disponibilidad para la fecha y hora seleccionadas.',
+          'Una vez aprobada tu cotización, te llegará un correo de confirmación para que puedas registrarte y realizar el abono de reserva.',
+          'Si tienes alguna duda o deseas realizar cambios, puedes responder directamente a este correo o escribirnos a nuestro canal de atención.',
+        ])}
+      `,
+      'warning'
+    )}
+
+    <p style="margin:24px 0 0;color:${colors.muted};font-size:13px;line-height:1.8;text-align:center;">
+      ¡Esperamos acompañarte en tu día especial y llenarlo de alegría con la mejor música de mariachis!
+    </p>
+  `),
+})
+

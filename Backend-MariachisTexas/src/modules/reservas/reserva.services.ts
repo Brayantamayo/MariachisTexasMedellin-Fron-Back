@@ -409,6 +409,34 @@ export const createReserva = async (data: ReservaCreateInput, isAdmin = false): 
     console.error('Error correo reserva:', err)
   }
 
+  // Alerta de nueva reserva al administrador
+  try {
+    const adminEmail = process.env.MAIL_FROM_ADDRESS || 'infomarriachistexas@gmail.com'
+    const nombreCliente = `${usuario.nombre} ${cliente.apellido}`.trim()
+    await sendMail({
+      to: adminEmail,
+      subject: `[Nueva Reserva] Reserva registrada - ${nombreCliente}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+          <h2 style="color: #ce1126;">Nueva reserva registrada en el sistema</h2>
+          <p><b>Cliente:</b> ${nombreCliente}</p>
+          <p><b>Email Cliente:</b> ${cliente.email}</p>
+          <p><b>Teléfono:</b> ${cliente.telefonoPrincipal || 'No especificado'}</p>
+          <p><b>Fecha del Evento:</b> ${fechaFormateada}</p>
+          <p><b>Horario:</b> ${d.startTime} - ${d.endTime}</p>
+          <p><b>Dirección:</b> ${d.location}</p>
+          <p><b>Tipo de Evento:</b> ${d.eventType ?? 'Serenata'}</p>
+          <p><b>Valor Total:</b> $${d.totalAmount.toLocaleString('es-CO')} COP</p>
+          <p><b>Anticipo del 50% requerido:</b> $${anticipo.toLocaleString('es-CO')} COP</p>
+          <p style="margin-top: 20px; font-size: 13px; color: #666;">Por favor, ingresa al panel de administración para revisarla.</p>
+        </div>
+      `
+    })
+    console.log('Notificación de reserva enviada al administrador:', adminEmail)
+  } catch (adminMailErr) {
+    console.error('Error al enviar alerta de reserva al administrador:', adminMailErr)
+  }
+
   return getReservaById(reserva.id)
 }
 
@@ -597,15 +625,11 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
       data: { estado: 'ANULADA', notasAdicionales: notasActualizadas },
     })
 
-    // 2. Si ya existe una Venta asociada, marcarla como CANCELADA
-    if (r.venta) {
-      await tx.venta.update({
-        where: { id: r.venta.id },
-        data: { estado: 'CANCELADA', montoTotal: totalPagado },
-      })
-    }
+    // 2. NO modificar ventas existentes - dejar el registro de ventas intacto
+    // Las ventas asociadas a reservas anuladas se mantienen sin cambios
+    
     // 3. Si no hay Venta pero sí hay abonos, crear una Venta CANCELADA para el registro
-    else if (r.abonos.length > 0) {
+    if (!r.venta && r.abonos.length > 0) {
       const totalPagado = r.abonos.reduce((sum, a) => sum + Number(a.monto), 0)
       const metodoPago = r.abonos[r.abonos.length - 1].metodoPago ?? 'EFECTIVO'
 
@@ -650,17 +674,18 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
 
 // ─── ELIMINAR ─────────────────────────────────────────────────────────────────
 export const deleteReserva = async (id: number) => {
-  const r = await prisma.reserva.findUnique({ where: { id }, include: { abonos: true } })
+  const r = await prisma.reserva.findUnique({ 
+    where: { id }, 
+    include: { abonos: true, venta: true } 
+  })
   if (!r) throw new AppError('Reserva no encontrada', 404)
   if (r.estado !== 'ANULADA') throw new AppError('Solo se pueden eliminar reservas anuladas', 409)
+  if (r.venta) throw new AppError('No se puede eliminar una reserva con venta asociada', 409)
   if (r.abonos.length > 0) throw new AppError('No se puede eliminar una reserva con abonos registrados', 409)
 
-  await prisma.$transaction(async (tx) => {
-    await tx.reserva.delete({ where: { id } })
-    await tx.cotizacion.delete({ where: { id: r.cotizacionId } })
-  })
-
-  return { message: 'Reserva eliminada correctamente' }
+  // Las reservas anuladas se mantienen en el registro permanentemente
+  // No se eliminan físicamente para mantener el auditoría e historial
+  return { message: 'Reserva anulada registrada. Las reservas anuladas se mantienen en el historial.', reservaId: id }
 }
 
 
