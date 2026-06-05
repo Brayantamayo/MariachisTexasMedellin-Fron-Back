@@ -272,7 +272,7 @@ export const emailCotizacionAprobada = (p: EmailCotizacionAprobadaParams) => ({
         <li style="margin-bottom:8px;">Busca el botón <b>"REGISTRARSE"</b> en el menú superior.</li>
         <li style="margin-bottom:8px;">Llena tus datos personales. <b>IMPORTANTE:</b> Debes usar el mismo correo electrónico al que te llegó este mensaje.</li>
         <li style="margin-bottom:8px;">Una vez registrado, inicia sesión y dirígete a la sección de <b>Reservas</b> donde ya aparecerá toda tu información vinculada automáticamente.</li>
-        <li style="margin-bottom:8px;">Recuerda que para confirmar definitivamente, debes realizar el abono del 50% y enviar el comprobante al <b>314 757 4707</b>.</li>
+        <li style="margin-bottom:8px;">Recuerda que para confirmar definitivamente, debes realizar el abono del 50% y enviar el comprobante al <b>312 2373486</b>.</li>
       </ol>
     `, 'warning')}
 
@@ -326,7 +326,7 @@ export const emailReservaCreada = (p: EmailReservaCreadaParams) => ({
         ${bulletList([
           'La reserva permanecera en estado pendiente hasta que el anticipo sea registrado.',
           'Una vez confirmado el pago inicial, el estado de la reserva pasara a confirmada.',
-          'Para soporte sobre el pago puedes comunicarte al numero 312 237 3486.',
+          'Para soporte sobre el pago puedes comunicarte al numero 312 2373486.',
         ])}
       `,
       'warning'

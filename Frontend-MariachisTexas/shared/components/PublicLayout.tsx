@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
+import { TopContactBar } from './TopContactBar';
 
 export const PublicLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -52,9 +53,12 @@ export const PublicLayout: React.FC = () => {
   return (
     <div className="min-h-screen font-sans text-slate-200 relative bg-[#050505] selection:bg-red-600 selection:text-white">
       
+      {/* --- TOP CONTACT BAR --- */}
+      <TopContactBar />
+      
       {/* --- NAVBAR --- */}
       <nav 
-        className={`fixed w-full z-50 transition-all duration-500 border-b 
+        className={`fixed w-full z-40 transition-all duration-500 border-b top-[56px] md:top-[57px]
         ${scrolled || mobileMenuOpen 
             ? 'bg-black/80 backdrop-blur-xl py-3 border-white/10 shadow-lg' 
             : 'bg-transparent border-transparent py-6'}
@@ -147,7 +151,7 @@ export const PublicLayout: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 w-full overflow-x-hidden">
+      <main className="relative z-10 w-full overflow-x-hidden pt-[60px] md:pt-[70px]">
         <Outlet />
       </main>
 

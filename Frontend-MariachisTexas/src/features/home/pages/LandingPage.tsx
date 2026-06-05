@@ -547,7 +547,7 @@ export const LandingPage: React.FC = () => {
             <section className="relative py-32 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <img
-                        src="/images/Flores.jpg"
+                        src="/images/Mariachis 10.jpeg"
 
                         className="w-full h-full object-cover opacity-40 bg-fixed "
                     />
