@@ -105,7 +105,7 @@ export const LandingPage: React.FC = () => {
                         transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
                         src={localStorage.getItem('landing_bg') || "/images/Mariachis 16.jpeg"}
                         alt="Mariachis Texas"
-                        className="w-full h-full object-cover object-[75%_center]"
+                        className="w-full h-full object-cover object-[75%_15%]"
                     />
 
                 </div>
