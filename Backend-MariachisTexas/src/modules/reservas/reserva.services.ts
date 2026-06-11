@@ -625,8 +625,17 @@ export const anularReserva = async (id: number, motivo?: string): Promise<Reserv
       data: { estado: 'ANULADA', notasAdicionales: notasActualizadas },
     })
 
-    // 2. NO modificar ventas existentes - dejar el registro de ventas intacto
-    // Las ventas asociadas a reservas anuladas se mantienen sin cambios
+    // 2. Si existe Venta, actualizarla a CANCELADA y ajustar los montos al total pagado (ya que no hay devoluciones)
+    if (r.venta) {
+      await tx.venta.update({
+        where: { id: r.venta.id },
+        data: {
+          estado: 'CANCELADA',
+          montoTotal: totalPagado,
+          montoPagado: totalPagado,
+        }
+      })
+    }
     
     // 3. Si no hay Venta pero sí hay abonos, crear una Venta CANCELADA para el registro
     if (!r.venta && r.abonos.length > 0) {
@@ -699,10 +708,11 @@ export const getAbonos = async (usuarioId?: number) => {
   const where: any = {}
 
   if (usuarioId) {
-    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } })
-    if (usuario) {
-      const cliente = await prisma.cliente.findUnique({ where: { email: usuario.email } })
-      if (cliente) where.clienteId = cliente.id
+    const cliente = await prisma.cliente.findUnique({ where: { usuarioId } })
+    if (cliente) {
+      where.clienteId = cliente.id
+    } else {
+      return [] // Si no hay cliente para este usuario, no debe retornar abonos de otros
     }
   }
 

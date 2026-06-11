@@ -22,8 +22,20 @@ export const TopContactBar: React.FC = () => {
 
   return (
     <div className={`fixed w-full top-0 left-0 right-0 z-50 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
-      {/* Decorative top line with Mexican colors */}
-      <div className="h-0.5 flex bg-gradient-to-r from-[#009c3b] via-yellow-500 to-[#ce1126] shadow-[0_0_12px_rgba(206,17,38,0.5)]" />
+      <style>{`
+        @keyframes moveGradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-moving-gradient {
+          background-size: 200% 100%;
+          animation: moveGradient 5s linear infinite;
+        }
+      `}</style>
+
+      {/* Decorative top line with moving Mexican colors */}
+      <div className="h-0.5 flex bg-gradient-to-r from-[#009c3b] via-yellow-500 to-[#ce1126] animate-moving-gradient shadow-[0_0_12px_rgba(206,17,38,0.5)]" />
 
       {/* Main bar */}
       <div className="backdrop-blur-md bg-black/60 border-b border-red-600/30 py-2 px-4">
@@ -32,9 +44,11 @@ export const TopContactBar: React.FC = () => {
           {/* Left: Contact Info - Compact */}
           <div className="flex items-center gap-4 flex-wrap">
             
-            {/* Phone */}
+            {/* Phone (WhatsApp Redirect) */}
             <a 
-              href={`tel:+573122373486`}
+              href="https://wa.me/573122373486"
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex items-center gap-1.5 transition-all duration-300 hover:scale-105 text-xs"
             >
               <div className="w-6 h-6 rounded-md bg-gradient-to-br from-red-600/70 to-red-700/70 flex items-center justify-center border border-red-500/30 group-hover:border-red-500/60 group-hover:shadow-lg group-hover:shadow-red-600/30 transition-all">

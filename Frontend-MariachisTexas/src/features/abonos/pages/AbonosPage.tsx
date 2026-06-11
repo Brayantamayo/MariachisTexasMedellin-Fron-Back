@@ -459,11 +459,15 @@ export const AbonosPage: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/abonos');
-      setAbonos(data);
+      let abonosData = data as Abono[];
+      if (isClient && user?.email) {
+        abonosData = abonosData.filter(a => a.clientEmail?.toLowerCase() === user.email.toLowerCase());
+      }
+      setAbonos(abonosData);
 
       // Group abonos by reservationId
       const grouped = new Map<string, ReservaGroup>();
-      (data as Abono[]).forEach(a => {
+      abonosData.forEach(a => {
         if (!grouped.has(a.reservationId)) {
           grouped.set(a.reservationId, {
             reservationId: a.reservationId,

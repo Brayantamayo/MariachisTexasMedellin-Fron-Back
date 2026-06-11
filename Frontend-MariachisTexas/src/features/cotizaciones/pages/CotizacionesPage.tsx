@@ -68,16 +68,20 @@ export const CotizacionesPage: React.FC = () => {
     }
   };
 
+  const [isConverting, setIsConverting] = useState(false);
+
   const processConversion = async () => {
     if (!confirmConvert.id) return;
+    setIsConverting(true);
     try {
       const result = await cotizacionService.convertToReservation(confirmConvert.id);
       setQuotations(prev => prev.map(q => q.id === confirmConvert.id ? result.quotation : q));
       showNotification(`¡Éxito! Reserva #${result.reservationId} creada. Se envió correo al cliente.`);
+      setConfirmConvert({ isOpen: false, id: null, amount: 0 });
     } catch (error: any) {
       showNotification(error?.response?.data?.message || 'Error al procesar.', 'error');
     } finally {
-      setConfirmConvert({ isOpen: false, id: null, amount: 0 });
+      setIsConverting(false);
     }
   };
 
@@ -99,7 +103,7 @@ export const CotizacionesPage: React.FC = () => {
     try {
       await cotizacionService.deleteQuotation(deleteModal.id);
       setQuotations(prev => prev.filter(q => q.id !== deleteModal.id));
-      showNotification('Cotización eliminada correctamente.');
+      showNotification('Cotización de eliminada correctamente.');
     } catch (error: any) {
       showNotification(error?.response?.data?.message || 'Error al eliminar.', 'error');
     } finally {
@@ -193,7 +197,7 @@ export const CotizacionesPage: React.FC = () => {
       <CotizacionEditModal   isOpen={isEditOpen}   onClose={() => setIsEditOpen(false)}   onSave={handleUpdate} quotation={selectedQuotation} />
       <CotizacionDetailModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} quotation={selectedQuotation} />
 
-      <ConfirmationModal isOpen={confirmConvert.isOpen} onClose={() => setConfirmConvert({ ...confirmConvert, isOpen: false })} onConfirm={processConversion} title="¿Aceptar Cotización?" message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`} confirmText="Sí, Aceptar" />
+      <ConfirmationModal isOpen={confirmConvert.isOpen} onClose={() => !isConverting && setConfirmConvert({ ...confirmConvert, isOpen: false })} onConfirm={processConversion} title="¿Aceptar Cotización?" message={`Vas a convertir esta cotización en una Reserva Oficial por $${confirmConvert.amount.toLocaleString()}. Se enviará un correo al cliente con el link de registro.`} confirmText="Sí, Aceptar" loading={isConverting} />
       <ConfirmationModal isOpen={cancelModal.isOpen}    onClose={() => setCancelModal({ ...cancelModal, isOpen: false })}       onConfirm={processCancellation} title="¿Anular Cotización?"   message="Estás a punto de anular esta cotización."                                                                                                                      confirmText="Sí, Anular"   />
       <ConfirmationModal isOpen={deleteModal.isOpen}    onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}       onConfirm={handleDelete}        title="¿Eliminar Cotización?" message="Estás a punto de eliminar esta cotización permanentemente. Esta acción no se puede deshacer."                                                                confirmText="Sí, eliminar" />
     </div>

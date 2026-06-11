@@ -7,6 +7,7 @@ import { UserRole } from '@/types';
 import { ClientForm } from './ClientForm';
 import { usePhotoUpload } from '@/shared/hooks/Usephotoupload .ts';
 import { PhotoUploadWidget } from '@/shared/components/Photouploadwidget .tsx';
+import api from '@/shared/api/api';
  
 interface CreateProps {
   isOpen: boolean;
@@ -141,6 +142,18 @@ export const ClientCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSa
  
     setSaving(true);
     try {
+      const emailVal = formData.email?.trim();
+      if (emailVal) {
+        const { data: checkData } = await api.get('/auth/verificar-disponibilidad', {
+          params: { tipo: 'email', valor: emailVal }
+        });
+        if (!checkData.disponible) {
+          setErrors({ email: 'El correo ya está registrado' });
+          setSaving(false);
+          return;
+        }
+      }
+
       await onSave(formData);
       // Solo resetear si fue exitoso
       setFormData(emptyClient);

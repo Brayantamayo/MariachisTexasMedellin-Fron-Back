@@ -96,10 +96,23 @@ export const UserEditModal: React.FC<Props> = ({ isOpen, onClose, onSave, user }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setErrors(EMPTY_ERRORS);
     if (photo.uploading) return;
 
     setSaving(true);
     try {
+      const emailVal = formData.email?.trim();
+      if (emailVal && emailVal.toLowerCase() !== user?.email?.toLowerCase()) {
+        const { data: checkData } = await api.get('/auth/verificar-disponibilidad', {
+          params: { tipo: 'email', valor: emailVal }
+        });
+        if (!checkData.disponible) {
+          setErrors({ email: 'El correo ya está registrado' });
+          setSaving(false);
+          return;
+        }
+      }
+
       const submission = { ...formData };
 
       if (submission.otherInstruments && typeof submission.otherInstruments === 'string') {

@@ -115,7 +115,7 @@ const MainLayout: React.FC = () => {
           <Route path="/servicios" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><ServicesPage /></ProtectedRoute>} />
           <Route path="/reservas" element={<ReservasPage />} />
           <Route path="/ventas" element={<VentasPage />} />
-          <Route path="/abonos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AbonosPage /></ProtectedRoute>} />
+          <Route path="/abonos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CLIENTE]}><AbonosPage /></ProtectedRoute>} />
           <Route path="/cotizaciones" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CLIENTE]}><CotizacionesPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to={user?.role === UserRole.ADMIN ? "/dashboard" : "/home"} replace />} />

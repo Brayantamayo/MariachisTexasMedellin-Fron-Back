@@ -5,25 +5,56 @@ FROM node:20-slim
 # Dependencias del sistema necesarias para Puppeteer/Chrome
 # Instalar paquetes Linux
 
+
+# Ejecuta comandos durante la construcción de la imagen Docker
 RUN apt-get update && apt-get install -y \
+
+    # Instala el navegador Chromium
     chromium \
+
+    # Librería de accesibilidad utilizada por Chromium
     libatk-bridge2.0-0 \
+
+    # Soporte para Direct Rendering Manager (gráficos)
     libdrm2 \
+
+    # Manejo de teclado y distribución de teclas
     libxkbcommon0 \
+
+    # Extensión X11 para composición de ventanas
     libxcomposite1 \
+
+    # Extensión X11 para seguimiento de regiones dañadas
     libxdamage1 \
+
+    # Extensión X11 para corrección y gestión de ventanas
     libxfixes3 \
+
+    # Extensión X11 para manejo de resolución y pantallas
     libxrandr2 \
+
+    # Gestión de buffers gráficos utilizada por Chromium
     libgbm1 \
+
+    # Soporte de audio ALSA para Chromium
     libasound2 \
+
+    # Fuentes compatibles con muchas páginas web
     fonts-liberation \
+
+    # Instala únicamente los paquetes necesarios,
+    # evitando dependencias recomendadas para reducir tamaño
     --no-install-recommends \
+
+    # Elimina la caché de apt para reducir el tamaño final de la imagen
     && rm -rf /var/lib/apt/lists/*
+
 
 # Decirle a Puppeteer que use el Chromium del sistema (no descarga el suyo)
 # estas son la variables de entorno 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 
 #esta es la caropeta de trabajo  osea que todo se va ejecutar aqui adentro 
 WORKDIR /app
@@ -47,6 +78,7 @@ COPY . .
 EXPOSE 3000
 
 # Entrypoint: migra y arranca con hot reload
-#esto es que ejecutar cuando se inicia el contenedor en este caso construye la imagen crea contenedor y lo arranca 
+#esto es que ejecutar cuando se inicia el contenedor en este caso construye la imagen crea contenedor y 
+#lo arranca  
 CMD npx prisma db push && \
     npx ts-node-dev -r dotenv/config --respawn --transpile-only src/index.ts

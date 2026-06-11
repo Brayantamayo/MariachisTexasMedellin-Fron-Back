@@ -8,10 +8,14 @@ export const PublicLayout: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
   const [scrolled, setScrolled] = useState(false);
+  const [contactBarVisible, setContactBarVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+      setContactBarVisible(window.scrollY < 150);
+    };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -50,18 +54,20 @@ export const PublicLayout: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
+  const showNav = currentPath === '/';
+
   return (
     <div className="min-h-screen font-sans text-slate-200 relative bg-[#050505] selection:bg-red-600 selection:text-white">
       
       {/* --- TOP CONTACT BAR --- */}
-      <TopContactBar />
+      {showNav && <TopContactBar />}
       
       {/* --- NAVBAR --- */}
       <nav 
-        className={`fixed w-full z-40 transition-all duration-500 border-b top-[56px] md:top-[57px]
+        className={`fixed w-full z-40 transition-all duration-500 border-b ${showNav && contactBarVisible ? 'top-[42px]' : 'top-0'}
         ${scrolled || mobileMenuOpen 
-            ? 'bg-black/80 backdrop-blur-xl py-3 border-white/10 shadow-lg' 
-            : 'bg-transparent border-transparent py-6'}
+            ? 'bg-black/80 backdrop-blur-xl py-2 border-white/10 shadow-lg' 
+            : 'bg-transparent border-transparent py-3'}
       `}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
@@ -151,7 +157,7 @@ export const PublicLayout: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 w-full overflow-x-hidden pt-[60px] md:pt-[70px]">
+      <main className="relative z-10 w-full overflow-x-hidden">
         <Outlet />
       </main>
 

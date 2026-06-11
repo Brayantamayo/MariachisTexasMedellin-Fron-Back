@@ -436,7 +436,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
 
                 <Field label="Correo" name="email" value={formData.email} type="email"
-                  icon={<Mail size={15} />} editing={false} readOnly hint="Solo modificable por administración." />
+                  icon={<Mail size={15} />} editing={isEditing} readOnly />
 
                 <Field label="Teléfono Principal" name="telefonoPrincipal" value={formData.telefonoPrincipal}
                   type="tel" icon={<Phone size={15} />} editing={isEditing} onChange={handleChange as any} />
@@ -498,7 +498,7 @@ export const ProfilePage: React.FC = () => {
               <div className="flex-1 text-center md:text-left">
                 <h4 className="text-sm font-black text-white">Seguridad de Datos</h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Tu número de identificación no es editable por razones de seguridad. Para cambios en tu correo, contacta a un administrador.
+                  Tu número de identificación y correo electrónico son de solo lectura por razones de seguridad.
                 </p>
               </div>
               <div className="flex-shrink-0">

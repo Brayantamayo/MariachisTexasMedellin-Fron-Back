@@ -128,6 +128,19 @@ export const vincularCotizacionesPorEmail = async (email: string, clienteId: num
 }
 
 export const getCotizaciones = async (): Promise<QuotationResponse[]> => {
+  // Anular automáticamente las cotizaciones en espera cuya fecha de evento ya pasó
+  const todayStr = toLocalDate(new Date())
+  const today = parseLocalDate(todayStr)
+  await prisma.cotizacion.updateMany({
+    where: {
+      estado: 'EN_ESPERA',
+      fechaEvento: { lt: today }
+    },
+    data: {
+      estado: 'ANULADA'
+    }
+  })
+
   const cotizaciones = await prisma.cotizacion.findMany({
     where: { esReservaDirecta: false }, include: cotizacionInclude, orderBy: { createdAt: 'desc' }
   })
@@ -137,6 +150,19 @@ export const getCotizaciones = async (): Promise<QuotationResponse[]> => {
 export const getCotizacionById = async (id: number): Promise<QuotationResponse> => {
   const c = await prisma.cotizacion.findUnique({ where: { id }, include: cotizacionInclude })
   if (!c) throw new AppError('Cotización no encontrada', 404)
+
+  // Si está en espera pero ya pasó la fecha del evento, la anulamos y retornamos el estado correcto
+  const todayStr = toLocalDate(new Date())
+  const today = parseLocalDate(todayStr)
+  if (c.estado === 'EN_ESPERA' && c.fechaEvento < today) {
+    const updated = await prisma.cotizacion.update({
+      where: { id },
+      data: { estado: 'ANULADA' },
+      include: cotizacionInclude
+    })
+    return mapToQuotation(updated)
+  }
+
   return mapToQuotation(c)
 }
 
@@ -364,7 +390,7 @@ export const convertirCotizacion = async (id: number) => {
     // Generar enlace simple a la landing page (sin tokens)
     const frontendBase = (process.env.FRONTEND_URL || 'https://mariachistexasmedellin-fron-back-1.onrender.com').replace(/\/$/, '');
     const loginUrl    = `${frontendBase}/login`;
-    const registerUrl = `${frontendBase}/`; // Lleva a la landing para que el usuario navegue a registrarse
+    const registerUrl = `${frontendBase}/register`; // Lleva directamente a la página de registro de la web
     
     console.log(`[Cotizacion] Cotización aprobada para ${emailDestino}. Instrucciones de registro manual enviadas.`);
 

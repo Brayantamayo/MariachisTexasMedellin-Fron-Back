@@ -26,6 +26,8 @@ interface FormData {
   totalAmount?: number;
   repertoireIds?: string[];
   selectedServices?: SelectedService[];
+  paidAmount?: number;
+  payments?: any[];
 }
 
 interface Props {
@@ -81,6 +83,11 @@ export const ReservaForm: React.FC<Props> = ({
   const hasSelectedClient = isAdmin && !!formData.clientId && formData.clientId !== ''
   const lockClientFields  = isEditing || isClient || hasSelectedClient
 
+  const hasPayments = isEditing && (
+    (Number(formData.paidAmount) || 0) > 0 || 
+    (formData.payments && formData.payments.length > 0)
+  );
+
   const activeServices      = services.filter(s => s.estado === true);
   const baseServices        = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'));
   const additionalServices  = activeServices.filter(s => !s.nombre.toLowerCase().includes('serenata'));
@@ -89,6 +96,7 @@ export const ReservaForm: React.FC<Props> = ({
     str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
   const handleBaseServiceSelect = (serviceId: string) => {
+    if (hasPayments) return;
     const isCurrentlySelected = (formData.selectedServices?.find(
       s => String(s.serviceId) === String(serviceId)
     )?.quantity ?? 0) > 0;
@@ -436,17 +444,32 @@ export const ReservaForm: React.FC<Props> = ({
           {/* Tipo de Serenata */}
           <div className="mb-6">
             <label className={labelClass}>Tipo de Serenata <span className="text-orange-500">*</span></label>
+            {hasPayments && (
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 mb-3">
+                <Lock size={12} className="text-slate-400" />
+                <p className="text-[11px] text-slate-400 font-medium">
+                  El tipo de serenata no se puede cambiar porque la reserva ya registra abonos/pagos.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {baseServices.map(service => {
                 const isSelected = (formData.selectedServices?.find(
                   s => String(s.serviceId) === String(service.id)
                 )?.quantity ?? 0) > 0;
+                
+                const isLocked = hasPayments && !isSelected;
+                const clickHandler = hasPayments ? undefined : () => handleBaseServiceSelect(service.id);
+                const cursorClass = hasPayments ? 'cursor-not-allowed' : 'cursor-pointer';
+                const opacityClass = isLocked ? 'opacity-40' : '';
+
                 return (
-                  <div key={service.id} onClick={() => handleBaseServiceSelect(service.id)}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : fieldErrors?.serviceId ? 'border-red-400 bg-red-50 shadow-sm' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                  <div key={service.id} onClick={clickHandler}
+                    className={`relative p-5 rounded-2xl border-2 ${cursorClass} ${opacityClass} transition-all duration-300 ${isSelected ? 'border-orange-500 bg-orange-50 shadow-md' : fieldErrors?.serviceId ? 'border-red-400 bg-red-50 shadow-sm' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
                     {isSelected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white">
-                        <Check size={12} strokeWidth={3} />
+                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-orange-500 rounded-full px-2 py-0.5 text-white text-[10px] font-bold">
+                        {hasPayments && <Lock size={10} />}
+                        <Check size={10} strokeWidth={3} />
                       </div>
                     )}
                     <h5 className={`font-bold text-lg mb-1 ${isSelected ? 'text-orange-800' : 'text-slate-700'}`}>{service.nombre}</h5>
