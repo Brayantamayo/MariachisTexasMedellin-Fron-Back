@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationService, SystemNotification } from '@/src/features/notificaciones/services/notificationService';
 import { Bell, Mail, Download, LogOut, ArrowRight, CheckCircle2 } from 'lucide-react';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 export const Topbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [readIds, setReadIds] = useState<string[]>([]);
@@ -16,6 +17,8 @@ export const Topbar: React.FC = () => {
 
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  const isImmersivePage = location.pathname === '/perfil' || location.pathname === '/home';
 
   // Cargar notificaciones y IDs leídos
   const fetchNotifications = async () => {
@@ -39,12 +42,18 @@ export const Topbar: React.FC = () => {
       }
     }
 
-    fetchNotifications();
+    if (!isImmersivePage) {
+      fetchNotifications();
+    }
 
     // Consultar cada 30 segundos
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(() => {
+      if (!isImmersivePage) {
+        fetchNotifications();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, location.pathname]);
 
   // Cerrar al hacer clic afuera
   useEffect(() => {
@@ -60,7 +69,7 @@ export const Topbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  if (!user) return null;
+  if (!user || isImmersivePage) return null;
 
   // Filtrar las leídas
   const unreadNotifications = notifications.filter(n => !readIds.includes(n.id));

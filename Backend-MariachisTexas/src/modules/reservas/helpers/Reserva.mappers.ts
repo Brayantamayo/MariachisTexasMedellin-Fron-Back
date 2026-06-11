@@ -88,7 +88,7 @@ export const mapToReservation = (r: ReservaConRelaciones): ReservationResponse =
     repertoireIds:    cot.repertorios.map(rep => String(rep.repertorioId)),
     selectedServices: cot.servicios.map(s => ({ serviceId: String(s.servicioId), quantity: s.cantidad })),
     totalAmount:      Number(r.totalValor      ?? 0),
-    paidAmount:       Number(r.totalValor      ?? 0) - Number(r.saldoPendiente ?? 0),
+    paidAmount:       r.abonos.reduce((sum, a) => sum + Number(a.monto ?? 0), 0),
     pendingBalance:   Number(r.saldoPendiente  ?? 0),
     status:           r.estado,
     payments:         r.abonos.map(a => ({

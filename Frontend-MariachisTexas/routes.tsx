@@ -107,7 +107,7 @@ export const APP_ROUTES: AppRoute[] = [
     path: '/abonos',
     label: 'Abonos',
     module: 'abonos',
-    roles: [UserRole.ADMIN], // Generalmente admin gestiona, cliente ve en Ventas
+    roles: [UserRole.ADMIN, UserRole.CLIENTE], // Generalmente admin gestiona, cliente ve en Ventas
     icon: 'CreditCard'
   },
 

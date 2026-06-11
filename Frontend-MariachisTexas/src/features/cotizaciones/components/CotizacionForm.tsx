@@ -55,8 +55,9 @@ export const CotizacionForm: React.FC<Props> = ({
   const [showClientStep, setShowClientStep] = useState(false);
   const clientSectionRef = useRef<HTMLDivElement>(null);
 
-  const baseServices = services.filter(s => s.nombre.toLowerCase().includes('serenata'))
-  const additionalServices = services.filter(s => !s.nombre.toLowerCase().includes('serenata'))
+  const activeServices = services.filter(s => s.estado === true)
+  const baseServices = activeServices.filter(s => s.nombre.toLowerCase().includes('serenata'))
+  const additionalServices = activeServices.filter(s => !s.nombre.toLowerCase().includes('serenata'))
 
   const extraHoursService = services.find(s => s.nombre.toLowerCase().includes('hora extra'))
   const extraSongsService = services.find(s =>
@@ -723,15 +724,15 @@ export const CotizacionForm: React.FC<Props> = ({
             ) : (
             <button
                 type="submit"
-                disabled={blockStatus.isBlocked || isSaving}
+                disabled={blockStatus.isBlocked || isSaving || isSubmitting}
                 className={`flex-[2] py-4 text-white rounded-xl text-sm font-bold uppercase shadow-xl transition-all flex items-center justify-center gap-2
-                  ${blockStatus.isBlocked || isSaving
+                  ${blockStatus.isBlocked || isSaving || isSubmitting
                     ? 'bg-slate-400 cursor-not-allowed shadow-none'
                     : isPublic
                       ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 hover:-translate-y-1'
                       : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 hover:-translate-y-0.5'
                   }`}>
-                {isSaving ? (
+                {isSaving || isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Procesando...</span>

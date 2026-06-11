@@ -150,7 +150,11 @@ export const ReservasTable: React.FC<Props> = ({
                           <span className="text-sm font-bold text-slate-700">
                               ${total.toLocaleString('es-CO')}
                           </span>
-                          {saldo > 0 ? (
+                          {isAnulada && paid === 0 ? (
+                              <span className="text-[10px] font-bold flex items-center gap-1 text-slate-500 w-max bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded">
+                                  <CreditCard size={10} /> No pagado
+                              </span>
+                          ) : saldo > 0 ? (
                               <span className="text-[10px] font-bold flex items-center gap-1 text-amber-600 w-max bg-amber-50 px-1.5 py-0.5 rounded">
                                   <CreditCard size={10} /> Saldo: ${saldo.toLocaleString('es-CO')}
                               </span>

@@ -192,20 +192,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isPanelOpen, setIsPanelOpen })
           })}
         </div>
 
-        {/* ✅ Cerrar sesión visible en el rail */}
-        <div className="hidden">
-          <button
-            onClick={() => {
-              navigate('/');
-              logout();
-            }}
-            title="Cerrar Sesión"
-            className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-zinc-600 hover:bg-red-900/30 hover:text-red-400 transition-all duration-500 group"
-          >
-            <LogOut size={22} strokeWidth={2} className="transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-110" />
-            <span className="text-[10px] font-bold tracking-wide">Salir</span>
-          </button>
-        </div>
+        {/* Cerrar sesión en el rail */}
+        {(user.role === UserRole.CLIENTE || user.role === UserRole.EMPLEADO) && (
+          <div className="w-full px-2 mt-auto">
+            <button
+              onClick={() => {
+                navigate('/');
+                logout();
+              }}
+              title="Cerrar Sesión"
+              className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-zinc-500 hover:bg-[#ce1126]/20 hover:text-white transition-all duration-300 group"
+            >
+              <LogOut size={20} strokeWidth={2} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110" />
+              <span className="text-[9px] font-bold tracking-wide">Salir</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ─── PANEL SECUNDARIO ──────────────────────────────────────────────────── */}
@@ -297,14 +299,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ isPanelOpen, setIsPanelOpen })
 
         {/* User Info Footer */}
         <div className="p-4 border-t border-white/5 bg-black/20 min-w-[16rem]">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-            <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-bold border border-white/10 text-gray-300">
-              {user.name.charAt(0)}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-bold border border-white/10 text-gray-300 shrink-0">
+                {user.name.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wider truncate">{user.role}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">{user.name}</p>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider truncate">{user.role}</p>
-            </div>
+            {(user.role === UserRole.CLIENTE || user.role === UserRole.EMPLEADO) && (
+              <button
+                onClick={() => {
+                  navigate('/');
+                  logout();
+                }}
+                title="Cerrar Sesión"
+                className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>

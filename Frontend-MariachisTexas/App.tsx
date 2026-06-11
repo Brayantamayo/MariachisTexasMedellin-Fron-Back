@@ -80,10 +80,10 @@ const AuthenticatedLayout: React.FC = () => {
       )}
 
       <main className={`flex-1 transition-all duration-300 w-full min-w-0 
-        ${isImmersivePage ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-20 lg:p-8 lg:pt-8 text-slate-800'} 
+        ${isImmersivePage ? 'bg-[#050608] p-0' : 'bg-slate-50 p-4 pt-4 lg:p-8 lg:pt-2 text-slate-800'} 
         ${isPanelOpen ? 'lg:ml-[22rem]' : 'lg:ml-[6rem]'}`}>
         {showTopbar && (
-          <div className={`hidden lg:block ${isImmersivePage ? '' : '-mx-8 -mt-8 mb-6'}`}>
+          <div className={`hidden lg:block ${isImmersivePage ? '' : '-mx-8 -mt-2 mb-4'}`}>
             <Topbar />
           </div>
         )}
@@ -115,7 +115,7 @@ const MainLayout: React.FC = () => {
           <Route path="/servicios" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><ServicesPage /></ProtectedRoute>} />
           <Route path="/reservas" element={<ReservasPage />} />
           <Route path="/ventas" element={<VentasPage />} />
-          <Route path="/abonos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AbonosPage /></ProtectedRoute>} />
+          <Route path="/abonos" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CLIENTE]}><AbonosPage /></ProtectedRoute>} />
           <Route path="/cotizaciones" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CLIENTE]}><CotizacionesPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to={user?.role === UserRole.ADMIN ? "/dashboard" : "/home"} replace />} />

@@ -404,26 +404,6 @@ export const useReservasManager = () => {
     try {
       const res = reservations.find(r => r.id === id);
       
-      // Si tiene abono, creamos una venta por ese valor antes de anular (o como parte del proceso)
-      if (res && Number(res.paidAmount) > 0) {
-        try {
-          await api.post('/ventas', {
-            reservaId: Number(res.id),
-            clienteId: Number(res.clientId),
-            tipo: 'RESERVA',
-            estado: 'CONFIRMADO',
-            montoTotal: Number(res.paidAmount),
-            montoPagado: Number(res.paidAmount),
-            fechaVenta: new Date().toISOString().split('T')[0],
-            metodoPago: 'VARIOS',
-            notas: `Venta generada por anulación de reserva con abonos. Motivo: ${motivo}`
-          });
-          showNotification(`Se registró una venta por el valor abonado: $${Number(res.paidAmount).toLocaleString()}`, 'success');
-        } catch (vError) {
-          console.error("Error creando venta tras anulación:", vError);
-        }
-      }
-
       const updated = await reservaService.cancelReservation(id, motivo || 'Cancelación manual por usuario');
       // Actualizar la reserva con estado ANULADA en la lista
       setReservations(prev => prev.map(r => r.id === updated.id ? updated : r));

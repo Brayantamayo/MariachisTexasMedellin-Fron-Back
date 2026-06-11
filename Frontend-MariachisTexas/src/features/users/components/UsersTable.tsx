@@ -115,7 +115,9 @@ export const UsersTable: React.FC<Props> = ({ users, loading, onView, onEdit, on
                           <ActionButton icon={Eye} onClick={() => onView(user)} tooltip="Ver detalle" />
                           {user.isActive && (
                             <>
-                              <ActionButton icon={Edit2} onClick={() => onEdit(user)} tooltip="Editar usuario" />
+                              {user.role !== UserRole.ADMIN && (
+                                <ActionButton icon={Edit2} onClick={() => onEdit(user)} tooltip="Editar usuario" />
+                              )}
                               {!user.hasActiveReservations && user.role !== UserRole.ADMIN && (
                                 <ActionButton icon={Trash2} onClick={() => onDelete(user.id)} tooltip="Eliminar usuario" />
                               )}

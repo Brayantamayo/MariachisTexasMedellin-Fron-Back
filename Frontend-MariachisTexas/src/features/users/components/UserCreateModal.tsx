@@ -97,6 +97,18 @@ export const UserCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, onSave
 
     setSaving(true);
     try {
+      const emailVal = formData.email?.trim();
+      if (emailVal) {
+        const { data: checkData } = await api.get('/auth/verificar-disponibilidad', {
+          params: { tipo: 'email', valor: emailVal }
+        });
+        if (!checkData.disponible) {
+          setErrors({ email: 'El correo ya está registrado' });
+          setSaving(false);
+          return;
+        }
+      }
+
       const submission = { ...formData };
       if (submission.otherInstruments && typeof submission.otherInstruments === 'string') {
         submission.otherInstruments = submission.otherInstruments.split(',').map((i: string) => i.trim());

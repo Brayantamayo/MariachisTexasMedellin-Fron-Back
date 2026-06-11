@@ -37,13 +37,13 @@ export const Footer: React.FC<Props> = ({ scrollToSection }) => {
                     
                     {/* Social Icons */}
                     <div className="flex gap-4">
-                        <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-gradient-to-tr hover:from-purple-600 hover:to-pink-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(236,72,153,0.4)] hover:-translate-y-1">
+                        <a href="https://www.instagram.com/texasmariachi/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-gradient-to-tr hover:from-purple-600 hover:to-pink-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(236,72,153,0.4)] hover:-translate-y-1">
                             <Instagram size={18} />
                         </a>
-                        <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:-translate-y-1">
+                        <a href="https://www.facebook.com/p/Mariachi-TEXAS-De-Medellin-su-mejor-Mariachi-100054019491950/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:-translate-y-1">
                             <Facebook size={18} />
                         </a>
-                        <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:-translate-y-1">
+                        <a href="https://www.youtube.com/@mariachitexasmedellin.nuev9357" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all text-slate-400 border border-white/10 hover:border-transparent hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:-translate-y-1">
                             <Youtube size={18} />
                         </a>
                     </div>
@@ -58,7 +58,7 @@ export const Footer: React.FC<Props> = ({ scrollToSection }) => {
                               <Phone size={16} />
                             </div>
                             <span className="mt-1 group-hover:text-white transition-colors">
-                                +57 300 123 4567<br/>
+                                312 2373486<br/>
                                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Línea 24 Horas</span>
                             </span>
                         </li>
@@ -75,7 +75,7 @@ export const Footer: React.FC<Props> = ({ scrollToSection }) => {
                             <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 border border-white/10">
                               <Mail size={16} />
                             </div>
-                            <span className="mt-2">reservas@mariachistexas.com</span>
+                            <span className="mt-2">texasmariachi@gmail.com</span>
                         </li>
                     </ul>
                 </div>

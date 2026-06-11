@@ -7,6 +7,7 @@ import { UserRole } from '@/types';
 import { EmployeeForm } from './EmployeeForm';
 import { usePhotoUpload } from '@/shared/hooks/Usephotoupload .ts';
 import { PhotoUploadWidget } from '@/shared/components/Photouploadwidget .tsx';
+import api from '@/shared/api/api';
  
 interface CreateProps {
   isOpen: boolean;
@@ -159,6 +160,18 @@ export const EmployeeCreateModal: React.FC<CreateProps> = ({ isOpen, onClose, on
  
     setSaving(true);
     try {
+      const emailVal = formData.email?.trim();
+      if (emailVal) {
+        const { data: checkData } = await api.get('/auth/verificar-disponibilidad', {
+          params: { tipo: 'email', valor: emailVal }
+        });
+        if (!checkData.disponible) {
+          setErrors({ email: 'El correo ya está registrado' });
+          setSaving(false);
+          return;
+        }
+      }
+ 
       const submission = {
         name:             formData.name.trim(),
         lastName:         formData.lastName.trim(),

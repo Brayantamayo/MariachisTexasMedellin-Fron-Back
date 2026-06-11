@@ -130,7 +130,7 @@ export const LandingPage: React.FC = () => {
                 </div>
 
                 {/* Main Content */}
-                <div className="relative z-30 w-full max-w-7xl mx-auto px-4 flex flex-col items-center justify-center h-full pt-20 pb-40 text-center">
+                <div className="relative z-30 w-full max-w-7xl mx-auto px-4 flex flex-col items-center justify-center h-full pt-28 pb-10 text-center">
 
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
@@ -143,7 +143,7 @@ export const LandingPage: React.FC = () => {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ delay: 0.3, duration: 0.6 }}
-                            className="mb-8"
+                            className="mb-4"
                         >
                             <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-black/60 backdrop-blur-xl border border-[#f1bf00]/30 shadow-2xl">
                                 <div className="flex gap-1">
@@ -158,7 +158,7 @@ export const LandingPage: React.FC = () => {
                         </motion.div>
 
                         {/* Title Group */}
-                        <div className="relative mb-10 flex flex-col items-center">
+                        <div className="relative mb-6 flex flex-col items-center">
                             <motion.h1
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -197,7 +197,7 @@ export const LandingPage: React.FC = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 1, duration: 0.8 }}
-                            className="text-lg md:text-2xl text-slate-300 font-light max-w-2xl mb-12 leading-relaxed mx-auto font-sans"
+                            className="text-lg md:text-2xl text-slate-300 font-light max-w-2xl mb-8 leading-relaxed mx-auto font-sans"
                         >
                             Vive la <span className="text-[#009c3b] font-bold">pasión</span>, la <span className="text-white font-bold">elegancia</span> y la <span className="text-[#ce1126] font-bold">tradición</span> del auténtico sonido de México.
                         </motion.p>
@@ -207,11 +207,11 @@ export const LandingPage: React.FC = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 1.2, duration: 0.8 }}
-                            className="flex flex-col sm:flex-row gap-6 w-full justify-center items-center"
+                            className="flex flex-col sm:flex-row gap-4 w-full justify-center items-center"
                         >
                             <button
                                 onClick={() => navigate('/register')}
-                                className="group relative px-12 py-5 bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white rounded-full font-serif font-bold text-base tracking-[0.25em] uppercase overflow-hidden transition-all duration-500 shadow-[0_0_30px_rgba(206,17,38,0.6)] hover:shadow-[0_0_60px_rgba(206,17,38,0.9)] hover:-translate-y-1 border-2 border-[#f1bf00]"
+                                className="group relative px-12 py-4 bg-gradient-to-r from-[#ce1126] via-[#ff2b42] to-[#ce1126] bg-[length:200%_auto] hover:bg-[position:right_center] text-white rounded-full font-serif font-bold text-base tracking-[0.25em] uppercase overflow-hidden transition-all duration-500 shadow-[0_0_30px_rgba(206,17,38,0.6)] hover:shadow-[0_0_60px_rgba(206,17,38,0.9)] hover:-translate-y-1 border-2 border-[#f1bf00]"
                             >
                                 <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-md">
                                     Reservar Ahora <ChevronRight size={20} strokeWidth={3} />
@@ -547,7 +547,7 @@ export const LandingPage: React.FC = () => {
             <section className="relative py-32 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <img
-                        src="/images/Flores.jpg"
+                        src="/images/Mariachis 10.jpeg"
 
                         className="w-full h-full object-cover opacity-40 bg-fixed "
                     />
