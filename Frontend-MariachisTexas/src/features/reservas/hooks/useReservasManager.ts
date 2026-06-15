@@ -367,11 +367,14 @@ export const useReservasManager = () => {
   };
 
   const handleConfirmDeleteBlock = async () => {
-    if (!deleteBlockModal.blockId) return;
+    const blockId = deleteBlockModal.blockId; // capture before any await (avoids stale closure)
+    if (!blockId) return;
     try {
-      await blockService.deleteBlock(deleteBlockModal.blockId);
-      setBlocks(prev => prev.filter(b => b.id !== deleteBlockModal.blockId));
+      await blockService.deleteBlock(blockId);
+      setBlocks(prev => prev.filter(b => b.id !== blockId));
       showNotification('Bloqueo eliminado correctamente.');
+      // Sync with server to ensure calendar reflects real DB state
+      await fetchData();
     } catch {
       showNotification('Error al eliminar bloqueo.', 'error');
     } finally {

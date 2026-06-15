@@ -63,18 +63,33 @@ export const getReservas = async (usuarioId?: number): Promise<ReservationRespon
   const reservas = await prisma.reserva.findMany({
     where,
     include: reservaInclude,
-    orderBy: { createdAt: 'desc' },
+    orderBy: { id: 'desc' }
   })
-  return reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones))
+
+  return Promise.all(reservas.map(r => mapToReservation(r as unknown as ReservaConRelaciones)))
 }
 
-///Obtener reservas para el calendario
-export const getReservasCalendario = async () => {
+export const getReservasCalendario = async (usuarioId?: number) => {
   // Asegurar que las reservas estén actualizadas antes de devolverlas
   await anularReservasVencidas().catch(err => console.error('[Cleanup] Error anular:', err))
   await finalizarReservasPorHoraEvento().catch(err => console.error('[Cleanup] Error finalizar:', err))
 
   const reservaWhere = { estado: { not: 'ANULADA' as EstadoReserva } }
+  const cotizacionWhere = { estado: 'EN_ESPERA' as any, esReservaDirecta: false }
+  const ventaWhere = { estado: { not: 'CANCELADA' as any }, reservaId: null }
+  let showEnsayos = true
+  let loggedInClienteId: number | null = null
+
+  if (usuarioId) {
+    const cliente = await prisma.cliente.findUnique({
+      where: { usuarioId },
+      select: { id: true }
+    })
+    if (cliente) {
+      loggedInClienteId = cliente.id
+    }
+    showEnsayos = false
+  }
 
   const [reservas, ensayos, cotizaciones, ventasFinalizadas] = await Promise.all([
     prisma.reserva.findMany({
@@ -100,16 +115,15 @@ export const getReservasCalendario = async () => {
       orderBy: { createdAt: 'desc' },
     }),
 
-    prisma.ensayo.findMany({
-      where: { estado: 'PENDIENTE' },
-      orderBy: { fechaHora: 'asc' },
-    }),
+    showEnsayos
+      ? prisma.ensayo.findMany({
+          where: { estado: 'PENDIENTE' },
+          orderBy: { fechaHora: 'asc' },
+        })
+      : Promise.resolve([]),
 
     prisma.cotizacion.findMany({
-      where: {
-        estado: 'EN_ESPERA',
-        esReservaDirecta: false,
-      },
+      where: cotizacionWhere,
       include: {
         cliente: { select: { email: true } },
       },
@@ -118,10 +132,7 @@ export const getReservasCalendario = async () => {
 
     // Ventas DIRECTAS (sin reserva) que no estén canceladas
     prisma.venta.findMany({
-      where: { 
-        estado: { not: 'CANCELADA' },
-        reservaId: null // Crucial: evitar duplicados si ya vienen de la tabla Reserva
-      },
+      where: ventaWhere,
       include: {
         reserva: {
           include: {
@@ -174,10 +185,14 @@ export const getReservasCalendario = async () => {
       ? `${nombre} ${apellido}`
       : nombre || apellido || ''
 
+    const isOwn = !usuarioId || (r.cotizacion?.clienteId === loggedInClienteId)
+    const publicRes = mapToPublicReservation(r as unknown as ReservaPublica)
+
     return {
-      ...mapToPublicReservation(r as unknown as ReservaPublica),
-      clientEmail: cli?.email ?? '',
-      clientName: fullName,
+      ...publicRes,
+      clientEmail: isOwn ? (cli?.email ?? '') : '',
+      clientName: isOwn ? fullName : 'RESERVADO',
+      eventType: isOwn ? (r.cotizacion?.tipoEvento ?? '') : 'RESERVADO',
     }
   })
 
@@ -192,17 +207,21 @@ export const getReservasCalendario = async () => {
     title: e.nombre,
   }))
 
-  const cotizacionesMapped = cotizaciones.map(c => ({
-    id: String(c.id),
-    clientId: c.clienteId ? String(c.clienteId) : null,
-    eventDate: toLocalDate(c.fechaEvento),
-    eventTime: toLocalTime(c.horaInicio),
-    startTime: toLocalTime(c.horaInicio),
-    endTime: toLocalTime(c.horaFin),
-    eventType: 'COTIZACION',
-    status: c.estado,
-    clientEmail: c.cliente?.email ?? c.contactoEmail ?? '',
-  }))
+  const cotizacionesMapped = cotizaciones.map(c => {
+    const isOwn = !usuarioId || (c.clienteId === loggedInClienteId)
+    return {
+      id: String(c.id),
+      clientId: isOwn && c.clienteId ? String(c.clienteId) : null,
+      eventDate: toLocalDate(c.fechaEvento),
+      eventTime: toLocalTime(c.horaInicio),
+      startTime: toLocalTime(c.horaInicio),
+      endTime: toLocalTime(c.horaFin),
+      eventType: isOwn ? 'COTIZACION' : 'RESERVADO',
+      status: c.estado,
+      clientEmail: isOwn ? (c.cliente?.email ?? c.contactoEmail ?? '') : '',
+      clientName: isOwn ? '' : 'RESERVADO',
+    }
+  })
 
   // ─── Ventas FINALIZADAS - siempre aparecen en calendario ───
   const ventasFinalizadasMapped = ventasFinalizadas
@@ -231,32 +250,34 @@ export const getReservasCalendario = async () => {
         amount: Number(a.monto),
         date: a.fechaPago?.toISOString() ?? '',
         method: a.metodoPago ?? '',
-        notes: a.notas ?? '',
+        notes: a.notes ?? '',
       }))
+
+      const isOwn = !usuarioId || (v.clienteId === loggedInClienteId)
 
       return {
         id: `VENTA-${v.id}`,
-        cotizacionId: v.reservaId ? String(v.reservaId) : undefined,
-        clientName: nombreCliente,
-        clientId: String(v.clienteId),
-        clientPhone: cliente?.telefonoPrincipal ?? '',
-        secondaryPhone: cliente?.telefonoAlternativo ?? '',
-        clientEmail: cliente?.email ?? '',
-        homenajeado: cot?.nombreHomenajeado ?? 'Sin especificar',
-        eventType: cot?.tipoEvento ?? 'Venta Finalizada',
+        cotizacionId: isOwn && v.reservaId ? String(v.reservaId) : undefined,
+        clientName: isOwn ? nombreCliente : 'RESERVADO',
+        clientId: isOwn ? String(v.clienteId) : undefined,
+        clientPhone: isOwn ? (cliente?.telefonoPrincipal ?? '') : '',
+        secondaryPhone: isOwn ? (cliente?.telefonoAlternativo ?? '') : '',
+        clientEmail: isOwn ? (cliente?.email ?? '') : '',
+        homenajeado: isOwn ? (cot?.nombreHomenajeado ?? 'Sin especificar') : 'RESERVADO',
+        eventType: isOwn ? (cot?.tipoEvento ?? 'Venta Finalizada') : 'RESERVADO',
         eventDate: toLocalDate(fechaEvento as Date),
         eventTime: horaInicio ? toLocalTime(horaInicio) : '08:00',
         startTime: horaInicio ? toLocalTime(horaInicio) : '08:00',
         endTime: horaFin ? toLocalTime(horaFin) : '23:00',
-        location: cot?.direccionEvento ?? 'Sin especificar',
-        address: cot?.direccionEvento ?? 'Sin especificar',
+        location: isOwn ? (cot?.direccionEvento ?? 'Sin especificar') : 'RESERVADO',
+        address: isOwn ? (cot?.direccionEvento ?? 'Sin especificar') : 'RESERVADO',
         neighborhood: '',
         repertoireIds: [],
         selectedServices: [],
-        totalAmount: Number(v.montoTotal),
-        paidAmount: Number(v.montoPagado),
-        pendingAmount: Number(v.montoTotal) - Number(v.montoPagado),
-        payments,
+        totalAmount: isOwn ? Number(v.montoTotal) : 0,
+        paidAmount: isOwn ? Number(v.montoPagado) : 0,
+        pendingAmount: isOwn ? (Number(v.montoTotal) - Number(v.montoPagado)) : 0,
+        payments: isOwn ? payments : [],
         status: v.estado === 'FINALIZADO' ? 'FINALIZADO' : 'CONFIRMADA',
       }
     })

@@ -153,7 +153,9 @@ export const ProfilePage: React.FC = () => {
     setIsLoading(true);
     try {
       const actualizado = await profileService.actualizar({
-        nombre: formData.nombre, apellido: formData.apellido,
+        nombre: formData.nombre, email: formData.email, apellido: formData.apellido,
+        tipoDocumento: formData.tipoDocumento,
+        numeroDocumento: formData.numeroDocumento,
         telefonoPrincipal: formData.telefonoPrincipal,
         telefonoAlternativo: formData.telefonoAlternativo || undefined,
         ciudad: formData.ciudad, barrio: formData.barrio, direccion: formData.direccion,
@@ -162,7 +164,7 @@ export const ProfilePage: React.FC = () => {
       });
       setPerfil(actualizado);
       updateUser({
-        name: actualizado.nombre, lastName: actualizado.apellido,
+        name: actualizado.nombre, lastName: actualizado.apellido, email: actualizado.email,
         phone: actualizado.telefonoPrincipal, secondaryPhone: actualizado.telefonoAlternativo,
         city: actualizado.ciudad, neighborhood: actualizado.barrio,
         address: actualizado.direccion, birthDate: actualizado.fechaNacimiento,
@@ -416,6 +418,34 @@ export const ProfilePage: React.FC = () => {
                 <Field label="Nombre" name="nombre" value={formData.nombre} icon={<User size={15} />} editing={isEditing} onChange={handleChange as any} />
                 <Field label="Apellidos" name="apellido" value={formData.apellido} icon={<User size={15} />} editing={isEditing} onChange={handleChange as any} />
 
+                <div>
+                  <label className="block text-[10px] font-black text-[#f1bf00]/50 uppercase tracking-[0.25em] mb-2 ml-1">
+                    Tipo de Documento
+                  </label>
+                  <div className="relative">
+                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 z-10 transition-colors ${isEditing ? 'text-[#f1bf00]' : 'text-slate-600'}`}>
+                      <FileText size={15} />
+                    </span>
+                    <select
+                      name="tipoDocumento"
+                      value={formData.tipoDocumento}
+                      onChange={handleChange as any}
+                      disabled={!isEditing}
+                      className={`w-full pl-11 pr-4 py-3.5 rounded-xl text-sm font-semibold outline-none transition-all appearance-none
+                        ${isEditing
+                          ? 'bg-black/40 border border-[#f1bf00]/20 text-white focus:border-[#f1bf00]/50 cursor-pointer'
+                          : 'bg-transparent border border-transparent text-slate-300 cursor-default'}`}
+                    >
+                      <option value="CC" className="bg-[#0d0d0d]">CC - Cédula de Ciudadanía</option>
+                      <option value="CE" className="bg-[#0d0d0d]">CE - Cédula de Extranjería</option>
+                      <option value="TI" className="bg-[#0d0d0d]">TI - Tarjeta de Identidad</option>
+                      <option value="PAS" className="bg-[#0d0d0d]">PAS - Pasaporte</option>
+                    </select>
+                  </div>
+                </div>
+
+                <Field label="Número de Documento" name="numeroDocumento" value={formData.numeroDocumento} icon={<FileText size={15} />} editing={isEditing} onChange={handleChange as any} />
+
                 {/* Fecha nacimiento */}
                 <div>
                   <label className="block text-[10px] font-black text-[#f1bf00]/50 uppercase tracking-[0.25em] mb-2 ml-1">
@@ -436,7 +466,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
 
                 <Field label="Correo" name="email" value={formData.email} type="email"
-                  icon={<Mail size={15} />} editing={isEditing} readOnly />
+                  icon={<Mail size={15} />} editing={isEditing} onChange={handleChange as any} />
 
                 <Field label="Teléfono Principal" name="telefonoPrincipal" value={formData.telefonoPrincipal}
                   type="tel" icon={<Phone size={15} />} editing={isEditing} onChange={handleChange as any} />

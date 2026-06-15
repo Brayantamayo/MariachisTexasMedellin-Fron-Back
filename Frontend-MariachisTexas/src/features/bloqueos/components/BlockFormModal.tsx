@@ -5,6 +5,7 @@ import { X, Save, Lock, Calendar, Clock, AlignLeft, AlertCircle, Type, ChevronDo
 import { CalendarBlock } from '@/types';
 import { CustomDatePicker } from '@/shared/components/CustomDatePicker';
 import { format12h } from '@/shared/utils/time';
+import { reservaService } from '../../reservas/services/reservaService';
 
 interface Props {
   isOpen: boolean;
@@ -27,14 +28,14 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
   };
 
   const [formData, setFormData] = useState<any>(emptyBlock);
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingHours, setLoadingHours] = useState(false);
 
-
-  // Generar opciones de hora en orden cronológico (00:00 - 23:30)
+  // Generar opciones de hora en orden cronológico (00:00 - 23:00)
   const timeOptions: string[] = [];
   for (let i = 0; i <= 23; i++) {
       const hour = i.toString().padStart(2, '0');
       timeOptions.push(`${hour}:00`);
-      timeOptions.push(`${hour}:30`);
   }
 
   useEffect(() => {
@@ -44,6 +45,41 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
       setFormData(emptyBlock);
     }
   }, [initialData, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || formData.type !== 'TIME_RANGE' || !formData.startDate) {
+      setAvailableHours([]);
+      return;
+    }
+
+    const fetchAvailable = async () => {
+      setLoadingHours(true);
+      try {
+        let hours = await reservaService.getAvailableHours(formData.startDate);
+        
+        // Si estamos editando un bloqueo TIME_RANGE existente, aseguramos que sus horas actuales no se filtren
+        if (initialData && initialData.startDate === formData.startDate && initialData.type === 'TIME_RANGE') {
+          const currentHours: string[] = [];
+          const [sh] = (initialData.startTime || '').split(':').map(Number);
+          const [eh] = (initialData.endTime || '').split(':').map(Number);
+          if (!isNaN(sh) && !isNaN(eh)) {
+            for (let h = sh; h <= eh; h++) {
+              currentHours.push(`${h.toString().padStart(2, '0')}:00`);
+            }
+          }
+          hours = Array.from(new Set([...hours, ...currentHours])).sort();
+        }
+        
+        setAvailableHours(hours);
+      } catch (error) {
+        console.error('Error cargando horas disponibles:', error);
+      } finally {
+        setLoadingHours(false);
+      }
+    };
+
+    fetchAvailable();
+  }, [formData.startDate, formData.type, isOpen, initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (isViewOnly) return;
@@ -95,6 +131,26 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
     onSave(formData);
   };
 
+  const startOptions = timeOptions.filter(t => availableHours.includes(t));
+
+  const getEndTimeOptions = () => {
+    if (!formData.startTime) return [];
+    const options: string[] = [];
+    const startIndex = timeOptions.indexOf(formData.startTime);
+    if (startIndex === -1) return [];
+    
+    for (let i = startIndex + 1; i < timeOptions.length; i++) {
+      const hour = timeOptions[i];
+      options.push(hour);
+      if (!availableHours.includes(hour)) {
+        break; // Detenerse en la primera hora no disponible (ocupada por reserva/ensayo/etc.)
+      }
+    }
+    return options;
+  };
+
+  const endOptions = getEndTimeOptions();
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -113,7 +169,7 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
             {/* Text Container flex-1 to take remaining space */}
             <div className="flex-1 min-w-0">
                 <h3 className="text-xl font-serif font-bold text-slate-800 tracking-wide uppercase truncate">
-                    {isViewOnly ? 'Detalle de Bloqueo' : initialData ? 'Editar Bloqueo' : 'Crear Bloqueo'}
+                    {isViewOnly ? 'Detalle de Bloqueo' : (initialData && initialData.id) ? 'Editar Bloqueo' : 'Crear Bloqueo'}
                 </h3>
                 <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5 truncate">
                     Restringe la disponibilidad en el calendario
@@ -193,13 +249,13 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
                                     <select 
                                         name="startTime" 
                                         required 
-                                        disabled={isViewOnly} 
+                                        disabled={isViewOnly || loadingHours} 
                                         value={formData.startTime} 
                                         onChange={handleChange} 
                                         className="input-form input-icon-padding cursor-pointer appearance-none"
                                     >
-                                        <option value="">--:--</option>
-                                        {timeOptions.map(t => <option key={`start-${t}`} value={t}>{format12h(t)}</option>)}
+                                        <option value="">{loadingHours ? 'Cargando horas...' : '--:--'}</option>
+                                        {startOptions.map(t => <option key={`start-${t}`} value={t}>{format12h(t)}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                                 </div>
@@ -211,13 +267,13 @@ export const BlockFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initi
                                     <select 
                                         name="endTime" 
                                         required 
-                                        disabled={isViewOnly} 
+                                        disabled={isViewOnly || loadingHours || !formData.startTime} 
                                         value={formData.endTime} 
                                         onChange={handleChange} 
                                         className="input-form input-icon-padding cursor-pointer appearance-none"
                                     >
-                                        <option value="">--:--</option>
-                                        {timeOptions.map(t => <option key={`end-${t}`} value={t}>{format12h(t)}</option>)}
+                                        <option value="">{!formData.startTime ? 'Selecciona inicio' : (loadingHours ? 'Cargando...' : '--:--')}</option>
+                                        {endOptions.map(t => <option key={`end-${t}`} value={t}>{format12h(t)}</option>)}
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                                 </div>

@@ -38,7 +38,7 @@ export const TopContactBar: React.FC = () => {
       <div className="h-0.5 flex bg-gradient-to-r from-[#009c3b] via-yellow-500 to-[#ce1126] animate-moving-gradient shadow-[0_0_12px_rgba(206,17,38,0.5)]" />
 
       {/* Main bar */}
-      <div className="backdrop-blur-md bg-black/60 border-b border-red-600/30 py-2 px-4">
+      <div className="backdrop-blur-md bg-black/35 border-b border-white/5 py-2 px-4 shadow-[0_4px_30px_rgba(0,0,0,0.15)]">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           {/* Left: Contact Info - Compact */}

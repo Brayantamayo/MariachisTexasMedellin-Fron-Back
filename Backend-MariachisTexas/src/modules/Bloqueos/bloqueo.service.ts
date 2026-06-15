@@ -1,20 +1,27 @@
 import prisma from '../../config/prisma'
+import { AppError } from '../../utils/AppError'
+import { toLocalDate, toLocalTime } from '../../utils/date.helpers'
 
 // ─── MAPEO Prisma → Frontend ──────────────────────────────────────────────────
-const mapToBlock = (b: any) => ({
-  id:          String(b.id),
-  type:        b.motivo?.startsWith('TIME_RANGE:') ? 'TIME_RANGE'
-  : b.fechaInicio.toISOString().split('T')[0] === b.fechaFin.toISOString().split('T')[0]
-  ? 'FULL_DATE' : 'DATE_RANGE',
-  reason:      b.motivo?.replace(/^(TIME_RANGE:|FULL_DATE:|DATE_RANGE:)/, '').split('|')[0] ?? '',
-  description: b.motivo?.split('|')[1] ?? '',
-  startDate:   b.fechaInicio.toISOString().split('T')[0],
-  endDate:     b.fechaFin.toISOString().split('T')[0],
-  startTime:   b.motivo?.startsWith('TIME_RANGE:') ? b.fechaInicio.toISOString().split('T')[1].slice(0,5) : undefined,
-  endTime:     b.motivo?.startsWith('TIME_RANGE:') ? b.fechaFin.toISOString().split('T')[1].slice(0,5) : undefined,
-  isActive:    true,
-  createdAt:   b.createdAt?.toISOString(),
-})
+const mapToBlock = (b: any) => {
+  const isTimeRange = b.motivo?.startsWith('TIME_RANGE:')
+  const reasonWithPrefix = b.motivo?.split('|')[0] ?? ''
+  const prefix = reasonWithPrefix.split(':')[0]
+  const type = isTimeRange ? 'TIME_RANGE' : (prefix === 'FULL_DATE' ? 'FULL_DATE' : (prefix === 'DATE_RANGE' ? 'DATE_RANGE' : 'FULL_DATE'))
+  
+  return {
+    id:          String(b.id),
+    type,
+    reason:      reasonWithPrefix.replace(/^(TIME_RANGE:|FULL_DATE:|DATE_RANGE:)/, ''),
+    description: b.motivo?.split('|')[1] ?? '',
+    startDate:   toLocalDate(b.fechaInicio),
+    endDate:     toLocalDate(b.fechaFin),
+    startTime:   isTimeRange ? toLocalTime(b.fechaInicio) : undefined,
+    endTime:   isTimeRange ? toLocalTime(b.fechaFin) : undefined,
+    isActive:    true,
+    createdAt:   b.createdAt?.toISOString(),
+  }
+}
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const buildDates = (data: any) => {
@@ -25,10 +32,96 @@ const buildDates = (data: any) => {
       motivo:      `TIME_RANGE:${data.reason}|${data.description ?? ''}`
     }
   }
+  // DATE_RANGE / FULL_DATE: store range start to end of day in local/server time
   return {
     fechaInicio: new Date(`${data.startDate}T00:00:00`),
-    fechaFin:    new Date(`${data.endDate}T23:59:59`),
+    fechaFin:    new Date(`${data.endDate ?? data.startDate}T23:59:59`),
     motivo:      `${data.type}:${data.reason}|${data.description ?? ''}`
+  }
+}
+
+// ─── VALIDATE CONFLICTS ───────────────────────────────────────────────────────
+const checkForConflicts = async (
+  startDate: string,
+  endDate: string,
+  type: string,
+  startTime: string | undefined,
+  fechaInicio: Date,
+  fechaFin: Date
+) => {
+  const now = new Date()
+  const todayStr = toLocalDate(now)
+
+  if (startDate < todayStr) {
+    throw new AppError('No se puede crear el bloqueo en fechas pasadas.', 400)
+  }
+
+  if (type === 'TIME_RANGE' && startDate === todayStr && startTime) {
+    const currentHHMM = toLocalTime(now)
+    if (startTime < currentHHMM) {
+      throw new AppError('No se puede crear el bloqueo en horas pasadas.', 400)
+    }
+  }
+
+  // Define block range in local/server date reference
+  const blockStart = fechaInicio
+  const blockEnd = fechaFin
+
+  // 1. Reservas activas (estado !== 'ANULADA')
+  const activeReservas = await prisma.reserva.findMany({
+    where: {
+      estado: { not: 'ANULADA' }
+    },
+    include: { cotizacion: true }
+  })
+
+  for (const res of activeReservas) {
+    if (res.cotizacion) {
+      const start = res.cotizacion.horaInicio
+      const end = res.cotizacion.horaFin < start ? new Date(res.cotizacion.horaFin.getTime() + 24 * 60 * 60 * 1000) : res.cotizacion.horaFin
+      const bufferStart = new Date(start.getTime() - 60 * 60 * 1000)
+      const bufferEnd   = new Date(end.getTime() + 60 * 60 * 1000)
+
+      if (blockStart < bufferEnd && blockEnd > bufferStart) {
+        throw new AppError('No se puede crear el bloqueo ya que hay reservas en el rango que escogiste.', 400)
+      }
+    }
+  }
+
+  // 2. Cotizaciones en espera (estado === 'EN_ESPERA')
+  const activeCotizaciones = await prisma.cotizacion.findMany({
+    where: {
+      estado: 'EN_ESPERA',
+      reserva: null
+    }
+  })
+
+  for (const cot of activeCotizaciones) {
+    const start = cot.horaInicio
+    const end = cot.horaFin < start ? new Date(cot.horaFin.getTime() + 24 * 60 * 60 * 1000) : cot.horaFin
+    const bufferStart = new Date(start.getTime() - 60 * 60 * 1000)
+    const bufferEnd   = new Date(end.getTime() + 60 * 60 * 1000)
+
+    if (blockStart < bufferEnd && blockEnd > bufferStart) {
+      throw new AppError('No se puede crear el bloqueo ya que hay reservas en el rango que escogiste.', 400)
+    }
+  }
+
+  // 3. Ensayos pendientes (estado !== 'LISTO')
+  const activeEnsayos = await prisma.ensayo.findMany({
+    where: {
+      estado: { not: 'LISTO' }
+    }
+  })
+
+  for (const ensayo of activeEnsayos) {
+    const start = ensayo.fechaHora
+    const bufferStart = new Date(start.getTime() - 60 * 60 * 1000)
+    const bufferEnd   = new Date(start.getTime() + 60 * 60 * 1000)
+
+    if (blockStart < bufferEnd && blockEnd > bufferStart) {
+      throw new AppError('No se puede crear el bloqueo ya que hay reservas en el rango que escogiste.', 400)
+    }
   }
 }
 
@@ -68,8 +161,8 @@ export const checkDateStatus = async (dateStr: string) => {
       isBlocked: false,
       hasPartialBlocks: true,
       blockedRanges: timeBlocks.map(b => ({
-        start:  b.fechaInicio.toISOString().split('T')[1].slice(0,5),
-        end:    b.fechaFin.toISOString().split('T')[1].slice(0,5),
+        start:  toLocalTime(b.fechaInicio),
+        end:    toLocalTime(b.fechaFin),
         reason: b.motivo?.replace('TIME_RANGE:', '').split('|')[0] ?? ''
       }))
     }
@@ -88,6 +181,8 @@ export const createBlock = async (data: any) => {
 
   const { fechaInicio, fechaFin, motivo } = buildDates(data)
 
+  await checkForConflicts(data.startDate, data.endDate ?? data.startDate, data.type, data.startTime, fechaInicio, fechaFin)
+
   const block = await prisma.bloqueoCalendario.create({
     data: { fechaInicio, fechaFin, motivo }
   })
@@ -102,6 +197,8 @@ export const updateBlock = async (id: number, data: any) => {
   // Reconstruir con datos merged
   const merged = { ...mapToBlock(exists), ...data }
   const { fechaInicio, fechaFin, motivo } = buildDates(merged)
+
+  await checkForConflicts(merged.startDate, merged.endDate ?? merged.startDate, merged.type, merged.startTime, fechaInicio, fechaFin)
 
   const block = await prisma.bloqueoCalendario.update({
     where: { id },

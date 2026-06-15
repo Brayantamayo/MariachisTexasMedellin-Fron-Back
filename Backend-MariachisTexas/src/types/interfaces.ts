@@ -217,7 +217,10 @@ export interface PerfilResponse {
 
 export interface ActualizarPerfilDatos {
   nombre?:              string
+  email?:               string
   apellido?:            string
+  tipoDocumento?:       string
+  numeroDocumento?:     string
   telefonoPrincipal?:   string
   telefonoAlternativo?: string
   ciudad?:              string
