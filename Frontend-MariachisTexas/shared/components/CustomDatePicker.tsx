@@ -116,7 +116,8 @@ export const CustomDatePicker = React.forwardRef<HTMLDivElement, CustomDatePicke
             name={name}
             value={value || ''}
             placeholder="YYYY-MM-DD"
-            className={className || "input-form pl-9 cursor-pointer text-xs font-bold text-slate-700"}
+            className={className || "input-form cursor-pointer text-xs font-bold text-slate-700"}
+            style={{ paddingLeft: '2.5rem' }}
           />
         </div>
 

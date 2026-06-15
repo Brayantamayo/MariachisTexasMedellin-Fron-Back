@@ -309,7 +309,7 @@ export const ReservasPage: React.FC = () => {
             ${isToday ? 'bg-blue-50/20 ring-1 ring-blue-100' : 'bg-white'}
             ${!isFullDayBlock && !isSelected && !isPast ? 'hover:bg-slate-50/50 hover:shadow-[inset_0_0_20px_rgba(0,0,0,0.01)] cursor-pointer' : ''}
             ${isPast ? 'bg-slate-50/60 opacity-60' : ''}
-            ${isSelected ? (canManage ? 'bg-red-50/30 border-red-200' : 'bg-emerald-50/30 border-emerald-200') : ''}
+            ${isSelected ? (canManage ? 'bg-red-100/85 border-red-400 ring-2 ring-red-300/50 z-10 scale-[1.01]' : 'bg-emerald-100/85 border-emerald-400 ring-2 ring-emerald-300/50 z-10 scale-[1.01]') : ''}
           `}
           style={isFullDayBlock ? { backgroundImage: 'repeating-linear-gradient(45deg,#fff1f2 0,#fff1f2 10px,#ffe4e6 10px,#ffe4e6 20px)' } : {}}
         >

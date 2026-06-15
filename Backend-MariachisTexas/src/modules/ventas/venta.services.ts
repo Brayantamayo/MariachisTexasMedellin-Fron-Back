@@ -142,7 +142,11 @@ export const getVentas = async (usuarioId?: number): Promise<any[]> => {
     if (!usuario)
       throw new VentaError('Usuario no encontrado', 'USUARIO_NO_ENCONTRADO', 404)
     const cliente = await prisma.cliente.findUnique({ where: { email: usuario.email } })
-    if (cliente) where.clienteId = cliente.id
+    if (cliente) {
+      where.clienteId = cliente.id
+    } else {
+      return []
+    }
   }
 
   const ventas = await prisma.venta.findMany({

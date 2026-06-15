@@ -46,6 +46,19 @@ export const LandingPage: React.FC = () => {
     const [dynamicGallery, setDynamicGallery] = useState<string[]>([]);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [videoPlaying, setVideoPlaying] = useState(false);
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    const handlePlayVideo = () => {
+        if (videoRef.current) {
+            videoRef.current.play();
+            setVideoPlaying(true);
+        }
+    };
+
+    const handleVideoPause = () => {
+        setVideoPlaying(false);
+    };
 
     useEffect(() => {
         const fetchGallery = async () => {
@@ -152,7 +165,7 @@ export const LandingPage: React.FC = () => {
                                     <span className="w-2 h-2 rounded-full bg-[#ce1126] animate-pulse" style={{ animationDelay: '0.2s' }}></span>
                                 </div>
                                 <span className="text-white text-[10px] md:text-xs font-serif font-bold tracking-[0.25em] uppercase">
-                                    La Mejor Fiesta Mexicana
+                                    El mejor servicio en Medellin
                                 </span>
                             </div>
                         </motion.div>
@@ -199,7 +212,7 @@ export const LandingPage: React.FC = () => {
                             transition={{ delay: 1, duration: 0.8 }}
                             className="text-lg md:text-2xl text-slate-300 font-light max-w-2xl mb-8 leading-relaxed mx-auto font-sans"
                         >
-                            Vive la <span className="text-[#009c3b] font-bold">pasión</span>, la <span className="text-white font-bold">elegancia</span> y la <span className="text-[#ce1126] font-bold">tradición</span> del auténtico sonido de México.
+                        Vive la <span className="text-[#009c3b] font-bold">pasión</span>, la <span className="text-white font-bold">elegancia</span> y la <span className="text-[#ce1126] font-bold">tradición</span> que convierten cada celebración en un momento inolvidable.
                         </motion.p>
 
                         {/* Actions */}
@@ -239,7 +252,7 @@ export const LandingPage: React.FC = () => {
 
             </section>
 
-            <InfiniteMarquee items={['Rancheras', 'Boleros', 'Sones', 'Corridos', 'Huapangos', 'Banda', 'Zapateo', 'Norteño']} />
+            <InfiniteMarquee items={['Casicos', 'Romanticas', 'Valadas', 'Popular', 'Rancheras',]} />
 
             {/* --- WHY CHOOSE US --- */}
             <section className="py-24 relative bg-[#0a0a0a] overflow-hidden">
@@ -256,30 +269,38 @@ export const LandingPage: React.FC = () => {
                             {
                                 icon: Star,
                                 color: "text-[#f1bf00]",
+                                bgIcon: "bg-[#f1bf00]/10 border-[#f1bf00]/20",
                                 title: "Calidad Premium",
-                                desc: "Voces profesionales y músicos de conservatorio.",
-                                cardClass: "border-[#f1bf00]/30 bg-[#f1bf00]/10 hover:bg-[#f1bf00]/20 hover:border-[#f1bf00] hover:shadow-[0_0_30px_rgba(241,191,0,0.2)]"
+                                desc: "Ensayos rigurosos y atención al detalle en cada presentación.",
+                                gradientColor: "rgba(241, 191, 0, 0.15)",
+                                borderHover: "group-hover:border-[#f1bf00]/50"
                             },
                             {
                                 icon: Clock,
                                 color: "text-[#ce1126]",
+                                bgIcon: "bg-[#ce1126]/10 border-[#ce1126]/20",
                                 title: "Puntualidad",
-                                desc: "Llegamos 15 minutos antes. Tu tiempo es oro.",
-                                cardClass: "border-[#ce1126]/30 bg-[#ce1126]/10 hover:bg-[#ce1126]/20 hover:border-[#ce1126] hover:shadow-[0_0_30px_rgba(206,17,38,0.2)]"
+                                desc: "Siempre listos para comenzar en el momento indicado.",
+                                gradientColor: "rgba(206, 17, 38, 0.15)",
+                                borderHover: "group-hover:border-[#ce1126]/50"
                             },
                             {
                                 icon: Award,
                                 color: "text-[#009c3b]",
+                                bgIcon: "bg-[#009c3b]/10 border-[#009c3b]/20",
                                 title: "Trajes de Gala",
-                                desc: "Impecables, elegantes y auténticamente mexicanos.",
-                                cardClass: "border-[#009c3b]/30 bg-[#009c3b]/10 hover:bg-[#009c3b]/20 hover:border-[#009c3b] hover:shadow-[0_0_30px_rgba(0,156,59,0.2)]"
+                                desc: "Vestimos con elegancia y profesionalismo en cada presentación.",
+                                gradientColor: "rgba(0, 156, 59, 0.15)",
+                                borderHover: "group-hover:border-[#009c3b]/50"
                             },
                             {
                                 icon: Users,
                                 color: "text-blue-400",
+                                bgIcon: "bg-blue-400/10 border-blue-400/20",
                                 title: "Show Interactivo",
-                                desc: "Hacemos participar a tus invitados. ¡Nadie se aburre!",
-                                cardClass: "border-blue-400/30 bg-blue-400/10 hover:bg-blue-400/20 hover:border-blue-400 hover:shadow-[0_0_30px_rgba(96,165,250,0.2)]"
+                                desc: "Hacemos participar a tus invitados ¡Nadie se aburre!",
+                                gradientColor: "rgba(96, 165, 250, 0.15)",
+                                borderHover: "group-hover:border-blue-400/50"
                             }
                         ].map((feature, idx) => (
                             <motion.div
@@ -288,13 +309,22 @@ export const LandingPage: React.FC = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: "-50px" }}
                                 transition={{ duration: 0.5, delay: idx * 0.1 }}
-                                className={`p-8 rounded-3xl transition-all duration-300 group border backdrop-blur-sm ${feature.cardClass}`}
                             >
-                                <div className={`w-14 h-14 rounded-2xl bg-black/40 flex items-center justify-center mb-6 ${feature.color} border border-white/10 group-hover:scale-110 transition-transform shadow-lg`}>
-                                    <feature.icon size={28} />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3 font-serif">{feature.title}</h3>
-                                <p className="text-sm text-slate-300 leading-relaxed">{feature.desc}</p>
+                                <MagicCard 
+                                    className={`p-8 h-full border-white/5 bg-black/35 backdrop-blur-xl group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] ${feature.borderHover} transition-all duration-300`}
+                                    gradientColor={feature.gradientColor}
+                                >
+                                    <div className="flex flex-col h-full relative z-10">
+                                        <div className={`w-14 h-14 rounded-2xl ${feature.bgIcon} border flex items-center justify-center mb-6 ${feature.color} group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-md`}>
+                                            <feature.icon size={28} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white mb-3 font-serif tracking-wide transition-colors duration-300">{feature.title}</h3>
+                                        <p className="text-sm text-slate-300 leading-relaxed font-light">{feature.desc}</p>
+                                        
+                                        {/* Bottom hover bar accent */}
+                                        <div className={`w-0 group-hover:w-full h-[2px] bg-gradient-to-r from-transparent via-current to-transparent ${feature.color} mt-6 transition-all duration-500 opacity-40`} />
+                                    </div>
+                                </MagicCard>
                             </motion.div>
                         ))}
                     </div>
@@ -319,7 +349,7 @@ export const LandingPage: React.FC = () => {
                         <h2 className="text-4xl md:text-6xl font-serif font-bold text-white mb-6">
                             PASIÓN POR LA <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">TRADICIÓN</span>
                         </h2>
-                        <p className="text-slate-400 text-lg max-w-2xl mx-auto font-light">Más que música, somos una explosión de cultura y alegría mexicana en Medellín.</p>
+                        <p className="text-slate-400 text-lg max-w-2xl mx-auto font-light">Reconocidos como uno de los mejores mariachis de Medellín, transformamos cada evento en una experiencia inolvidable llena de emoción y tradición mexicana.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[600px]">
@@ -348,7 +378,7 @@ export const LandingPage: React.FC = () => {
                                         </div>
                                         <h3 className="text-3xl md:text-4xl font-serif font-bold text-white mb-3">15 Años de Historia</h3>
                                         <p className="text-base text-slate-200 max-w-md leading-relaxed">
-                                            Llevando el orgullo mexicano a cada rincón. Trajes de gala impecables, sombreros auténticos y voces que llegan al alma.
+                                            Más que música, llevamos emoción, tradición y alegría a cada rincón de Medellín.
                                         </p>
                                     </div>
                                 </div>
@@ -361,8 +391,8 @@ export const LandingPage: React.FC = () => {
                                 <Music size={28} />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-serif font-bold text-white mb-2">Repertorio Infinito</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">Desde los clásicos de José Alfredo hasta los éxitos modernos de Christian Nodal.</p>
+                                <h3 className="text-2xl font-serif font-bold text-white mb-2">Repertorio </h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">Contamos con un amplio repertorio musical. Pregunta por tus canciones favoritas y personaliza tu serenata.</p>
                             </div>
                         </MagicCard>
 
@@ -372,8 +402,8 @@ export const LandingPage: React.FC = () => {
                                 <Zap size={28} />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-serif font-bold text-white mb-2">Show En Vivo</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">Zapateo, trompetas vibrantes y una animación que levantará a todos.</p>
+                                <h3 className="text-2xl font-serif font-bold text-white mb-2">Show en vivo </h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">Cada presentación está llena de pasión, tradición y el sentimiento que merece una ocasión especial..</p>
                             </div>
                         </MagicCard>
                     </div>
@@ -421,7 +451,7 @@ export const LandingPage: React.FC = () => {
                             transition={{ duration: 0.7, delay: 0.2 }}
                             className="text-center md:text-left"
                         >
-                            <span className="text-[#f1bf00] font-bold tracking-widest text-xs uppercase mb-2 block flex items-center gap-2 justify-center md:justify-start">
+                            <span className="inline-flex items-center gap-2 text-[#f1bf00] font-bold tracking-widest text-xs uppercase mb-2">
                                 <Zap size={12} /> Lista Oficial
                             </span>
                             <h2 className="text-5xl md:text-7xl font-serif font-bold text-white mb-4 tracking-tight">
@@ -431,12 +461,12 @@ export const LandingPage: React.FC = () => {
                                 <span className="bg-[#ce1126] text-white px-2 py-0.5 rounded text-xs font-bold">M</span>
                                 <span className="font-semibold text-white">Mariachis Texas Medellín</span>
                                 <span>•</span>
-                                <span>100+ Canciones</span>
+                                <span>Muchas canciones</span>
                                 <span>•</span>
-                                <span>Rancheras, Boleros y Más</span>
+                                <span>Rancheras, Clasicos y Más</span>
                             </div>
                             <p className="text-slate-400 mt-6 max-w-xl font-light leading-relaxed">
-                                Una selección curada de los mejores éxitos de la música mexicana. Desde los clásicos inmortales hasta los hits del momento, tenemos la canción perfecta para cada instante de tu celebración.
+                            Contamos con un amplio repertorio de canciones seleccionadas para cada ocasión, creando el ambiente perfecto y acompañando cada momento especial de tu celebración.
                             </p>
                         </motion.div>
                     </div>
@@ -500,46 +530,146 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* --- FEATURED VIDEO SECTION --- */}
-            <section className="py-24 relative z-10 bg-[#050505] overflow-hidden">
-                {/* Decorative Background Elements */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#ce1126]/10 via-transparent to-transparent blur-[100px] pointer-events-none"></div>
+            <section className="py-28 relative z-10 bg-[#050505] overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[70rem] h-[70rem] bg-[radial-gradient(circle,_rgba(241,191,0,0.12)_0%,_rgba(206,17,38,0.08)_28%,_transparent_68%)] blur-3xl" />
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f1bf00]/40 to-transparent" />
+                </div>
 
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
                     <motion.div
-                        initial={{ opacity: 0, y: 40 }}
+                        initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.8 }}
-                        className="text-center mb-12"
+                        className="grid lg:grid-cols-[0.9fr_1.1fr] gap-10 xl:gap-14 items-center"
                     >
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#f1bf00] text-xs font-bold tracking-widest uppercase mb-4">
-                            <Sparkles size={12} /> Producción Especial
+                        <div className="space-y-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#f1bf00] text-[11px] font-black tracking-[0.35em] uppercase">
+                                <Sparkles size={12} /> Producción Especial
+                            </div>
+
+                            <div className="space-y-5">
+                                <h2 className="text-4xl md:text-6xl font-serif font-bold text-white leading-[0.95]">
+                                    Experiencias<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ce1126] via-[#f1bf00] to-[#f1bf00]"> Inolvidables</span>
+                                </h2>
+                                <p className="text-slate-300 text-lg leading-8 max-w-xl">
+                                    Los mejores trabajan con los mejores. Hemos tenido el privilegio de acompañar a personas reconocidas, quienes han quedado satisfechas con la calidad de nuestras presentaciones, el profesionalismo de nuestro equipo y el amor que ponemos en cada evento.
+
+                                </p>
+                            </div>
+
+                            <div className="grid sm:grid-cols-3 gap-4">
+                                {[
+{ 
+  icon: Music, 
+  title: 'Música en vivo', 
+  text: 'Interpretaciones llenas de emoción con músicos y cantantes profesionales.' 
+},
+{ 
+  icon: Users, 
+  title: 'Atención personalizada', 
+  text: 'Nos adaptamos a cada celebración para hacer de tu momento algo único.' 
+},
+{ 
+  icon: Award, 
+  title: 'Experiencia y calidad', 
+  text: 'Más de 10 años llevando serenatas inolvidables a nuestros clientes.' 
+},
+                                ].map((item, index) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <motion.div
+                                            key={item.title}
+                                            initial={{ opacity: 0, y: 18 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ duration: 0.5, delay: index * 0.12 }}
+                                            className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-4 hover:border-[#f1bf00]/35 hover:bg-white/[0.05] transition-all duration-300"
+                                        >
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ce1126] to-[#f1bf00] flex items-center justify-center mb-3 shadow-[0_0_25px_rgba(241,191,0,0.18)]">
+                                                <Icon size={18} className="text-white" />
+                                            </div>
+                                            <h3 className="text-white font-bold text-sm mb-1">{item.title}</h3>
+                                            <p className="text-slate-400 text-xs leading-5">{item.text}</p>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                            </div>
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-serif font-bold text-white mb-4">
-                            NUESTRA <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ce1126] to-[#f1bf00]">OBRA MAESTRA</span>
-                        </h2>
-                        <p className="text-slate-400 max-w-2xl mx-auto">
-                            Un recorrido visual por la magia que llevamos a cada evento. Sube el volumen y siente la emoción.
-                        </p>
-                    </motion.div>
 
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className="relative aspect-video w-full rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 group"
-                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.85, delay: 0.12 }}
+                            className="relative"
+                        >
+                            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-[#ce1126]/35 via-transparent to-[#f1bf00]/30 blur-2xl opacity-70" />
+                            <div className="relative rounded-[2rem] p-3 border border-white/10 bg-white/[0.03] shadow-[0_25px_80px_rgba(0,0,0,0.45)]">
+                                <div className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/55 backdrop-blur-md px-4 py-2 text-[10px] font-black tracking-[0.35em] uppercase text-[#f1bf00]">
+                                    <Clock size={12} /> Show en vivo
+                                </div>
 
-                        <video
-                            loop
-                            muted
-                            playsInline
-                            poster=""
-                            controls
-                            className="w-full h-full object-cover"
-                            src="/videos/Mariachis20.mp4"
-                        ></video>
+                                <div
+                                    className="relative aspect-video w-full overflow-hidden rounded-[1.6rem] border border-white/10 cursor-pointer group"
+                                    onClick={!videoPlaying ? handlePlayVideo : undefined}
+                                >
+                                    <video
+                                        ref={videoRef}
+                                        loop
+                                        playsInline
+                                        controls={videoPlaying}
+                                        onPlay={() => setVideoPlaying(true)}
+                                        onPause={handleVideoPause}
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                                        src="/videos/Mariachis20.mp4"
+                                    />
+
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/20 pointer-events-none" />
+
+                                    {!videoPlaying && (
+                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/25 backdrop-blur-[2px]">
+                                            <div className="relative mb-5 flex items-center justify-center">
+                                                <div className="absolute inset-0 rounded-full bg-[#f1bf00]/20 animate-ping" />
+                                                <div className="absolute inset-2 rounded-full bg-[#ce1126]/30 animate-pulse" />
+                                                <button
+                                                    onClick={handlePlayVideo}
+                                                    className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-[#ce1126] to-[#f1bf00] flex items-center justify-center shadow-[0_0_40px_rgba(241,191,0,0.28)] transform transition-transform duration-300 hover:scale-110"
+                                                    aria-label="Reproducir video"
+                                                >
+                                                    <Play size={26} className="text-white fill-white translate-x-0.5" />
+                                                </button>
+                                            </div>
+                                            <div className="text-center px-6">
+                                                <p className="text-white font-bold text-sm uppercase tracking-[0.3em]">
+                                                    Reproducir presentación
+                                                </p>
+                                                <p className="text-slate-300 text-sm mt-3 max-w-sm">
+                                                    Dale play para ver la energía del grupo en una pieza más inmersiva.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3 mt-3">
+                                    {[
+                                        { label: 'Ambiente', value: '10/10' },
+                                        { label: 'Energía', value: 'Alta' },
+                                        { label: 'Impacto', value: 'Premium' },
+                                    ].map((item) => (
+                                        <div key={item.label} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-center">
+                                            <p className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{item.label}</p>
+                                            <p className="text-white font-serif text-lg mt-1">{item.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 </div>
             </section>

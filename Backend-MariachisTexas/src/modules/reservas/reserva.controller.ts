@@ -25,13 +25,17 @@ export const getCalendario = asyncHandler(async (req: AuthRequest, res: Response
   // Si es admin/empleado, mostrar todas las reservas activas
   const isCliente = rol === 'CLIENTE'
 
-  res.json(await reservaService.getReservasCalendario())
+  res.json(await reservaService.getReservasCalendario(isCliente ? usuarioId : undefined))
 })
 
 // ─── GET ABONOS ───────────────────────────────────────────────────────────────
 export const getAbonos = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const rol = req.user?.rol
+  if (rol && ROLES_ADMIN.includes(rol)) {
+    return res.json(await reservaService.getAbonos())
+  }
   const usuarioId = req.user?.id ? Number(req.user.id) : undefined
-  res.json(await reservaService.getAbonos(usuarioId))
+  return res.json(await reservaService.getAbonos(usuarioId))
 })
 
 // ─── AGREGAR ABONO A RESERVA ───────────────────────────────────────────────────

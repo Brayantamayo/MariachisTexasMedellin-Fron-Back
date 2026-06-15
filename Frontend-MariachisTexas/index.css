@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { font-family: 'Lato', sans-serif; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Cinzel', serif; }
+.scroll-smooth { scroll-behavior: smooth; }
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ce1126;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Premium Icon Animations */
+svg.lucide {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+button:hover svg.lucide,
+a:hover svg.lucide,
+.group:hover svg.lucide {
+  transform: translateY(-3px) scale(1.1);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+}
