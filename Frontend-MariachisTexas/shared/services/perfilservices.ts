@@ -24,7 +24,10 @@ export interface PerfilData {
 
 export interface ActualizarPerfilPayload {
   nombre?:              string
+  email?:               string
   apellido?:            string
+  tipoDocumento?:       'CC' | 'CE' | 'TI' | 'PAS'
+  numeroDocumento?:     string
   telefonoPrincipal?:   string
   telefonoAlternativo?: string
   ciudad?:              string
@@ -49,8 +52,8 @@ export const profileService = {
 
   /**
    * Actualiza los datos editables del perfil.
-   * El email y la contraseña NO se pueden cambiar aquí.
-   * El tipo y número de documento son de sólo lectura.
+   * El email sí se puede cambiar desde este formulario.
+   * El tipo y número de documento siguen siendo editables según el backend.
    */
   actualizar: async (payload: ActualizarPerfilPayload): Promise<PerfilData> => {
     const { data } = await api.put('/perfil', payload)

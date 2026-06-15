@@ -41,6 +41,30 @@ const InfiniteMarquee: React.FC<{ items: string[] }> = ({ items }) => {
     );
 };
 
+const SectionDivider: React.FC<{ tone?: 'gold' | 'red' | 'green' }> = ({ tone = 'gold' }) => {
+    const glow =
+        tone === 'red'
+            ? 'from-[#ce1126]/35 via-[#ce1126]/10 to-transparent'
+            : tone === 'green'
+                ? 'from-[#009c3b]/35 via-[#009c3b]/10 to-transparent'
+                : 'from-[#f1bf00]/35 via-[#f1bf00]/10 to-transparent';
+
+    const glowStyle =
+        tone === 'red'
+            ? 'radial-gradient(circle, rgba(206,17,38,0.16) 0%, rgba(206,17,38,0.08) 22%, transparent 70%)'
+            : tone === 'green'
+                ? 'radial-gradient(circle, rgba(0,156,59,0.16) 0%, rgba(0,156,59,0.08) 22%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(241,191,0,0.16) 0%, rgba(241,191,0,0.08) 22%, transparent 70%)';
+
+    return (
+        <div className="relative h-16 overflow-hidden pointer-events-none">
+            <div className={`absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r ${glow}`} />
+            <div className="absolute inset-x-0 top-1/2 h-20 -translate-y-1/2 blur-2xl opacity-80" style={{ background: glowStyle }} />
+            <div className="absolute inset-x-[15%] top-1/2 h-px -translate-y-1/2 bg-white/5" />
+        </div>
+    );
+};
+
 export const LandingPage: React.FC = () => {
     const navigate = useNavigate();
     const [dynamicGallery, setDynamicGallery] = useState<string[]>([]);
@@ -254,6 +278,8 @@ export const LandingPage: React.FC = () => {
 
             <InfiniteMarquee items={['Casicos', 'Romanticas', 'Valadas', 'Popular', 'Rancheras',]} />
 
+            <SectionDivider tone="gold" />
+
             {/* --- WHY CHOOSE US --- */}
             <section className="py-24 relative bg-[#0a0a0a] overflow-hidden">
                 {/* Mexican Flag Gradient Background Effect */}
@@ -331,8 +357,10 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
+            <SectionDivider tone="red" />
+
             {/* --- CONOCENOS (Bento Grid) --- */}
-            <section id="conocenos" className="py-24 relative z-10 bg-black overflow-hidden">
+            <section id="conocenos" className="py-24 relative z-10 bg-black overflow-hidden border-t border-white/5">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#ce1126]/10 rounded-full blur-[120px] pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#009c3b]/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -410,8 +438,10 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
+            <SectionDivider tone="green" />
+
             {/* --- REPERTORIO SECTION --- */}
-            <section id="repertorio-preview" className="py-24 relative z-10 bg-[#0a0a0a] overflow-hidden">
+            <section id="repertorio-preview" className="py-24 relative z-10 bg-[#0a0a0a] overflow-hidden border-t border-white/5">
                 {/* Background Image with Overlay */}
                 <div className="absolute inset-0 z-0">
                     <img
@@ -481,8 +511,10 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
+            <SectionDivider tone="gold" />
+
             {/* --- GALLERY SECTION --- */}
-            <section id="galeria" className="py-32 relative z-10 bg-[#050505] overflow-hidden">
+            <section id="galeria" className="py-32 relative z-10 bg-[#050505] overflow-hidden border-t border-white/5">
                 {/* Background Colors */}
                 <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#009c3b]/10 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
                 <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#ce1126]/10 rounded-full blur-[120px] pointer-events-none translate-x-1/2 translate-y-1/2"></div>
@@ -529,8 +561,10 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
+            <SectionDivider tone="red" />
+
             {/* --- FEATURED VIDEO SECTION --- */}
-            <section className="py-28 relative z-10 bg-[#050505] overflow-hidden">
+            <section className="py-28 relative z-10 bg-[#050505] overflow-hidden border-t border-white/5">
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[70rem] h-[70rem] bg-[radial-gradient(circle,_rgba(241,191,0,0.12)_0%,_rgba(206,17,38,0.08)_28%,_transparent_68%)] blur-3xl" />
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f1bf00]/40 to-transparent" />
@@ -673,6 +707,8 @@ export const LandingPage: React.FC = () => {
                     </motion.div>
                 </div>
             </section>
+
+            <SectionDivider tone="green" />
 
             <section className="relative py-32 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
