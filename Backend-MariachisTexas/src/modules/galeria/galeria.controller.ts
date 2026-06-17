@@ -18,6 +18,12 @@ export const GaleriaController = {
         return res.status(400).json({ message: 'No se subió ninguna imagen' });
       }
 
+      // Validar límite de 9 imágenes
+      const existingItems = await GaleriaService.getAll();
+      if (existingItems.length >= 9) {
+        return res.status(400).json({ message: 'La galería ya tiene el límite máximo de 9 imágenes' });
+      }
+
       // Convertir el buffer a base64 para subir a Cloudinary
       const b64 = Buffer.from(req.file.buffer).toString("base64");
       const dataURI = "data:" + req.file.mimetype + ";base64," + b64;

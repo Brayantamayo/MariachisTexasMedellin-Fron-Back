@@ -54,6 +54,11 @@ export const GaleriaPage: React.FC = () => {
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    if (images.length >= 9) {
+      toast.error('La galería ya tiene el límite máximo de 9 imágenes');
+      return;
+    }
+
     try {
       setIsUploading(true);
       const formData = new FormData();
@@ -63,8 +68,9 @@ export const GaleriaPage: React.FC = () => {
       setImages(prev => [...prev, newItem]);
       toast.success('Imagen subida correctamente');
       closeModal();
-    } catch (error) {
-      toast.error('Error al subir la imagen');
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || 'Error al subir la imagen';
+      toast.error(errorMsg);
     } finally {
       setIsUploading(false);
     }
@@ -118,19 +124,32 @@ export const GaleriaPage: React.FC = () => {
             <h1 className="text-4xl md:text-5xl font-serif font-bold mb-2">
               Gestión de <span className="text-[#ce1126]">Galería</span>
             </h1>
-            <p className="text-zinc-500 font-medium tracking-wide uppercase text-xs">
-              Personaliza las imágenes que ven tus clientes en la landing page
+            <p className="text-zinc-500 font-medium tracking-wide uppercase text-xs flex items-center gap-2">
+              <span>Personaliza las imágenes que ven tus clientes en la landing page</span>
+              <span className="font-bold text-[#ce1126] bg-[#ce1126]/10 px-2 py-0.5 rounded-full">
+                {images.length}/9 imágenes
+              </span>
             </p>
           </motion.div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-[#ce1126] text-white rounded-xl font-bold shadow-lg shadow-[#ce1126]/20 transition-all hover:bg-[#b00e20]"
+            whileHover={images.length >= 9 ? {} : { scale: 1.05 }}
+            whileTap={images.length >= 9 ? {} : { scale: 0.95 }}
+            onClick={() => {
+              if (images.length >= 9) {
+                toast.error('Has alcanzado el límite máximo de 9 imágenes. Elimina alguna para poder subir una nueva.');
+                return;
+              }
+              setIsModalOpen(true);
+            }}
+            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold shadow-lg transition-all ${
+              images.length >= 9 
+                ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed shadow-none'
+                : 'bg-[#ce1126] text-white shadow-[#ce1126]/20 hover:bg-[#b00e20]'
+            }`}
           >
             <Plus size={20} />
-            Añadir Imagen
+            Añadir Imagen {images.length >= 9 && '(Límite alcanzado)'}
           </motion.button>
         </div>
       </div>
