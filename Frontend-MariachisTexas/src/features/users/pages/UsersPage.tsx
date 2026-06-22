@@ -81,6 +81,8 @@ export const UsersPage: React.FC = () => {
     } catch (error) {
         console.error(error);
         showNotification("No se pudo eliminar el usuario.", "error");
+    } finally {
+        setDeleteModal({ isOpen: false, userId: null });
     }
   };
 

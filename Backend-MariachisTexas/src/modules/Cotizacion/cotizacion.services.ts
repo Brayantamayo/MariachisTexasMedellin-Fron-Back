@@ -176,6 +176,30 @@ export const createCotizacion = async (data: CotizacionCreateInput): Promise<Quo
   // ✅ Validar 6h de anticipación si es hoy
   validarAnticipacionMismoDia(d.eventDate, d.startTime)
 
+  // ✅ Validar si ya existe una cotización pendiente para este correo
+  let email = d.clientEmail;
+  if (d.clientId) {
+    const client = await prisma.cliente.findUnique({
+      where: { id: Number(d.clientId) }
+    });
+    if (client) email = client.email;
+  }
+
+  if (email) {
+    const pendingCotizacion = await prisma.cotizacion.findFirst({
+      where: {
+        estado: 'EN_ESPERA',
+        OR: [
+          { contactoEmail: { equals: email, mode: 'insensitive' } },
+          { cliente: { email: { equals: email, mode: 'insensitive' } } }
+        ]
+      }
+    });
+    if (pendingCotizacion) {
+      throw new AppError('Ya tienes una cotización pendiente de aprobación. No puedes realizar una nueva hasta que la anterior sea procesada.', 400);
+    }
+  }
+
   const horaInicio = buildDateTime(d.eventDate, d.startTime)
   const horaFin    = buildDateTime(d.eventDate, d.endTime)
   if (horaFin < horaInicio) horaFin.setDate(horaFin.getDate() + 1)

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import { Mail, Lock, AlertCircle, X } from 'lucide-react';
+import { Mail, Lock, AlertCircle, X, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,6 +9,8 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
@@ -88,15 +90,18 @@ export const LoginPage: React.FC = () => {
     setError('');
 
     if (!email.trim() || !password.trim()) {
-      setError('Por favor, ingresa tu correo y contrasena.');
+      setError('Por favor, ingresa tu correo y contraseña.');
       return;
     }
 
     try {
+      setLoading(true);
       await login(email, password);
       // El éxito se maneja por la redirección automática del AuthProvider o el router
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error al iniciar sesión.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -436,11 +441,12 @@ export const LoginPage: React.FC = () => {
                 <input
                   type="text"
                   value={email}
+                  disabled={loading}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setError('');
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/45 focus:ring-2 focus:ring-green-500/30 focus:border-green-500/50 outline-none transition-all text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/45 focus:ring-2 focus:ring-green-500/30 focus:border-green-500/50 outline-none transition-all text-xs font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] disabled:opacity-50"
                   placeholder="usuario@texas.com"
                 />
               </div>
@@ -449,14 +455,15 @@ export const LoginPage: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-1 ml-1">
                 <label className="block text-[10px] font-bold text-white uppercase tracking-widest">
-                  Contrasena
+                  Contraseña
                 </label>
                 <button
                   type="button"
                   onClick={() => navigate('/forgot-password')}
-                  className="text-[9px] text-red-400 hover:text-red-300 transition-colors font-medium"
+                  disabled={loading}
+                  className="text-[9px] text-red-400 hover:text-red-300 transition-colors font-medium disabled:opacity-50"
                 >
-                  Olvidaste tu contrasena?
+                  Olvidaste tu contraseña?
                 </button>
               </div>
 
@@ -466,23 +473,42 @@ export const LoginPage: React.FC = () => {
                   size={16}
                 />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
+                  disabled={loading}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setError('');
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/80 placeholder:tracking-[0.18em] focus:ring-2 focus:ring-red-500/30 focus:border-red-500/50 outline-none transition-all text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  className="w-full pl-10 pr-10 py-2.5 bg-black/30 border border-white/12 rounded-xl text-white placeholder:text-white/80 placeholder:tracking-[0.18em] focus:ring-2 focus:ring-red-500/30 focus:border-red-500/50 outline-none transition-all text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] disabled:opacity-50"
                   placeholder="••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={loading}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white/70 transition-colors disabled:opacity-50 focus:outline-none"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#ce1126] via-[#f22f35] to-[#ce1126] hover:brightness-105 text-white font-bold py-3 rounded-xl transition-all shadow-[0_14px_28px_rgba(220,38,38,0.36)] hover:shadow-[0_20px_38px_rgba(220,38,38,0.5)] uppercase tracking-widest text-xs mt-2 active:scale-[0.98] border border-red-400/40"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-[#ce1126] via-[#f22f35] to-[#ce1126] hover:brightness-105 text-white font-bold py-3 rounded-xl transition-all shadow-[0_14px_28px_rgba(220,38,38,0.36)] hover:shadow-[0_20px_38px_rgba(220,38,38,0.5)] uppercase tracking-widest text-xs mt-2 active:scale-[0.98] border border-red-400/40 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
             >
-              Iniciar Sesion
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin text-white" size={14} />
+                  <span>Iniciando Sesión...</span>
+                </>
+              ) : (
+                'Iniciar Sesion'
+              )}
             </button>
           </form>
 

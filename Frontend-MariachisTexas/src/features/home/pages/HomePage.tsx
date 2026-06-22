@@ -594,297 +594,288 @@ export const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050608] text-white selection:bg-amber-500/30">
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-5%] right-[-5%] w-[45%] h-[45%] bg-amber-600/5 rounded-full blur-[130px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-600/5 rounded-full blur-[150px]" />
-        <div
-          className="absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)',
-            backgroundSize: '50px 50px',
-          }}
-        />
-      </div>
+    <div className="min-h-screen text-white" style={{ background: '#08090d' }}>
 
       <WelcomeToast />
 
-      <div className="relative h-[480px] w-full overflow-hidden border-b border-amber-500/10">
-        <div className="absolute inset-0">
+      {/* ── HEADER LIMPIO ── */}
+      <div className="relative border-b border-white/[0.06]">
+        {/* Imagen de fondo ultra sutil */}
+        <div className="absolute inset-0 overflow-hidden">
           <img
             src="/images/home-hero.png"
-            alt="Hero Background"
-            className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-[5s] opacity-50"
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover opacity-[0.07]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050608] via-[#050608]/40 to-[#050608]/20" />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, #08090d 0%, transparent 40%, #08090d 100%)' }} />
         </div>
 
-        <div className="relative max-w-7xl mx-auto h-full px-6 flex flex-col justify-center items-center text-center">
-          <div className="animate-fade-in-up">
-            <div className="flex justify-center mb-6">
-              <div className="px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
-                <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em]">
-                  Mariachis Texas • Medellín
-                </span>
+        <div className="relative max-w-6xl mx-auto px-8 py-8">
+          <div className="flex items-center justify-between gap-6">
+            {/* Saludo */}
+            <div className="flex items-center gap-4">
+              <div
+                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}
+              >
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-[11px] font-medium tracking-[0.2em] uppercase mb-0.5" style={{ color: '#f59e0b', opacity: 0.7 }}>
+                  Mariachis Texas · Medellín
+                </p>
+                <h1 className="text-lg font-semibold text-white leading-tight">
+                  Hola, <span className="font-bold" style={{ color: '#fbbf24' }}>{user?.name?.split(' ')[0]}</span>
+                </h1>
+                <p className="text-xs mt-0.5 capitalize" style={{ color: 'rgba(148,163,184,0.6)' }}>
+                  {currentDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
               </div>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white mb-6 drop-shadow-2xl">
-              HOLA,{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
-                {user?.name.split(' ')[0].toUpperCase()}
-              </span>
-            </h1>
-
-            <p className="text-slate-300 text-lg md:text-xl font-medium max-w-2xl mx-auto mb-10 leading-relaxed italic opacity-80">
-              &ldquo;La música es el lenguaje del alma.&rdquo;
-              <br />
-              <span className="text-sm font-bold text-slate-500 not-italic uppercase tracking-[0.2em] mt-2 block">
-                ¿Qué celebraremos juntos esta vez?
-              </span>
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+            {/* Acciones */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/reservas')}
-                className="group relative px-10 py-5 rounded-2xl bg-red-600 text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:scale-105 hover:bg-red-500 shadow-[0_15px_30px_rgba(220,38,38,0.2)]"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150"
+                style={{ background: '#f59e0b', color: '#fff' }}
               >
-                <div className="absolute inset-0 rounded-2xl bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
-                <span className="flex items-center gap-3">
-                  <Star size={16} strokeWidth={3} className="fill-white" />
-                  Agendar Evento
-                </span>
+                <Star size={12} strokeWidth={2.5} className="fill-white" />
+                Agendar evento
               </button>
-
               <button
                 onClick={() => navigate('/repertorio')}
-                className="px-10 py-5 rounded-2xl bg-white/5 border border-amber-500/15 backdrop-blur-xl text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 hover:bg-white/10 hover:border-white/20"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
               >
-                <span className="flex items-center gap-3">
-                  <ListMusic size={16} strokeWidth={3} />
-                  Ver Repertorio
-                </span>
+                <ListMusic size={12} strokeWidth={2} />
+                Repertorio
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-6 py-16 -mt-16">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
-          <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-                  <Calendar size={24} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-white tracking-tight italic">
-                    Mis Reservas
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Gestiona tus próximos eventos y cotizaciones.
-                  </p>
-                </div>
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      <div className="max-w-6xl mx-auto px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+
+          {/* ── COLUMNA IZQUIERDA: MIS RESERVAS ── */}
+          <div>
+            {/* Encabezado sección */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Mis Reservas</h2>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                  Tus próximos eventos y cotizaciones
+                </p>
               </div>
               <button
                 onClick={() => navigate('/reservas')}
-                className="text-[10px] font-black text-slate-500 hover:text-amber-500 uppercase tracking-widest transition-colors flex items-center gap-2"
+                className="inline-flex items-center gap-1 text-xs transition-colors"
+                style={{ color: 'rgba(148,163,184,0.5)' }}
               >
-                Historial completo <ChevronRight size={14} />
+                Ver todo <ChevronRight size={12} />
               </button>
             </div>
 
+            {/* Lista de eventos */}
             {clientEvents.length === 0 ? (
-              <div className="group relative bg-slate-900/40 border border-amber-500/10 rounded-[3rem] p-16 text-center backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:border-amber-500/20">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-[60px] pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="w-24 h-24 bg-slate-900/80 border border-amber-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500">
-                    <Calendar
-                      size={40}
-                      className="text-slate-600 group-hover:text-amber-500 transition-colors"
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <h4 className="text-2xl font-black text-white italic mb-4">
-                    Aún no tienes reservas activas
-                  </h4>
-                  <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed mb-10">
-                    Dale un toque especial a tu próxima celebración con el mejor Mariachi
-                    de Medellín.
-                  </p>
-                  <button
-                    onClick={() => navigate('/reservas')}
-                    className="inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl shadow-amber-900/20"
-                  >
-                    Cotizar ahora
-                  </button>
+              <div
+                className="rounded-xl p-10 text-center"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                >
+                  <Calendar size={20} style={{ color: 'rgba(148,163,184,0.4)' }} strokeWidth={1.5} />
                 </div>
+                <p className="text-sm font-medium text-white mb-1">Sin reservas activas</p>
+                <p className="text-xs mb-5" style={{ color: 'rgba(148,163,184,0.45)' }}>
+                  Dale vida a tu próxima celebración con el mejor Mariachi de Medellín.
+                </p>
+                <button
+                  onClick={() => navigate('/reservas')}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: '#f59e0b', color: '#fff' }}
+                >
+                  Solicitar cotización
+                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="flex flex-col gap-2">
                 {clientEvents.map((event, idx) => (
                   <div
                     key={event.id}
-                    className="group relative bg-slate-900/40 border border-amber-500/10 rounded-3xl p-6 md:p-8 backdrop-blur-2xl shadow-2xl hover:bg-slate-900/60 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-8 animate-fade-in-up"
-                    style={{ animationDelay: `${300 + idx * 100}ms` }}
+                    className="group flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150"
+                    style={{
+                      background: 'rgba(255,255,255,0.025)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      animationDelay: `${idx * 60}ms`,
+                    }}
+                    onClick={() => navigate('/reservas')}
                   >
-                    <div className="flex items-center gap-8">
-                      <div className="flex-shrink-0 w-20 h-20 rounded-3xl bg-slate-900/80 border border-amber-500/10 flex flex-col items-center justify-center text-center shadow-xl group-hover:border-amber-500/30 transition-colors">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                          {getMonthDay(event.eventDate).month}
-                        </span>
-                        <span className="text-3xl font-black text-white tracking-tighter">
-                          {getMonthDay(event.eventDate).day}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="text-2xl font-black text-white italic tracking-tight group-hover:text-amber-400 transition-colors truncate">
-                            {event.eventType}
-                          </h4>
-                          <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-amber-500/15 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                            ID: {event.id.slice(-4)}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-y-2 gap-x-6 text-slate-400">
-                          <div className="flex items-center gap-2 group/info">
-                            <Clock
-                              size={14}
-                              className="text-amber-500/60 group-hover/info:text-amber-500 transition-colors"
-                            />
-                            <span className="text-xs font-bold">{event.eventTime}</span>
-                          </div>
-                          <div className="flex items-center gap-2 group/info">
-                            <MapPin
-                              size={14}
-                              className="text-red-500/60 group-hover/info:text-red-500 transition-colors"
-                            />
-                            <span className="text-xs font-bold truncate max-w-[180px]">
-                              {event.location}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                    {/* Bloque de fecha */}
+                    <div
+                      className="flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center text-center"
+                      style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#f59e0b', lineHeight: 1 }}>
+                        {getMonthDay(event.eventDate).month}
+                      </span>
+                      <span className="text-lg font-bold text-white leading-tight">
+                        {getMonthDay(event.eventDate).day}
+                      </span>
                     </div>
 
-                    <div className="flex items-center justify-between md:flex-col md:items-end gap-4 border-t md:border-t-0 border-amber-500/10 pt-6 md:pt-0">
-                      <div className="flex flex-col items-end">
+                    {/* Información */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-white truncate">
+                          {event.eventType}
+                        </span>
                         <span
-                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${event.status === 'Confirmado'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : event.status === 'Pendiente'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'bg-slate-800 text-slate-400 border border-amber-500/10'
-                            }`}
+                          className="flex-shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded"
+                          style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(148,163,184,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}
                         >
-                          {event.status}
+                          #{event.id.slice(-4)}
                         </span>
-                        {event.paidAmount < event.totalAmount && (
-                          <p className="text-[10px] text-red-500 font-bold mt-2 animate-pulse">
-                            Saldo: $
-                            {(event.totalAmount - event.paidAmount).toLocaleString('es-CO')}
-                          </p>
-                        )}
                       </div>
-                      <button
-                        onClick={() => navigate('/reservas')}
-                        className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-xl group/btn"
-                      >
-                        <ChevronRight
-                          size={20}
-                          strokeWidth={3}
-                          className="group-hover:translate-x-0.5 transition-transform"
-                        />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-[11px]" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                          <Clock size={10} /> {event.eventTime}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] truncate max-w-[140px]" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                          <MapPin size={10} /> {event.location}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Estado */}
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                      <span
+                        className={`text-[10px] font-medium px-2.5 py-1 rounded-full ${
+                          event.status === 'Confirmado'
+                            ? 'text-emerald-400'
+                            : event.status === 'Pendiente'
+                              ? 'text-amber-400'
+                              : 'text-slate-400'
+                        }`}
+                        style={{
+                          background: event.status === 'Confirmado'
+                            ? 'rgba(52,211,153,0.08)'
+                            : event.status === 'Pendiente'
+                              ? 'rgba(245,158,11,0.08)'
+                              : 'rgba(148,163,184,0.06)',
+                          border: event.status === 'Confirmado'
+                            ? '1px solid rgba(52,211,153,0.2)'
+                            : event.status === 'Pendiente'
+                              ? '1px solid rgba(245,158,11,0.2)'
+                              : '1px solid rgba(148,163,184,0.1)',
+                        }}
+                      >
+                        {event.status}
+                      </span>
+                      {event.paidAmount < event.totalAmount && (
+                        <span className="text-[9px] font-medium" style={{ color: 'rgba(248,113,113,0.7)' }}>
+                          Saldo: ${(event.totalAmount - event.paidAmount).toLocaleString('es-CO')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Ícono flecha */}
+                    <ChevronRight size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'rgba(148,163,184,0.4)' }} />
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-            <div className="relative overflow-hidden bg-slate-900/40 border border-amber-500/10 rounded-[3rem] p-10 backdrop-blur-2xl shadow-2xl group cursor-default">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[50px] -mr-16 -mt-16 group-hover:bg-amber-500/20 transition-all duration-700" />
+          {/* ── COLUMNA DERECHA: SIDEBAR ── */}
+          <div className="space-y-3">
 
-              <div className="relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mb-8 shadow-xl">
-                  <Phone size={28} strokeWidth={2} />
-                </div>
+            {/* Panel contacto */}
+            <div
+              className="rounded-xl p-5"
+              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <p className="text-xs font-semibold text-white mb-1">¿Necesitas ayuda?</p>
+              <p className="text-[11px] mb-4" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                Nuestro equipo está listo para atenderte.
+              </p>
 
-                <h3 className="text-2xl font-black text-white italic mb-4">
-                  ¿Necesitas Ayuda?
-                </h3>
-                <p className="text-sm text-slate-500 font-medium leading-relaxed mb-10">
-                  Nuestro equipo de atención está disponible para cualquier duda con tu
-                  reserva o pagos.
-                </p>
+              <div className="space-y-2">
+                <a
+                  href="https://wa.me/573122373486"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all duration-150 group"
+                  style={{ background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.12)' }}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(52,211,153,0.1)' }}>
+                    <Phone size={13} style={{ color: '#34d399' }} strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5" style={{ color: 'rgba(52,211,153,0.6)' }}>
+                      WhatsApp
+                    </p>
+                    <p className="text-sm font-semibold text-white">312 237 3486</p>
+                  </div>
+                  <ChevronRight size={13} className="flex-shrink-0 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#34d399' }} />
+                </a>
 
-                <div className="space-y-3">
-                  <a
-                    href="https://wa.me/573122373486"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/60 border border-amber-500/10 hover:bg-slate-900 hover:border-emerald-500/30 transition-all group/item"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
-                      <Phone size={18} strokeWidth={3} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
-                        WhatsApp Directo
-                      </p>
-                      <p className="text-sm font-black text-white">312 237 3486</p>
-                    </div>
-                  </a>
-
-                  <div className="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/60 border border-amber-500/10 opacity-80">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
-                      <Clock size={18} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
-                        Horario Atención
-                      </p>
-                      <p className="text-sm font-black text-white">8:00 AM - 8:00 PM</p>
-                    </div>
+                <div
+                  className="flex items-center gap-3 px-3.5 py-3 rounded-lg"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <Clock size={13} style={{ color: 'rgba(148,163,184,0.5)' }} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5" style={{ color: 'rgba(148,163,184,0.4)' }}>
+                      Horario
+                    </p>
+                    <p className="text-sm font-semibold text-white">8:00 AM – 8:00 PM</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-900/40 border border-amber-500/10 rounded-[2.5rem] p-8 backdrop-blur-2xl shadow-2xl">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] mb-6">
-                Accesos Rápidos
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
+            {/* Accesos rápidos */}
+            <div
+              className="rounded-xl p-5"
+              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-3" style={{ color: 'rgba(148,163,184,0.4)' }}>
+                Accesos rápidos
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => navigate('/repertorio')}
-                  className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all gap-4"
+                  className="group flex flex-col items-center gap-2 py-4 rounded-lg transition-all duration-150"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-amber-500 transition-colors">
-                    <ListMusic size={24} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <ListMusic size={15} style={{ color: 'rgba(148,163,184,0.5)' }} strokeWidth={2} />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors">
-                    Repertorio
-                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 group-hover:text-white transition-colors">Repertorio</span>
                 </button>
 
                 <button
                   onClick={() => navigate('/reservas')}
-                  className="group flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-amber-500/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all gap-4"
+                  className="group flex flex-col items-center gap-2 py-4 rounded-lg transition-all duration-150"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-red-500 transition-colors">
-                    <Calendar size={24} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <Calendar size={15} style={{ color: 'rgba(148,163,184,0.5)' }} strokeWidth={2} />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white transition-colors">
-                    Calendario
-                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 group-hover:text-white transition-colors">Reservas</span>
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       </div>
