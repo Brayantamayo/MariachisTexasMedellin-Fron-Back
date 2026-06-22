@@ -25,7 +25,16 @@ api.interceptors.response.use(
         localStorage.removeItem('user')
         window.location.href = '/login'
       }
-      return Promise.reject(error)
+      
+      const data = error.response?.data
+      const message =
+        (typeof data === 'string' ? data : null) ??
+        data?.message ??
+        data?.error ??
+        data?.detail ??
+        'Credenciales incorrectas'
+      
+      return Promise.reject(new Error(message))
     }
 
     // ✅ Extraer el mensaje real del backend y lanzarlo como Error limpio

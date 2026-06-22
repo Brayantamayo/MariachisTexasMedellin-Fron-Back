@@ -18,8 +18,7 @@ export const ForgotPasswordPage: React.FC = () => {
       navigate('/verify-otp', { state: { email } });
     } catch (err: any) {
       setError(
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
+        err.message ||
         'Error al enviar el correo. Inténtalo de nuevo.'
       );
     } finally {

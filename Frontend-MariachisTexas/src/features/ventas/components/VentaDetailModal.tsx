@@ -14,14 +14,34 @@ interface Props {
 export const VentaDetailModal: React.FC<Props> = ({ isOpen, onClose, sale, onDownload }) => {
   if (!isOpen || !sale) return null;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Confirmado': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-      case 'Finalizado': return 'bg-blue-50 text-blue-600 border-blue-200';
-      case 'Anulado':    return 'bg-slate-50 text-slate-500 border-slate-200';
-      default:           return 'bg-slate-50 text-slate-600 border-slate-200';
+  const getStatusInfo = (s: Sale) => {
+    const isAnulada = s.status?.toUpperCase() === 'CANCELADA' || s.reservationStatus?.toUpperCase() === 'ANULADA';
+    
+    let hasPassed = false;
+    if (s.eventDate) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      hasPassed = s.eventDate < todayStr;
     }
+
+    if (isAnulada) {
+      return { label: 'Anulada', cls: 'bg-red-50 text-red-600 border-red-200' };
+    }
+
+    if (s.reservationId) {
+      if (hasPassed && (s.reservationStatus === 'FINALIZADO' || s.status === 'Finalizado')) {
+        return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-600 border-blue-200' };
+      }
+      return { label: 'Confirmado', cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+    }
+
+    if (s.status === 'Finalizado' || (s.pendingAmount ?? 0) <= 0) {
+      return { label: 'Finalizado', cls: 'bg-blue-50 text-blue-600 border-blue-200' };
+    }
+    
+    return { label: 'Venta Directa', cls: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
+
+  const statusInfo = getStatusInfo(sale);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -35,8 +55,8 @@ export const VentaDetailModal: React.FC<Props> = ({ isOpen, onClose, sale, onDow
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-serif font-bold text-slate-800 uppercase tracking-tight">Venta</h3>
               <span className="font-mono text-sm text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">#{sale.id}</span>
-              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(sale.status)}`}>
-                {sale.status}
+              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${statusInfo.cls}`}>
+                {statusInfo.label}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-2 flex items-center gap-2">

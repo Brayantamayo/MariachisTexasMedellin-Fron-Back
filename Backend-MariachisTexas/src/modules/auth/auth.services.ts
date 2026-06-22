@@ -170,8 +170,7 @@ export const login = async (email: string, password: string) => {
 export const recuperarPassword = async (email: string) => {
   const usuario = await prisma.usuario.findUnique({ where: { email } })
   if (!usuario) {
-    // Retornar mensaje genérico por seguridad
-    return { message: 'Si el correo está registrado, recibirás un código en tu bandeja.' }
+    throw new AppError('El correo electrónico no está registrado', 404)
   }
 
   // Generar OTP de 6 dígitos

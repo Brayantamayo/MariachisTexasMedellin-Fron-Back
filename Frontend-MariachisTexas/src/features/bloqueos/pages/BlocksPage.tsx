@@ -80,6 +80,8 @@ export const BlocksPage: React.FC = () => {
     } catch (error) {
         console.error(error);
         showNotification("Error al eliminar.", "error");
+    } finally {
+        setDeleteModal({ isOpen: false, id: null });
     }
   };
 

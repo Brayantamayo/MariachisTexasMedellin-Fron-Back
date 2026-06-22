@@ -87,7 +87,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true)
     try {
       const data = await authService.login(email, password)
 
@@ -117,8 +116,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       console.error('Login error:', error)
       throw error;
-    } finally {
-      setIsLoading(false)
     }
   }
 

@@ -89,6 +89,8 @@ export const EmployeesPage: React.FC = () => {
     } catch (error) {
         console.error(error);
         showNotification("No se pudo eliminar el empleado.", "error");
+    } finally {
+        setDeleteModal({ isOpen: false, empId: null });
     }
   };
 
