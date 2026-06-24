@@ -39,3 +39,23 @@ a:hover svg.lucide,
   transform: translateY(-3px) scale(1.1);
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
 }
+
+/* Custom scrollbar for light components like dropdowns */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+

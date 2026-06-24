@@ -141,7 +141,7 @@ export const Topbar: React.FC = () => {
                 )}
               </div>
 
-              <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-100 no-scrollbar">
+              <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
                 {notifications.length === 0 ? (
                   <div className="px-6 py-10 text-center">
                     <Bell size={32} className="text-slate-300 mx-auto mb-3" />
