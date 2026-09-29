@@ -297,6 +297,11 @@ export const CotizacionCreateModal: React.FC<Props> = ({ isOpen, onClose, onSave
           <div className="mx-6 mt-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" /> {globalError}
           </div>
+
+
+
+
+
         )}
 
         {/* Formulario */}
